@@ -36,7 +36,7 @@ TEST_CASE("breakpoint at second insn stops before executing it")
     }
 }
 
-TEST_CASE("rex_version is 0.4")
+TEST_CASE("rex_version is 0.5")
 {
-    REQUIRE(std::string(rex_version()) == "0.4");
+    REQUIRE(std::string(rex_version()) == "0.5");
 }

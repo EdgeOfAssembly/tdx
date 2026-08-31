@@ -38,8 +38,8 @@ void tdx_print_usage(FILE *fp)
         "\n"
         "Keys (CPU window): F7 trace, F8 step over, F9 run/pause, F2 breakpoint,\n"
         "  Ctrl-F2 reset program, Alt-X quit.\n"
-        "  CGA user screen: tdxview --sock PATH (own Xmux session).\n"
-        "  Agent: tdxctl --sock PATH step|over|cga|regs|shot|...\n"
+        "  CGA: tdxview (listens /tmp/tdxview.sock). Agent: tdxctl / tdxctl --view\n"
+        "  (UNIX keep-alive sockets; Xmux not required).\n"
         "\n"
         "tdx " TDX_VERSION_STRING "\n",
         fp);

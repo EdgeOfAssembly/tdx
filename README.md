@@ -53,8 +53,19 @@ Keys (CPU window — VCR tape, CGA follows):
 - Jcc/JMP follow **live flags** (not skipped)
 - **F9** run/pause (reseeds the tape); **F2** breakpoint; **Ctrl-F2** reset; **Alt-X** quit
 
-Game window: letters, arrows, Enter, Space → INT 16 (and start F9). Agent control:
-`tdxctl` on `/tmp/tdx.sock` (`key`, `nav`, `shot`, `cga`) — does not need Xmux.
+Game window: letters, arrows, Enter, Space → INT 16 (and start F9).
+
+**Agents (no Xmux):** keep-alive UNIX sockets.
+
+```text
+tdxctl shot                 # CPU BMP, stdout = versioned path
+tdxctl --view shot          # CGA window
+tdxctl --ctl                # stdin pipeline (KEY/SHOT/nav)
+scripts/tdx-start.sh GAME.EXE
+```
+
+Sockets: `/tmp/tdx.sock` (CPU) and `/tmp/tdxview.sock` (game). Screenshot names
+match Xmux: `stem-YYYYMMDDTHHMMSS.mmm.bmp`.
 
 Reload after halt is **in-process** (`tdxctl reset` or Ctrl-F2). Never `xmux run` of
 `tdx` — that blocks until the SDL window exits.

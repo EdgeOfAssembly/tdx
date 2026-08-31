@@ -294,27 +294,32 @@ int save_texture_bmp(SDL_Renderer *ren, SDL_Texture *tex, int w, int h, const ch
 {
     SDL_Surface *surf = nullptr;
     int rc = -1;
+    int ow = w;
+    int oh = h;
     if ((ren == nullptr) || (tex == nullptr) || (path == nullptr))
     {
         return -1;
     }
-    surf = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+    SDL_GetRendererOutputSize(ren, &ow, &oh);
+    if ((ow < 1) || (oh < 1))
+    {
+        ow = w;
+        oh = h;
+    }
+    surf = SDL_CreateRGBSurfaceWithFormat(0, ow, oh, 32, SDL_PIXELFORMAT_ARGB8888);
     if (surf == nullptr)
     {
         return -1;
     }
-    if (SDL_SetRenderTarget(ren, tex) == 0)
+    SDL_SetRenderTarget(ren, nullptr);
+    SDL_RenderClear(ren);
+    SDL_RenderCopy(ren, tex, nullptr, nullptr);
+    rc = SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
+    if (rc == 0)
     {
-        SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
-        SDL_SetRenderTarget(ren, nullptr);
         rc = SDL_SaveBMP(surf, path);
     }
-    else
-    {
-        /* streaming texture: copy via renderer present path */
-        SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
-        rc = SDL_SaveBMP(surf, path);
-    }
+    SDL_RenderPresent(ren);
     SDL_FreeSurface(surf);
     return rc;
 }

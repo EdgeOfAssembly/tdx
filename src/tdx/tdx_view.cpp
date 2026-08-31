@@ -7,7 +7,9 @@
  */
 
 #include "dos/dos_cga.h"
+#include "tdx/tdx_agent_sock.h"
 #include "tdx/tdx_font.h"
+#include "tdx/tdx_shot.h"
 #include "tdx/tdx_version.h"
 
 #include <SDL.h>
@@ -39,6 +41,8 @@ struct view_cli
     bool version = false;
     bool usage_error = false;
     std::string sock_path = "/tmp/tdx.sock";
+    std::string listen_path = "/tmp/tdxview.sock";
+    bool no_listen = false;
     int scale = 3;
 };
 
@@ -48,15 +52,17 @@ void print_usage(FILE *fp)
         "Usage: tdxview [options]\n"
         "\n"
         "  CGA user-screen viewer for TDX. Connects to tdx's UNIX socket and\n"
-        "  shows the guest framebuffer in its own SDL2 window (own Xmux session).\n"
-        "  Keys (letters, arrows, Enter, Space, F7/F8/F9, Ctrl-F2) go to tdx.\n"
-        "  Alt-X quits the viewer. With no options, attaches to /tmp/tdx.sock.\n"
+        "  shows the guest framebuffer. Listens on /tmp/tdxview.sock so agents\n"
+        "  can SHOT this window and send keys without Xmux.\n"
+        "  Alt-X quits. No args still starts (needs tdx on --sock).\n"
         "\n"
         "Options:\n"
-        "  -h, --help         Show this help and exit\n"
-        "  -v, --version      Show version and exit\n"
-        "      --sock PATH    tdx socket (default: /tmp/tdx.sock)\n"
-        "      --scale N      Integer scale (default: 3 → 960×600)\n"
+        "  -h, --help           Show this help and exit\n"
+        "  -v, --version        Show version and exit\n"
+        "      --sock PATH      tdx socket (default: /tmp/tdx.sock)\n"
+        "      --listen PATH    agent socket (default: /tmp/tdxview.sock)\n"
+        "      --no-listen      Do not listen for agents\n"
+        "      --scale N        Integer scale (default: 3 → 960×600)\n"
         "\n"
         "tdxview " TDX_VERSION_STRING "\n",
         fp);
@@ -93,6 +99,23 @@ bool parse_cli(int argc, char **argv, view_cli *out)
         else if (std::strncmp(a, "--sock=", 7) == 0)
         {
             out->sock_path = a + 7;
+        }
+        else if (std::strcmp(a, "--listen") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->listen_path = argv[++i];
+        }
+        else if (std::strncmp(a, "--listen=", 9) == 0)
+        {
+            out->listen_path = a + 9;
+        }
+        else if (std::strcmp(a, "--no-listen") == 0)
+        {
+            out->no_listen = true;
         }
         else if (std::strcmp(a, "--scale") == 0)
         {
@@ -388,6 +411,134 @@ void send_key(int fd, std::string *acc, SDL_Keycode k)
         recv_line(fd, acc, &ignore);
     }
 }
+
+int save_tex_bmp(SDL_Renderer *ren, SDL_Texture *tex, const char *path)
+{
+    SDL_Surface *surf = nullptr;
+    int rc = -1;
+    int w = DOS_CGA_WIDTH;
+    int h = DOS_CGA_HEIGHT;
+    (void)tex;
+    if ((ren == nullptr) || (path == nullptr))
+    {
+        return -1;
+    }
+    SDL_GetRendererOutputSize(ren, &w, &h);
+    if ((w < 1) || (h < 1))
+    {
+        w = DOS_CGA_WIDTH;
+        h = DOS_CGA_HEIGHT;
+    }
+    surf = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+    if (surf == nullptr)
+    {
+        return -1;
+    }
+    rc = SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
+    if (rc == 0)
+    {
+        rc = SDL_SaveBMP(surf, path);
+    }
+    SDL_FreeSurface(surf);
+    return rc;
+}
+
+struct view_state
+{
+    SDL_Renderer *ren = nullptr;
+    SDL_Texture *tex = nullptr;
+    int *tdx_fd = nullptr;
+    std::string *acc = nullptr;
+    bool *quit = nullptr;
+};
+
+std::string view_handle(void *user, const std::string &line)
+{
+    view_state *st = static_cast<view_state *>(user);
+    json req;
+    json resp;
+    std::string cmd;
+    resp["ok"] = true;
+    if (st == nullptr)
+    {
+        return "{\"ok\":false,\"error\":\"state\"}\n";
+    }
+    try
+    {
+        if ((!line.empty()) && (line[0] == '{'))
+        {
+            req = json::parse(line);
+            cmd = req.value("cmd", "");
+        }
+        else
+        {
+            cmd = line;
+        }
+    }
+    catch (const std::exception &)
+    {
+        return "{\"ok\":false,\"error\":\"json\"}\n";
+    }
+    if ((cmd == "shot") || (cmd == "screenshot") || (cmd == "SHOT"))
+    {
+        const std::string base = req.value("path", "/tmp/tdx-game.bmp");
+        const std::string vpath = tdx_shot_versioned_path(base);
+        if (save_tex_bmp(st->ren, st->tex, vpath.c_str()) != 0)
+        {
+            resp["ok"] = false;
+            resp["error"] = "shot";
+        }
+        else
+        {
+            resp["game"] = vpath;
+        }
+        return resp.dump() + "\n";
+    }
+    if ((cmd == "ping") || (cmd == "PING"))
+    {
+        resp["pong"] = true;
+        return resp.dump() + "\n";
+    }
+    if (cmd == "quit")
+    {
+        if (st->quit != nullptr)
+        {
+            *st->quit = true;
+        }
+        resp["quit"] = true;
+        return resp.dump() + "\n";
+    }
+    if ((cmd == "key") || (cmd == "run") || (cmd == "F9") || (cmd == "step") || (cmd == "over") ||
+        (cmd == "reset") || (cmd == "nav"))
+    {
+        std::string reply;
+        std::string wire = line;
+        if ((st->tdx_fd == nullptr) || (*st->tdx_fd < 0) || (st->acc == nullptr))
+        {
+            resp["ok"] = false;
+            resp["error"] = "no tdx";
+            return resp.dump() + "\n";
+        }
+        if (wire.empty() || (wire[0] != '{'))
+        {
+            wire = std::string("{\"cmd\":\"") + cmd + "\"}";
+        }
+        if (!send_line(*st->tdx_fd, wire) || !recv_line(*st->tdx_fd, st->acc, &reply))
+        {
+            resp["ok"] = false;
+            resp["error"] = "tdx";
+            return resp.dump() + "\n";
+        }
+        if (reply.empty() || (reply.back() != '\n'))
+        {
+            reply.push_back('\n');
+        }
+        return reply;
+    }
+    resp["ok"] = false;
+    resp["error"] = "unknown cmd";
+    return resp.dump() + "\n";
+}
 } // namespace
 
 int main(int argc, char **argv)
@@ -401,6 +552,8 @@ int main(int argc, char **argv)
     int wait_ticks = 0;
     uint8_t last_mode = 0xFF;
     std::string sock_acc;
+    tdx_agent_sock *agent = nullptr;
+    view_state vst{};
 
     if (!parse_cli(argc, argv, &cli) || cli.usage_error)
     {
@@ -435,6 +588,23 @@ int main(int argc, char **argv)
     SDL_SetWindowKeyboardGrab(win, SDL_TRUE);
 #endif
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+    vst.ren = ren;
+    vst.tex = tex;
+    vst.tdx_fd = &fd;
+    vst.acc = &sock_acc;
+    vst.quit = &quit;
+    if (!cli.no_listen)
+    {
+        agent = tdx_agent_listen(cli.listen_path.c_str());
+        if (agent == nullptr)
+        {
+            std::fprintf(stderr, "tdxview: listen %s failed\n", cli.listen_path.c_str());
+        }
+        else
+        {
+            std::fprintf(stderr, "tdxview: agent socket %s\n", cli.listen_path.c_str());
+        }
+    }
 
     while (!quit)
     {
@@ -547,9 +717,14 @@ int main(int argc, char **argv)
         SDL_RenderClear(ren);
         SDL_RenderCopy(ren, tex, nullptr, nullptr);
         SDL_RenderPresent(ren);
+        if (agent != nullptr)
+        {
+            (void)tdx_agent_poll(agent, view_handle, &vst);
+        }
         SDL_Delay(33);
     }
 
+    tdx_agent_close(agent);
     if (fd >= 0)
     {
         close(fd);

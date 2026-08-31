@@ -7,6 +7,7 @@
 
 #include "dos/dos_cga.h"
 #include "rex/rex_log.h"
+#include "tdx/tdx_shot.h"
 
 #include <nlohmann/json.hpp>
 
@@ -330,26 +331,39 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     else if ((cmd == "shot") || (cmd == "screenshot"))
     {
-        char cpu_path[128];
-        char game_path[128];
-        std::snprintf(cpu_path, sizeof(cpu_path), "/tmp/tdx-cpu-%d.bmp", (int)getpid());
-        std::snprintf(game_path, sizeof(game_path), "/tmp/tdx-game-%d.bmp", (int)getpid());
+        const std::string base = req.value("path", "/tmp/tdx-cpu.bmp");
+        const std::string vpath = tdx_shot_versioned_path(base);
         if (sk->cpu_shot != nullptr)
         {
-            if (sk->cpu_shot(sk->shot_user, cpu_path) == 0)
+            if (sk->cpu_shot(sk->shot_user, vpath.c_str()) == 0)
             {
-                sk->last_cpu = cpu_path;
-                resp["cpu"] = cpu_path;
+                sk->last_cpu = vpath;
+                resp["cpu"] = vpath;
             }
+            else
+            {
+                resp["ok"] = false;
+                resp["error"] = "cpu shot";
+            }
+        }
+        else
+        {
+            resp["ok"] = false;
+            resp["error"] = "no cpu window";
         }
         if (sk->game_shot != nullptr)
         {
-            if (sk->game_shot(sk->shot_user, game_path) == 0)
+            const std::string gpath = tdx_shot_versioned_path("/tmp/tdx-game.bmp");
+            if (sk->game_shot(sk->shot_user, gpath.c_str()) == 0)
             {
-                sk->last_game = game_path;
-                resp["game"] = game_path;
+                sk->last_game = gpath;
+                resp["game"] = gpath;
             }
         }
+    }
+    else if ((cmd == "ping") || (cmd == "PING"))
+    {
+        resp["pong"] = true;
     }
     else if (cmd == "key")
     {
@@ -461,7 +475,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop reset regs disasm mem bp bpdel bplist shot key nav status cga quit";
+            "step over run stop reset regs disasm mem bp bpdel bplist shot key nav status cga ping quit";
     }
     else
     {

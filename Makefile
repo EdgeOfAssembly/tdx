@@ -32,16 +32,18 @@ BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 REX_CXX := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp
 DOS_CXX := src/dos/dos_machine.cpp src/dos/dos_int.cpp
 DOS_C   := src/dos/mz_parse.c src/dos/dos_cga.c
-TDX_CXX := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp
+TDX_CXX := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp \
+	src/tdx/tdx_shot.cpp
 
 REX_OBJS := $(REX_CXX:.cpp=.o) $(DOS_CXX:.cpp=.o) $(DOS_C:.c=.o)
 TDX_OBJS := $(TDX_CXX:.cpp=.o)
 
-TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp
+TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
+	tests/test_shot.cpp
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 
-VIEW_OBJS := src/tdx/tdx_view.o src/tdx/tdx_font.o
+VIEW_OBJS := src/tdx/tdx_view.o src/tdx/tdx_font.o src/tdx/tdx_shot.o src/tdx/tdx_agent_sock.o
 
 .PHONY: all clean test tests verify fixtures release profile install
 
@@ -65,8 +67,9 @@ tdx: $(REX_OBJS) $(TDX_OBJS)
 tdxview: $(VIEW_OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(VIEW_OBJS) $(SDL_LIBS)
 
-tests/run_tests: $(REX_OBJS) src/tdx/tdx_cli.o $(TEST_SRCS) fixtures
-	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(TEST_SRCS) src/tdx/tdx_cli.o $(REX_OBJS) \
+tests/run_tests: $(REX_OBJS) src/tdx/tdx_cli.o src/tdx/tdx_shot.o $(TEST_SRCS) fixtures
+	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(TEST_SRCS) src/tdx/tdx_cli.o \
+		src/tdx/tdx_shot.o $(REX_OBJS) \
 		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC)
 
 tests/fixtures/tiny.com: tests/fixtures/tiny.asm
