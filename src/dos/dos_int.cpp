@@ -800,7 +800,7 @@ static void handle_int16(dos_machine *m)
     const uint16_t ax = m->reg16(UC_X86_REG_AX);
     const uint8_t ah = (uint8_t)(ax >> 8);
 
-    if (ah == 0x00)
+    if ((ah == 0x00) || (ah == 0x10))
     {
         if (m->kbd.empty())
         {
@@ -815,7 +815,7 @@ static void handle_int16(dos_machine *m)
         }
         return;
     }
-    if (ah == 0x01)
+    if ((ah == 0x01) || (ah == 0x11))
     {
         if (m->kbd.empty())
         {

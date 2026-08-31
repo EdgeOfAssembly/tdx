@@ -16,11 +16,14 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"bp","addr":"1010:001A"}
 {"cmd":"bpdel","id":1}
 {"cmd":"shot"}
-{"cmd":"key","key":"F8"}
+{"cmd":"key","key":"Left"}
 {"cmd":"status"}
 {"cmd":"cga"}
 {"cmd":"quit"}
 ```
+
+`run` / `F9` **toggles** the SDL F9 state (does not block the UI). `key` names:
+`Enter`, `Esc`, `Space`, `Left`, `Right`, `Up`, `Down`, or a single ASCII character.
 
 Bare words: `step`, `over`, `regs`, `cga`, `mem B800:0000 64`, `bp 1000:0100`.
 

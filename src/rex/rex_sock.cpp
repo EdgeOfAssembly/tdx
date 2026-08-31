@@ -191,10 +191,12 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     else if ((cmd == "run") || (cmd == "F9"))
     {
-        rex_session_run(s, 200000);
+        /* Do not run the CPU here — that blocks the SDL loop. Toggle F9. */
+        rex_session_post_ui_cmd(s, REX_UI_TOGGLE_RUN);
     }
     else if (cmd == "stop")
     {
+        rex_session_post_ui_cmd(s, REX_UI_STOP);
         rex_session_request_stop(s);
     }
     else if (cmd == "regs")
@@ -369,9 +371,25 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         {
             rex_session_push_key(s, 27, 0x01);
         }
-        else if (k == "Space")
+        else if ((k == "Space") || (k == "space"))
         {
             rex_session_push_key(s, 32, 0x39);
+        }
+        else if ((k == "Left") || (k == "left"))
+        {
+            rex_session_push_key(s, 0, 0x4B);
+        }
+        else if ((k == "Right") || (k == "right"))
+        {
+            rex_session_push_key(s, 0, 0x4D);
+        }
+        else if ((k == "Up") || (k == "up"))
+        {
+            rex_session_push_key(s, 0, 0x48);
+        }
+        else if ((k == "Down") || (k == "down"))
+        {
+            rex_session_push_key(s, 0, 0x50);
         }
         resp["key"] = k;
     }

@@ -29,6 +29,7 @@ struct rex_session
     std::unordered_map<uint64_t, std::string> syms;
     std::string load_path;
     std::string load_cwd;
+    int ui_cmd = 0;
 };
 
 const char *rex_version(void)
@@ -181,6 +182,26 @@ rex_status rex_session_request_stop(rex_session *s)
     }
     m->stop_req = true;
     return REX_OK;
+}
+
+void rex_session_post_ui_cmd(rex_session *s, int cmd)
+{
+    if (s != nullptr)
+    {
+        s->ui_cmd = cmd;
+    }
+}
+
+int rex_session_take_ui_cmd(rex_session *s)
+{
+    int cmd = 0;
+    if (s == nullptr)
+    {
+        return 0;
+    }
+    cmd = s->ui_cmd;
+    s->ui_cmd = 0;
+    return cmd;
 }
 
 rex_stop rex_session_stop_reason(const rex_session *s)

@@ -358,6 +358,10 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
             {
                 const SDL_Keymod mod = SDL_GetModState();
                 const SDL_Keycode k = ev.key.keysym.sym;
+                if (ev.key.repeat)
+                {
+                    continue;
+                }
                 if (((mod & KMOD_ALT) && (k == SDLK_x)) || (k == SDLK_ESCAPE))
                 {
                     ui.quit = true;
@@ -402,6 +406,26 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                         }
                     }
                 }
+                else if (k == SDLK_LEFT)
+                {
+                    rex_session_push_key(session, 0, 0x4B);
+                }
+                else if (k == SDLK_RIGHT)
+                {
+                    rex_session_push_key(session, 0, 0x4D);
+                }
+                else if (k == SDLK_UP)
+                {
+                    rex_session_push_key(session, 0, 0x48);
+                }
+                else if (k == SDLK_DOWN)
+                {
+                    rex_session_push_key(session, 0, 0x50);
+                }
+                else if (k == SDLK_SPACE)
+                {
+                    rex_session_push_key(session, 32, 0x39);
+                }
                 else if ((k >= 32) && (k < 127))
                 {
                     rex_session_push_key(session, (uint8_t)k, 0);
@@ -415,6 +439,22 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         if (sock != nullptr)
         {
             rex_sock_poll(sock, session);
+        }
+        {
+            const int uic = rex_session_take_ui_cmd(session);
+            if (uic == REX_UI_TOGGLE_RUN)
+            {
+                ui.running = !ui.running;
+                if (!ui.running)
+                {
+                    rex_session_request_stop(session);
+                }
+            }
+            else if (uic == REX_UI_STOP)
+            {
+                ui.running = false;
+                rex_session_request_stop(session);
+            }
         }
         if (ui.running && (!rex_session_halted(session)))
         {

@@ -88,6 +88,24 @@ REX_API rex_status rex_session_run(rex_session *s, uint64_t max_insns);
  */
 REX_API rex_status rex_session_request_stop(rex_session *s);
 
+/** UI command posted by the agent socket (F9 from tdxview, etc.). */
+enum
+{
+    REX_UI_NONE = 0,
+    REX_UI_TOGGLE_RUN = 1,
+    REX_UI_STOP = 2
+};
+
+/**
+ * @brief Queue a UI command for the SDL loop (does not run the CPU).
+ */
+REX_API void rex_session_post_ui_cmd(rex_session *s, int cmd);
+
+/**
+ * @brief Pop one queued UI command (0 if none).
+ */
+REX_API int rex_session_take_ui_cmd(rex_session *s);
+
 REX_API rex_stop rex_session_stop_reason(const rex_session *s);
 REX_API bool rex_session_halted(const rex_session *s);
 REX_API int rex_session_exit_code(const rex_session *s);

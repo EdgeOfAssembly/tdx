@@ -86,6 +86,20 @@ TEST_CASE("INT3 padding does not stop run")
     rex_session_destroy(s);
 }
 
+TEST_CASE("INT16 waitkey consumes pushed key as exit code")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_load(s, "tests/fixtures/waitkey.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE_FALSE(rex_session_halted(s));
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_WAIT_KEY);
+    REQUIRE(rex_session_push_key(s, (uint8_t)'Q', 0x10) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_exit_code(s) == (int)'Q');
+    rex_session_destroy(s);
+}
+
 TEST_CASE("INT21 FCB open TINY.COM succeeds")
 {
     rex_session *s = rex_session_create();

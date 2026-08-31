@@ -48,7 +48,8 @@ void print_usage(FILE *fp)
         "\n"
         "  CGA user-screen viewer for TDX. Connects to tdx's UNIX socket and\n"
         "  shows the guest framebuffer in its own SDL2 window (own Xmux session).\n"
-        "  With no options, attaches to /tmp/tdx.sock (retry until tdx is up).\n"
+        "  Keys (letters, arrows, Enter, Space, F7/F8/F9, Ctrl-F2) go to tdx.\n"
+        "  Alt-X quits the viewer. With no options, attaches to /tmp/tdx.sock.\n"
         "\n"
         "Options:\n"
         "  -h, --help         Show this help and exit\n"
@@ -294,22 +295,76 @@ void blit_str(uint32_t *pix, int pitch_px, int x, int y, const char *s, uint32_t
 
 void send_key(int fd, std::string *acc, SDL_Keycode k)
 {
-    char line[64];
+    char line[80];
     std::string ignore;
+    const char *named = nullptr;
     if (acc == nullptr)
     {
         return;
     }
-    if ((k >= 32) && (k < 127))
+    if (k == SDLK_F9)
     {
-        std::snprintf(line, sizeof(line), "{\"cmd\":\"key\",\"key\":\"%c\"}", (char)k);
+        send_line(fd, "{\"cmd\":\"run\"}");
+        recv_line(fd, acc, &ignore);
+        return;
+    }
+    if (k == SDLK_F7)
+    {
+        send_line(fd, "{\"cmd\":\"step\"}");
+        recv_line(fd, acc, &ignore);
+        return;
+    }
+    if (k == SDLK_F8)
+    {
+        send_line(fd, "{\"cmd\":\"over\"}");
+        recv_line(fd, acc, &ignore);
+        return;
+    }
+    if ((k == SDLK_F2) && (SDL_GetModState() & KMOD_CTRL))
+    {
+        send_line(fd, "{\"cmd\":\"reset\"}");
+        recv_line(fd, acc, &ignore);
+        return;
+    }
+    if (k == SDLK_LEFT)
+    {
+        named = "Left";
+    }
+    else if (k == SDLK_RIGHT)
+    {
+        named = "Right";
+    }
+    else if (k == SDLK_UP)
+    {
+        named = "Up";
+    }
+    else if (k == SDLK_DOWN)
+    {
+        named = "Down";
+    }
+    else if (k == SDLK_SPACE)
+    {
+        named = "Space";
+    }
+    else if (k == SDLK_RETURN)
+    {
+        named = "Enter";
+    }
+    else if (k == SDLK_ESCAPE)
+    {
+        named = "Esc";
+    }
+    if (named != nullptr)
+    {
+        std::snprintf(line, sizeof(line), "{\"cmd\":\"key\",\"key\":\"%s\"}", named);
         send_line(fd, line);
         recv_line(fd, acc, &ignore);
         return;
     }
-    if (k == SDLK_RETURN)
+    if ((k >= 32) && (k < 127) && (k != '"') && (k != '\\'))
     {
-        send_line(fd, "{\"cmd\":\"key\",\"key\":\"Enter\"}");
+        std::snprintf(line, sizeof(line), "{\"cmd\":\"key\",\"key\":\"%c\"}", (char)k);
+        send_line(fd, line);
         recv_line(fd, acc, &ignore);
     }
 }
@@ -375,8 +430,11 @@ int main(int argc, char **argv)
             }
             else if (ev.type == SDL_KEYDOWN)
             {
-                if ((ev.key.keysym.sym == SDLK_ESCAPE) ||
-                    ((SDL_GetModState() & KMOD_ALT) && (ev.key.keysym.sym == SDLK_x)))
+                if (ev.key.repeat)
+                {
+                    continue;
+                }
+                if ((SDL_GetModState() & KMOD_ALT) && (ev.key.keysym.sym == SDLK_x))
                 {
                     quit = true;
                 }
