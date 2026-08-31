@@ -158,6 +158,21 @@ REX_API rex_status rex_bp_clear(rex_session *s);
 REX_API size_t rex_bp_count(const rex_session *s);
 REX_API bool rex_bp_at(const rex_session *s, uint64_t linear);
 
+/** One execution breakpoint for the CPU panel / agents. */
+struct rex_bp
+{
+    uint32_t id;
+    uint16_t seg;
+    uint16_t off;
+    uint64_t linear;
+};
+
+/**
+ * @brief Copy up to @p cap breakpoints into @p out (stable id order).
+ * @return Number of entries written (not total count).
+ */
+REX_API size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap);
+
 /** Load a TSV/MAP symbol file (`seg:off\\tname` or `linear\\tname`). */
 REX_API rex_status rex_symbols_load(rex_session *s, const char *path);
 REX_API const char *rex_symbols_lookup(const rex_session *s, uint64_t linear);

@@ -91,6 +91,7 @@ struct dos_machine
     uint32_t next_bp_id = 1;
     std::unordered_map<uint64_t, uint32_t> bps;
     std::unordered_map<uint32_t, uint64_t> bp_by_id;
+    std::unordered_map<uint32_t, uint32_t> bp_segoff; /**< id -> (seg<<16)|off */
 
     dos_file files[DOS_MAX_FILES]{};
     std::deque<dos_kbd_ev> kbd;
@@ -135,7 +136,7 @@ struct dos_machine
     int alloc_handle(void);
     void close_handle(int fd);
 
-    rex_status bp_add(uint64_t linear, uint32_t *id);
+    rex_status bp_add(uint64_t linear, uint32_t *id, uint16_t seg, uint16_t off);
     rex_status bp_del(uint32_t id);
     void bp_clear(void);
 

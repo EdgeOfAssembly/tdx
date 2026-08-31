@@ -36,6 +36,22 @@ TEST_CASE("breakpoint at second insn stops before executing it")
     }
 }
 
+TEST_CASE("bp segoff is preserved in rex_bp_list")
+{
+    rex_session *s = rex_session_create();
+    rex_bp b[4]{};
+    uint32_t id = 0;
+    size_t n = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(rex_bp_add_segoff(s, 0x1000, 0x0103, &id) == REX_OK);
+    n = rex_bp_list(s, b, 4);
+    REQUIRE(n == 1);
+    REQUIRE(b[0].id == id);
+    REQUIRE(b[0].seg == 0x1000);
+    REQUIRE(b[0].off == 0x0103);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("rex_version is 0.5")
 {
     REQUIRE(std::string(rex_version()) == "0.5");

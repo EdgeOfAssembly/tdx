@@ -336,12 +336,17 @@ rex_status rex_bp_add_linear(rex_session *s, uint64_t linear, uint32_t *id)
     {
         return REX_ERR_ARG;
     }
-    return m->bp_add(linear, id);
+    return m->bp_add(linear, id, 0, 0);
 }
 
 rex_status rex_bp_add_segoff(rex_session *s, uint16_t seg, uint16_t off, uint32_t *id)
 {
-    return rex_bp_add_linear(s, rex_segoff_to_linear(seg, off), id);
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->bp_add(rex_segoff_to_linear(seg, off), id, seg, off);
 }
 
 rex_status rex_bp_del(rex_session *s, uint32_t id)
@@ -390,6 +395,38 @@ bool rex_bp_at(const rex_session *s, uint64_t linear)
 {
     const dos_machine *m = need_dos_c(s);
     return (m != nullptr) && (m->bps.find(linear) != m->bps.end());
+}
+
+size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap)
+{
+    const dos_machine *m = need_dos_c(s);
+    size_t n = 0;
+    if ((m == nullptr) || (out == nullptr) || (cap == 0))
+    {
+        return 0;
+    }
+    for (const auto &kv : m->bp_by_id)
+    {
+        rex_bp b{};
+        uint32_t so = 0;
+        if (n >= cap)
+        {
+            break;
+        }
+        b.id = kv.first;
+        b.linear = kv.second;
+        auto it = m->bp_segoff.find(b.id);
+        so = (it != m->bp_segoff.end()) ? it->second : 0;
+        b.seg = (uint16_t)(so >> 16);
+        b.off = (uint16_t)(so & 0xFFFFu);
+        if ((b.seg == 0) && (b.off == 0) && (b.linear != 0))
+        {
+            b.seg = (uint16_t)(b.linear >> 4);
+            b.off = (uint16_t)(b.linear - ((uint32_t)b.seg << 4));
+        }
+        out[n++] = b;
+    }
+    return n;
 }
 
 rex_status rex_symbols_load(rex_session *s, const char *path)

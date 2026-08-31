@@ -80,11 +80,11 @@ void dos_machine::close_handle(int fd)
     {
         return;
     }
-    if ((files[fd].fp != nullptr) && (fd >= 5))
+    if (files[fd].used && (files[fd].fp != nullptr) && (fd >= 5))
     {
         fclose(files[fd].fp);
-        files[fd].fp = nullptr;
     }
+    files[fd].fp = nullptr;
     files[fd].used = false;
 }
 

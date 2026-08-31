@@ -78,7 +78,8 @@ static std::string b64_encode(const uint8_t *data, size_t n)
     return out;
 }
 
-static bool parse_addr(const std::string &s, uint64_t *lin)
+static bool parse_addr(const std::string &s, uint64_t *lin, uint16_t *oseg = nullptr,
+                       uint16_t *ooff = nullptr)
 {
     unsigned seg = 0;
     unsigned off = 0;
@@ -87,6 +88,14 @@ static bool parse_addr(const std::string &s, uint64_t *lin)
     if (std::sscanf(s.c_str(), "%x:%x", &seg, &off) == 2)
     {
         *lin = rex_segoff_to_linear((uint16_t)seg, (uint16_t)off);
+        if (oseg != nullptr)
+        {
+            *oseg = (uint16_t)seg;
+        }
+        if (ooff != nullptr)
+        {
+            *ooff = (uint16_t)off;
+        }
         return true;
     }
     if (std::sscanf(s.c_str(), "%li", (long *)&v) == 1)
@@ -278,15 +287,24 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         std::string addr = req.value("addr", "");
         uint64_t lin = 0;
         uint32_t id = 0;
+        uint16_t seg = 0;
+        uint16_t off = 0;
         if (addr.empty() && req.contains("_rest"))
         {
             std::istringstream is(req["_rest"].get<std::string>());
             is >> addr;
         }
-        if (!parse_addr(addr, &lin))
+        if (!parse_addr(addr, &lin, &seg, &off))
         {
             resp["ok"] = false;
             resp["error"] = "bad addr";
+        }
+        else if ((seg != 0) || (off != 0))
+        {
+            rex_bp_add_segoff(s, seg, off, &id);
+            resp["id"] = id;
+            resp["cs"] = seg;
+            resp["ip"] = off;
         }
         else
         {

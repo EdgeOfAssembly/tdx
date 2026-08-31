@@ -26,7 +26,19 @@ constexpr int k_cw = 8;
 constexpr int k_ch = 16;
 constexpr int k_foot0 = 23; /**< First key-legend row; slightly shorter glyphs. */
 constexpr int k_foot_ch = 12;
-constexpr int k_list_rows = 14;
+constexpr int k_list_rows = 15;
+constexpr int k_list_w = 54;
+constexpr int k_box_x = 55;
+
+/* CP850 box / scrollbar (not UTF-8 — the glyph atlas is CP850). */
+constexpr uint8_t k_box_h = 0xC4;
+constexpr uint8_t k_box_v = 0xB3;
+constexpr uint8_t k_box_tl = 0xDA;
+constexpr uint8_t k_box_tr = 0xBF;
+constexpr uint8_t k_box_bl = 0xC0;
+constexpr uint8_t k_box_br = 0xD9;
+constexpr uint8_t k_sbar = 0xDB;
+constexpr uint8_t k_strk = 0xB0;
 
 int row_height(int y)
 {
@@ -73,6 +85,7 @@ struct tdx_ui
     bool running = false;
     bool quit = false;
     bool help = false;
+    int bp_scroll = 0;
     cell grid[k_rows][k_cols]{};
 };
 
@@ -243,6 +256,93 @@ void render_game(tdx_ui *ui, rex_session *s)
     SDL_RenderPresent(ui->game_ren);
 }
 
+void paint_bp_box(tdx_ui *ui, rex_session *s, uint16_t cs, uint16_t ip)
+{
+    const int x0 = k_box_x;
+    const int w = k_cols - k_box_x;
+    const int h = k_list_rows;
+    const int inner = h - 2;
+    const int sbar_x = x0 + w - 2;
+    rex_bp bps[64];
+    size_t n = 0;
+    size_t i = 0;
+    int y = 0;
+    int x = 0;
+    int scroll = 0;
+    bool bar = false;
+
+    if ((ui == nullptr) || (s == nullptr) || (w < 8) || (inner < 1))
+    {
+        return;
+    }
+    n = rex_bp_list(s, bps, sizeof(bps) / sizeof(bps[0]));
+    bar = n > (size_t)inner;
+    scroll = ui->bp_scroll;
+    if (scroll < 0)
+    {
+        scroll = 0;
+    }
+    if (bar && (scroll > (int)n - inner))
+    {
+        scroll = (int)n - inner;
+    }
+    if (!bar)
+    {
+        scroll = 0;
+    }
+    ui->bp_scroll = scroll;
+
+    for (y = 0; y < h; y++)
+    {
+        for (x = 0; x < w; x++)
+        {
+            uint8_t ch = (uint8_t)' ';
+            if (y == 0)
+            {
+                ch = (x == 0) ? k_box_tl : ((x == w - 1) ? k_box_tr : k_box_h);
+            }
+            else if (y == h - 1)
+            {
+                ch = (x == 0) ? k_box_bl : ((x == w - 1) ? k_box_br : k_box_h);
+            }
+            else if ((x == 0) || (x == w - 1))
+            {
+                ch = k_box_v;
+            }
+            put_cell(ui, x0 + x, y, (char)ch, 14, 1);
+        }
+    }
+    put_str(ui, x0 + 2, 0, " Break ", 14, 1);
+
+    for (i = 0; i < (size_t)inner; i++)
+    {
+        const size_t idx = (size_t)scroll + i;
+        char lab[20];
+        if (idx >= n)
+        {
+            break;
+        }
+        std::snprintf(lab, sizeof(lab), "%04X:%04X", bps[idx].seg, bps[idx].off);
+        {
+            const bool here = (bps[idx].seg == cs) && (bps[idx].off == ip);
+            put_str(ui, x0 + 2, 1 + (int)i, lab, here ? 0 : 15, here ? 14 : 1);
+        }
+    }
+    if (bar)
+    {
+        int thumb = 0;
+        if ((int)n > inner)
+        {
+            thumb = (scroll * (inner - 1)) / ((int)n - inner);
+        }
+        for (i = 0; i < (size_t)inner; i++)
+        {
+            put_cell(ui, sbar_x, 1 + (int)i, (char)k_strk, 8, 1);
+        }
+        put_cell(ui, sbar_x, 1 + thumb, (char)k_sbar, 15, 1);
+    }
+}
+
 void paint_cpu(tdx_ui *ui, rex_session *s)
 {
     rex_regs_i8086 r{};
@@ -259,18 +359,26 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
     {
         fill_row(ui, y, 1);
     }
-    put_str(ui, 0, 0, " File  Edit  View  Run  Breakpoints  Data  Options  Window  Help", 14, 1);
-
     rex_session_get_regs_i8086(s, &r);
     rex_session_disasm(s, UINT64_MAX, ins, 16, &n);
     for (i = 0; i < n && (int)i < k_list_rows; i++)
     {
         const bool cur = (i == 0);
         const bool bp = rex_bp_at(s, ins[i].linear);
-        const uint8_t fg = bp ? 12 : (cur ? 0 : 15);
-        const uint8_t bg = cur ? 14 : 1;
+        uint8_t fg = 15;
+        uint8_t bg = 1;
         char bytes[24];
         int b = 0;
+        if (bp)
+        {
+            bg = 12; /* light red — stays until F2 toggles it off */
+            fg = 15;
+        }
+        else if (cur)
+        {
+            bg = 14;
+            fg = 0;
+        }
         bytes[0] = 0;
         for (b = 0; b < ins[i].size && b < 6; b++)
         {
@@ -280,15 +388,17 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         }
         std::snprintf(line, sizeof(line), "%04X:%04X  %-17s %s", ins[i].seg, ins[i].off, bytes,
                       ins[i].text);
-        put_str(ui, 1, 1 + (int)i, line, fg, bg);
+        line[k_list_w] = 0;
+        put_str(ui, 0, (int)i, line, fg, bg);
         {
             const char *sym = rex_symbols_lookup(s, ins[i].linear);
             if (sym != nullptr)
             {
-                put_str(ui, 56, 1 + (int)i, sym, 11, bg);
+                put_str(ui, 48, (int)i, sym, 11, bg);
             }
         }
     }
+    paint_bp_box(ui, s, r.cs, r.ip);
 
     std::snprintf(line, sizeof(line), "AX %04X  BX %04X  CX %04X  DX %04X", r.ax, r.bx, r.cx, r.dx);
     put_str(ui, 1, 16, line, 15, 1);
@@ -366,7 +476,7 @@ void paint_help(tdx_ui *ui)
     {
         return;
     }
-    for (y = 1; y <= 22; y++)
+    for (y = 0; y <= 22; y++)
     {
         fill_row_attr(ui, y, 0, 7);
     }
@@ -556,7 +666,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                         }
                         else
                         {
-                            rex_bp_add_linear(session, lin, &id);
+                            rex_bp_add_segoff(session, r.cs, r.ip, &id);
                         }
                     }
                 }

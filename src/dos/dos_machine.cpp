@@ -724,11 +724,12 @@ void dos_machine::push_key(uint8_t ascii, uint8_t scan)
     wait_key = false;
 }
 
-rex_status dos_machine::bp_add(uint64_t linear, uint32_t *id)
+rex_status dos_machine::bp_add(uint64_t linear, uint32_t *id, uint16_t seg, uint16_t off)
 {
     const uint32_t nid = next_bp_id++;
     bps[linear] = nid;
     bp_by_id[nid] = linear;
+    bp_segoff[nid] = ((uint32_t)seg << 16) | (uint32_t)off;
     if (id != nullptr)
     {
         *id = nid;
@@ -745,6 +746,7 @@ rex_status dos_machine::bp_del(uint32_t id)
     }
     bps.erase(it->second);
     bp_by_id.erase(it);
+    bp_segoff.erase(id);
     return REX_OK;
 }
 
@@ -752,6 +754,7 @@ void dos_machine::bp_clear(void)
 {
     bps.clear();
     bp_by_id.clear();
+    bp_segoff.clear();
 }
 
 void dos_machine::vcr_seed(void)
