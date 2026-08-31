@@ -1,12 +1,14 @@
 # TDX architecture
 
 ```text
-  tdx (SDL2 CPU + CGA windows)
-       │
-       ├── rex_session  (C ABI: step / over / run / bp / mem / symbols)
-       │        └── dos_machine (Unicorn UC_MODE_16 + INT 21/10/16 …)
-       └── rex_sock     (UNIX JSON-lines for LLM agents)
+  tdx (SDL2 CPU TUI, one Xmux session)          tdxview (SDL2 CGA, other Xmux)
+       │                                              │
+       ├── rex_session  (step / over / run / bp)      │
+       │        └── dos_machine (Unicorn 8086)        │
+       └── rex_sock  UNIX JSON  ──────────────── cga / key / step
 ```
+
+`tdx` is the only emulator. `tdxview` is a framebuffer client (polls `{"cmd":"cga"}`).
 
 **Why Unicorn, not DOSBox CPU:** DOSBox Staging is GPL and not a library.
 Unicorn 2 is LGPL, embeddable, proven 16-bit step (`uc_emu_start(..., count=1)`).

@@ -8,7 +8,8 @@ memory, symbols, agent socket. First backend: **DOS MZ EXE / .COM** on Unicorn
 
 | Name | What |
 |------|------|
-| **tdx** | CLI / SDL2 UI binary |
+| **tdx** | Main driver: load EXE/COM, CPU TUI, step/over/run, socket |
+| **tdxview** | CGA user-screen; polls `tdx` over the UNIX socket (own process / Xmux) |
 | **librex** | C ABI (`include/rex/rex.h`) for other emulators later (Z80, 6502, M68K, …) |
 | **tdxctl** | Agent client for the UNIX socket |
 
@@ -29,16 +30,18 @@ tdx -h
 tdx -v
 tdx tests/fixtures/tiny.com --no-ui --no-sock
 tdx /mnt/bushido/bushido/BUSHIDO.EXE --cwd /mnt/bushido/bushido
+tdxview --sock /tmp/tdx.sock          # second process: CGA window
 ```
 
-SPECTATOR (two SDL windows: CPU + CGA user screen):
+SPECTATOR — **two Xmux sessions** (CPU and game do not share one DISPLAY):
 
 ```text
-xmux prune
-xmux start tdx --geometry 1920x800 --gl nvidia --no-attach -- \
-  ./tdx /mnt/bushido/bushido/BUSHIDO.EXE --cwd /mnt/bushido/bushido
+scripts/tdx-xmux.sh /mnt/bushido/bushido/BUSHIDO.EXE /mnt/bushido/bushido
 # SPECTATOR: xmux attach tdx --no-reconnect
+# SPECTATOR: xmux attach tdx-game --no-reconnect
 ```
+
+`tdx` is the driver. `tdxview` only paints whatever framebuffer `tdx` exposes (`cga` on the socket). Optional `--game` still embeds CGA in the tdx process.
 
 Keys: **F7** trace, **F8** step over (CALL / INT / REP / LOOP), **F9** run/pause,
 **F2** breakpoint at CS:IP, **Alt-X** quit.

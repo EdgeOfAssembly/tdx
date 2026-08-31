@@ -328,7 +328,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                    k_cols * k_cw, k_rows * k_ch);
     SDL_SetWindowPosition(ui.cpu_win, 0, 0);
-    if ((cli == nullptr) || (!cli->no_game))
+    if ((cli != nullptr) && cli->game)
     {
         ui.game_win = SDL_CreateWindow("TDX — User screen", cpu_w, 0, game_w, game_h, 0);
         ui.game_ren = SDL_CreateRenderer(ui.game_win, -1, SDL_RENDERER_ACCELERATED);

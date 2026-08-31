@@ -41,9 +41,11 @@ TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 
+VIEW_OBJS := src/tdx/tdx_view.o src/tdx/tdx_font.o
+
 .PHONY: all clean test tests verify fixtures release profile install
 
-all: tdx
+all: tdx tdxview
 
 src/dos/%.o: src/dos/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -59,6 +61,9 @@ src/tdx/%.o: src/tdx/%.cpp
 
 tdx: $(REX_OBJS) $(TDX_OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(REX_OBJS) $(TDX_OBJS) $(SDL_LIBS) $(PKG_CS) $(PKG_UC)
+
+tdxview: $(VIEW_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(VIEW_OBJS) $(SDL_LIBS)
 
 tests/run_tests: $(REX_OBJS) src/tdx/tdx_cli.o $(TEST_SRCS) fixtures
 	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(TEST_SRCS) src/tdx/tdx_cli.o $(REX_OBJS) \
@@ -78,13 +83,22 @@ tests/fixtures/far.com: tests/fixtures/far.asm
 
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com
 
-test: tdx tests/run_tests
+test: tdx tdxview tests/run_tests
 	./tests/run_tests
 	./tdx -h >/dev/null
 	./tdx -v
 	./tdx --no-ui --no-sock tests/fixtures/tiny.com >/dev/null
+	./tdxview -h >/dev/null
+	./tdxview -v
 	$(PY) scripts/tdxctl.py -h >/dev/null
 	$(PY) scripts/tdxctl.py -v
+	@rm -f /tmp/tdx-test.sock
+	./tdx --no-ui tests/fixtures/tiny.com --sock /tmp/tdx-test.sock >/tmp/tdx-test.log 2>&1 & \
+	  echo $$! > /tmp/tdx-test.pid; \
+	  sleep 0.3; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q pixels_b64; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock quit; \
+	  wait $$(cat /tmp/tdx-test.pid) 2>/dev/null || true
 tests: test
 
 verify: test
@@ -92,7 +106,7 @@ verify: test
 		--bounds-check --pointer-check --unwind 40 --unwinding-assertions
 
 clean:
-	rm -f tdx tests/run_tests $(REX_OBJS) $(TDX_OBJS) \
+	rm -f tdx tdxview tests/run_tests $(REX_OBJS) $(TDX_OBJS) $(VIEW_OBJS) \
 		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
 		tests/fixtures/far.com
 
@@ -105,6 +119,7 @@ profile:
 		CXXFLAGS="$(CXXFLAGS_COMMON) -DNDEBUG $(CXXFLAGS_OPTIMIZED) -g -pg -fno-inline" \
 		LDFLAGS="-pg" all
 
-install: tdx
+install: tdx tdxview
 	install -m 755 tdx /usr/local/bin/tdx
+	install -m 755 tdxview /usr/local/bin/tdxview
 	install -m 755 scripts/tdxctl.py /usr/local/bin/tdxctl

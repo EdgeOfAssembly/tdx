@@ -48,5 +48,13 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.1");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.2");
+}
+
+TEST_CASE("in-process game window is opt-in")
+{
+    auto a = parse({"game.exe"});
+    REQUIRE_FALSE(a.game);
+    auto b = parse({"--game", "game.exe"});
+    REQUIRE(b.game);
 }

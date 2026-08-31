@@ -193,16 +193,19 @@ void dos_machine::sync_ip_from_eip(void)
     const uint16_t cs = reg16(UC_X86_REG_CS);
     const uint32_t base = (uint32_t)cs << 4;
     uint16_t ip = 0;
-    if (eip >= base)
+    uint32_t lin = 0;
+    if ((eip >= base) && ((eip - base) <= 0xFFFFu))
     {
         ip = (uint16_t)(eip - base);
+        lin = eip;
     }
     else
     {
         ip = (uint16_t)eip;
+        lin = base + (uint32_t)ip;
     }
-    /* Write IP only (do not recompute EIP from the stale offset). */
     uc_reg_write(uc, UC_X86_REG_IP, &ip);
+    uc_reg_write(uc, UC_X86_REG_EIP, &lin);
 }
 
 void dos_machine::set_cf(bool carry)
@@ -437,12 +440,20 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     skip_bp = false;
     last_stop = REX_STOP_NONE;
     video_mode = 0x03;
+    sync_ip_from_eip();
     return REX_OK;
 }
 
 uint64_t dos_machine::linear_ip() const
 {
-    return (uint64_t)eip32();
+    const uint32_t eip = eip32();
+    const uint16_t cs = reg16(UC_X86_REG_CS);
+    const uint32_t base = (uint32_t)cs << 4;
+    if ((eip >= base) && ((eip - base) <= 0xFFFFu))
+    {
+        return (uint64_t)eip;
+    }
+    return (uint64_t)base + (uint64_t)(eip & 0xFFFFu);
 }
 
 void dos_machine::get_regs(rex_regs_i8086 *out) const
@@ -461,9 +472,9 @@ void dos_machine::get_regs(rex_regs_i8086 *out) const
     out->es = reg16(UC_X86_REG_ES);
     out->ss = reg16(UC_X86_REG_SS);
     {
-        const uint32_t eip = eip32();
+        const uint64_t lin = linear_ip();
         const uint32_t base = (uint32_t)out->cs << 4;
-        out->ip = (eip >= base) ? (uint16_t)(eip - base) : (uint16_t)eip;
+        out->ip = (lin >= base) ? (uint16_t)(lin - base) : (uint16_t)lin;
     }
     out->flags = reg16(UC_X86_REG_FLAGS);
 }
@@ -691,9 +702,11 @@ rex_status dos_machine_disasm(const dos_machine *m, uint64_t linear, rex_insn *o
     }
     if (lin == UINT64_MAX)
     {
-        seg = m->reg16(UC_X86_REG_CS);
-        off = m->reg16(UC_X86_REG_IP);
-        lin = rex_segoff_to_linear(seg, off);
+        const uint16_t cs = m->reg16(UC_X86_REG_CS);
+        const uint32_t base = (uint32_t)cs << 4;
+        lin = m->linear_ip();
+        seg = cs;
+        off = (uint16_t)(lin - base);
     }
     else
     {

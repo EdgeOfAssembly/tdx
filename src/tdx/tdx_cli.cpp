@@ -25,7 +25,7 @@ void tdx_print_usage(FILE *fp)
         "  -h, --help            Show this help and exit\n"
         "  -v, --version         Show version and exit\n"
         "      --no-ui           Headless (no SDL windows)\n"
-        "      --no-game         Do not open the CGA user-screen window\n"
+        "      --game            Also open CGA in this process (default: use tdxview)\n"
         "      --no-sock         Do not listen on the agent UNIX socket\n"
         "      --sock PATH       Agent socket (default: /tmp/tdx.sock)\n"
         "      --log-file PATH   Also write logs to PATH\n"
@@ -37,7 +37,8 @@ void tdx_print_usage(FILE *fp)
         "      --scale N         CPU window integer scale (default: 2)\n"
         "\n"
         "Keys (CPU window): F7 trace, F8 step over, F9 run/pause, F2 breakpoint,\n"
-        "  Alt-X quit. Agent: tdxctl --sock PATH step|over|regs|shot|...\n"
+        "  Alt-X quit. CGA user screen: tdxview --sock PATH (own Xmux session).\n"
+        "  Agent: tdxctl --sock PATH step|over|cga|regs|shot|...\n"
         "\n"
         "tdx " TDX_VERSION_STRING "\n",
         fp);
@@ -71,9 +72,9 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         {
             out->no_ui = true;
         }
-        else if (std::strcmp(a, "--no-game") == 0)
+        else if (std::strcmp(a, "--game") == 0)
         {
-            out->no_game = true;
+            out->game = true;
         }
         else if (std::strcmp(a, "--no-sock") == 0)
         {

@@ -1,5 +1,6 @@
 # Build
 /tdx
+/tdxview
 /tdx_test
 /tests/run_tests
 /tests/fixtures/*.com

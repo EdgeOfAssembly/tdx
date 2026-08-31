@@ -14,7 +14,7 @@ struct tdx_cli
     bool version = false;
     bool usage_error = false;
     bool no_ui = false;
-    bool no_game = false;
+    bool game = false; /**< In-process CGA window (default off; use tdxview). */
     bool no_sock = false;
     bool run = false;
     bool ghidra = false;

@@ -5,12 +5,14 @@
 
 #include "rex/rex_sock.h"
 
+#include "dos/dos_cga.h"
 #include "rex/rex_log.h"
 
 #include <nlohmann/json.hpp>
 
 #include <cassert>
 #include <cerrno>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -26,12 +28,17 @@
 
 using json = nlohmann::json;
 
+struct rex_client
+{
+    int fd = -1;
+    std::string inbuf;
+};
+
 struct rex_sock
 {
     int listen_fd = -1;
-    int client_fd = -1;
+    std::vector<rex_client> clients;
     std::string path;
-    std::string inbuf;
     std::string last_cpu;
     std::string last_game;
     rex_shot_fn cpu_shot = nullptr;
@@ -39,6 +46,36 @@ struct rex_sock
     void *shot_user = nullptr;
     bool quit_req = false;
 };
+
+static std::string b64_encode(const uint8_t *data, size_t n)
+{
+    static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    size_t i = 0;
+    assert(data != nullptr || n == 0);
+    out.reserve(((n + 2) / 3) * 4);
+    for (i = 0; i + 2 < n; i += 3)
+    {
+        const unsigned v = ((unsigned)data[i] << 16) | ((unsigned)data[i + 1] << 8) | data[i + 2];
+        out.push_back(tbl[(v >> 18) & 63]);
+        out.push_back(tbl[(v >> 12) & 63]);
+        out.push_back(tbl[(v >> 6) & 63]);
+        out.push_back(tbl[v & 63]);
+    }
+    if (i < n)
+    {
+        unsigned v = (unsigned)data[i] << 16;
+        if (i + 1 < n)
+        {
+            v |= (unsigned)data[i + 1] << 8;
+        }
+        out.push_back(tbl[(v >> 18) & 63]);
+        out.push_back(tbl[(v >> 12) & 63]);
+        out.push_back((i + 1 < n) ? tbl[(v >> 6) & 63] : '=');
+        out.push_back('=');
+    }
+    return out;
+}
 
 static bool parse_addr(const std::string &s, uint64_t *lin)
 {
@@ -271,6 +308,24 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     {
         resp["count"] = rex_bp_count(s);
     }
+    else if ((cmd == "cga") || (cmd == "video") || (cmd == "frame"))
+    {
+        uint8_t px[DOS_CGA_PIXELS];
+        const uint8_t mode = rex_session_video_mode(s);
+        resp["mode"] = mode;
+        resp["w"] = DOS_CGA_WIDTH;
+        resp["h"] = DOS_CGA_HEIGHT;
+        resp["con"] = rex_session_con_out(s);
+        if (rex_session_cga_decode(s, px, sizeof(px)) == REX_OK)
+        {
+            resp["pixels_b64"] = b64_encode(px, sizeof(px));
+        }
+        else
+        {
+            resp["ok"] = false;
+            resp["error"] = "cga decode";
+        }
+    }
     else if ((cmd == "shot") || (cmd == "screenshot"))
     {
         char cpu_path[128];
@@ -334,7 +389,8 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     else if ((cmd == "help") || (cmd == "?"))
     {
-        resp["cmds"] = "step over run stop regs disasm mem bp bpdel bplist shot key status quit";
+        resp["cmds"] =
+            "step over run stop regs disasm mem bp bpdel bplist shot key status cga quit";
     }
     else
     {
@@ -378,7 +434,7 @@ rex_sock *rex_sock_listen(const char *path)
         delete sk;
         return nullptr;
     }
-    if (listen(sk->listen_fd, 4) < 0)
+    if (listen(sk->listen_fd, 16) < 0)
     {
         close(sk->listen_fd);
         delete sk;
@@ -395,11 +451,15 @@ void rex_sock_close(rex_sock *sk)
     {
         return;
     }
-    if (sk->client_fd >= 0)
+    for (rex_client &c : sk->clients)
     {
-        close(sk->client_fd);
-        sk->client_fd = -1;
+        if (c.fd >= 0)
+        {
+            close(c.fd);
+            c.fd = -1;
+        }
     }
+    sk->clients.clear();
     if (sk->listen_fd >= 0)
     {
         close(sk->listen_fd);
@@ -446,70 +506,79 @@ bool rex_sock_quit_requested(const rex_sock *sk)
 int rex_sock_poll(rex_sock *sk, rex_session *s)
 {
     int handled = 0;
-    char buf[1024];
+    char buf[4096];
+    size_t ci = 0;
     if ((sk == nullptr) || (s == nullptr) || (sk->listen_fd < 0))
-    {
-        return 0;
-    }
-    if (sk->client_fd < 0)
-    {
-        const int c = accept(sk->listen_fd, nullptr, nullptr);
-        if (c >= 0)
-        {
-            fcntl(c, F_SETFL, O_NONBLOCK);
-            sk->client_fd = c;
-            sk->inbuf.clear();
-            rex_logf(REX_LOG_INFO, "agent connected");
-        }
-    }
-    if (sk->client_fd < 0)
     {
         return 0;
     }
     for (;;)
     {
-        const ssize_t n = read(sk->client_fd, buf, sizeof(buf));
-        if (n > 0)
+        const int c = accept(sk->listen_fd, nullptr, nullptr);
+        if (c < 0)
         {
-            sk->inbuf.append(buf, (size_t)n);
+            break;
         }
-        else if (n == 0)
+        fcntl(c, F_SETFL, O_NONBLOCK);
+        sk->clients.push_back(rex_client{c, std::string()});
+        rex_logf(REX_LOG_INFO, "agent connected fd=%d n=%zu", c, sk->clients.size());
+    }
+    for (ci = 0; ci < sk->clients.size();)
+    {
+        rex_client &cl = sk->clients[ci];
+        bool drop = false;
+        for (;;)
         {
-            close(sk->client_fd);
-            sk->client_fd = -1;
-            return handled;
+            const ssize_t n = read(cl.fd, buf, sizeof(buf));
+            if (n > 0)
+            {
+                cl.inbuf.append(buf, (size_t)n);
+                if (n < (ssize_t)sizeof(buf))
+                {
+                    break;
+                }
+            }
+            else if (n == 0)
+            {
+                drop = true;
+                break;
+            }
+            else
+            {
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR))
+                {
+                    break;
+                }
+                drop = true;
+                break;
+            }
         }
-        else
+        while (!drop)
         {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR))
+            const auto pos = cl.inbuf.find('\n');
+            if (pos == std::string::npos)
             {
                 break;
             }
-            close(sk->client_fd);
-            sk->client_fd = -1;
-            return handled;
+            std::string line = cl.inbuf.substr(0, pos);
+            cl.inbuf.erase(0, pos + 1);
+            if ((!line.empty()) && (line.back() == '\r'))
+            {
+                line.pop_back();
+            }
+            const std::string out = handle_line(sk, s, line);
+            send_all(cl.fd, out);
+            handled++;
         }
-        if (n < (ssize_t)sizeof(buf))
+        if (drop)
         {
-            break;
+            close(cl.fd);
+            sk->clients.erase(sk->clients.begin() + static_cast<std::ptrdiff_t>(ci));
         }
-    }
-    while (true)
-    {
-        const auto pos = sk->inbuf.find('\n');
-        if (pos == std::string::npos)
+        else
         {
-            break;
+            ci++;
         }
-        std::string line = sk->inbuf.substr(0, pos);
-        sk->inbuf.erase(0, pos + 1);
-        if ((!line.empty()) && (line.back() == '\r'))
-        {
-            line.pop_back();
-        }
-        const std::string out = handle_line(sk, s, line);
-        send_all(sk->client_fd, out);
-        handled++;
     }
     return handled;
 }

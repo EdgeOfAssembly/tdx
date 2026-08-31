@@ -17,12 +17,16 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"shot"}
 {"cmd":"key","key":"F8"}
 {"cmd":"status"}
+{"cmd":"cga"}
 {"cmd":"quit"}
 ```
 
-Bare words: `step`, `over`, `regs`, `mem B800:0000 64`, `bp 1000:0100`.
+Bare words: `step`, `over`, `regs`, `cga`, `mem B800:0000 64`, `bp 1000:0100`.
 
 Reply is one JSON line (`ok`, `cs`, `ip`, `stop`, plus command fields).
+`cga` returns `mode`, `w`, `h`, `pixels_b64` (320×200 indices 0..3) for **tdxview**.
 `shot` writes `/tmp/tdx-cpu-<pid>.bmp` and `/tmp/tdx-game-<pid>.bmp`.
 
-Client: `scripts/tdxctl.py` (`tdxctl`).
+The listen socket accepts **several clients** at once (`tdxview` + `tdxctl`).
+
+Client: `scripts/tdxctl.py` (`tdxctl`). Viewer: `tdxview`.
