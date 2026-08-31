@@ -27,8 +27,8 @@ constexpr int k_ch = 16;
 constexpr int k_foot0 = 23; /**< First key-legend row; slightly shorter glyphs. */
 constexpr int k_foot_ch = 12;
 constexpr int k_list_rows = 15;
-constexpr int k_list_w = 54;
-constexpr int k_box_x = 55;
+constexpr int k_list_w = 66; /**< Leave a narrow Break box on the right. */
+constexpr int k_box_x = 67;  /**< 13 cols: borders + 1010:0035 + sbar. */
 
 /* CP850 box / scrollbar (not UTF-8 — the glyph atlas is CP850). */
 constexpr uint8_t k_box_h = 0xC4;
@@ -312,7 +312,7 @@ void paint_bp_box(tdx_ui *ui, rex_session *s, uint16_t cs, uint16_t ip)
             put_cell(ui, x0 + x, y, (char)ch, 14, 1);
         }
     }
-    put_str(ui, x0 + 2, 0, " Break ", 14, 1);
+    put_str(ui, x0 + 1, 0, "Break", 14, 1);
 
     for (i = 0; i < (size_t)inner; i++)
     {
