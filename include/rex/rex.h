@@ -110,7 +110,8 @@ enum
     REX_UI_LIST_HOME = 6,
     REX_UI_LIST_END = 7,
     REX_UI_LIST_PGUP = 8,
-    REX_UI_LIST_PGDN = 9
+    REX_UI_LIST_PGDN = 9,
+    REX_UI_HELP = 10
 };
 
 /**

@@ -72,6 +72,7 @@ struct tdx_ui
     int game_scale = 2;
     bool running = false;
     bool quit = false;
+    bool help = false;
     cell grid[k_rows][k_cols]{};
 };
 
@@ -330,11 +331,50 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
     }
     fill_row_attr(ui, 23, 0, 7);
     fill_row_attr(ui, 24, 0, 7);
-    put_str(ui, 0, 23, " F7 Into   F8 Over (CALL/INT/REP/LOOP)   F9 Run/Pause   F2 Break   Alt-X Quit",
-            0, 7);
-    std::snprintf(line, sizeof(line), " Up Back  Down Fwd  PgUp/Dn x14  Home  End  Ctrl-F2 Reset  %s",
-                  stop);
-    put_str(ui, 0, 24, line, 0, 7);
+    put_str(ui, 0, 23, " F1 Help  F2 Break  F7 Into  F8 Over  F9 Run  Ctrl-F2 Reset  Alt-X Quit", 0,
+            7);
+    put_str(ui, 0, 24, " Up Back  Down Fwd  PgUp  PgDn  Home  End", 0, 7);
+    {
+        const int sl = (int)std::strlen(stop);
+        put_str(ui, k_cols - sl - 1, 24, stop, 0, 7);
+    }
+}
+
+void paint_help(tdx_ui *ui)
+{
+    static const char *const lines[] = {
+        "F1       This help",
+        "F2       Breakpoint at CS:IP",
+        "F7       Trace into one instruction",
+        "F8       Step over CALL, INT, REP, LOOP",
+        "F9       Run / pause",
+        "Ctrl-F2  Reset program (keep breakpoints)",
+        "Alt-X    Quit",
+        "Up       VCR back one unit",
+        "Down     VCR forward (step over)",
+        "PgUp     Back 14 units",
+        "PgDn     Forward 14 units",
+        "Home     Tape start",
+        "End      Tape end",
+    };
+    const int n = (int)(sizeof(lines) / sizeof(lines[0]));
+    const int y0 = 2;
+    const int x0 = 12;
+    int i = 0;
+    int y = 0;
+    if (ui == nullptr)
+    {
+        return;
+    }
+    for (y = 1; y <= 22; y++)
+    {
+        fill_row_attr(ui, y, 0, 7);
+    }
+    put_str(ui, x0, y0, "Help  (F1 closes)", 14, 7);
+    for (i = 0; i < n; i++)
+    {
+        put_str(ui, x0, y0 + 2 + i, lines[i], 0, 7);
+    }
 }
 
 int save_texture_bmp(SDL_Renderer *ren, SDL_Texture *tex, int w, int h, const char *path)
@@ -457,6 +497,19 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 const SDL_Keycode k = ev.key.keysym.sym;
                 if (ev.key.repeat)
                 {
+                    continue;
+                }
+                if (k == SDLK_F1)
+                {
+                    ui.help = !ui.help;
+                    continue;
+                }
+                if (ui.help)
+                {
+                    if (k == SDLK_ESCAPE)
+                    {
+                        ui.help = false;
+                    }
                     continue;
                 }
                 if (((mod & KMOD_ALT) && (k == SDLK_x)) || (k == SDLK_ESCAPE))
@@ -612,6 +665,10 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 ui.running = false;
                 vcr_pages(session, true);
             }
+            else if (uic == REX_UI_HELP)
+            {
+                ui.help = !ui.help;
+            }
         }
         if (ui.running && (!rex_session_halted(session)))
         {
@@ -626,6 +683,10 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
             }
         }
         paint_cpu(&ui, session);
+        if (ui.help)
+        {
+            paint_help(&ui);
+        }
         render_cpu(&ui);
         if (ui.game_win != nullptr)
         {

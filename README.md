@@ -45,6 +45,7 @@ scripts/tdx-xmux.sh /mnt/bushido/bushido/BUSHIDO.EXE /mnt/bushido/bushido
 
 Keys (CPU window — VCR tape, CGA follows):
 
+- **F1** help dialog (toggle)
 - **↓ / F8** one unit **over** CALL, INT, REP, LOOP (loop/rep runs to completion)
 - **F7** one insn **into** CALL
 - **↑** reverse one unit (registers + RAM, so the game screen rewinds)

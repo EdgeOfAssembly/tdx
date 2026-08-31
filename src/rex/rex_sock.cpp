@@ -366,6 +366,11 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     {
         resp["pong"] = true;
     }
+    else if (cmd == "help")
+    {
+        rex_session_post_ui_cmd(s, REX_UI_HELP);
+        resp["help"] = true;
+    }
     else if (cmd == "key")
     {
         std::string k = req.value("key", "");
