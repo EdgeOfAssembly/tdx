@@ -397,6 +397,8 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
             return REX_ERR_FMT;
         }
         std::memcpy(ram + 0x10100, file.data(), file.size());
+        image_base = 0x10100;
+        image_bytes = (uint32_t)file.size();
         /* DOS gives a COM the rest of conventional memory (max_alloc style). */
         mem_end = DOS_MEM_END_PARA;
         build_psp(ram + 0x10000, (uint16_t)mem_end, DOS_ENV_SEG);
@@ -423,6 +425,8 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
             return REX_ERR_MEM;
         }
         std::memcpy(ram + load_lin, file.data() + info.header_bytes, info.image_size);
+        image_base = load_lin;
+        image_bytes = info.image_size;
         for (i = 0; i < nrel; i++)
         {
             const uint32_t at = load_lin + rex_segoff_to_linear(rels[i].seg, rels[i].off);
@@ -488,6 +492,7 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     last_stop = REX_STOP_NONE;
     video_mode = 0x03;
     sync_ip_from_eip();
+    rebuild_decode();
     vcr_seed();
     return REX_OK;
 }
@@ -904,46 +909,105 @@ rex_status dos_machine::vcr_forward(bool step_into)
     return st;
 }
 
+void dos_machine::rebuild_decode(void)
+{
+    std::vector<rex_insn> tmp;
+    size_t wrote = 0;
+    size_t i = 0;
+    uint16_t seg = 0;
+    uint16_t off = 0;
+    decode.clear();
+    if ((ram == nullptr) || (image_bytes == 0) || (image_base + image_bytes > ram_size))
+    {
+        return;
+    }
+    tmp.resize(65536);
+    seg = (uint16_t)(image_base >> 4);
+    off = (uint16_t)(image_base - ((uint32_t)seg << 4));
+    if (rex_disasm_block(REX_ARCH_I8086, image_base, seg, off, ram + image_base, image_bytes,
+                         tmp.data(), tmp.size(), &wrote) != REX_OK)
+    {
+        rex_logf(REX_LOG_ERROR, "decode map empty (Capstone)");
+        return;
+    }
+    for (i = 0; i < wrote; i++)
+    {
+        decode[tmp[i].linear] = tmp[i];
+    }
+    rex_logf(REX_LOG_INFO, "decode map %zu insns @ %llX+%u (Capstone once)", wrote,
+             (unsigned long long)image_base, image_bytes);
+}
+
 rex_status dos_machine_disasm(const dos_machine *m, uint64_t linear, rex_insn *out, size_t cap,
                               size_t *wrote)
 {
-    uint8_t buf[64];
-    uint16_t seg = 0;
-    uint16_t off = 0;
+    uint16_t cs = 0;
+    uint32_t base = 0;
     uint64_t lin = linear;
+    size_t n = 0;
 
-    if (m == nullptr)
+    if ((m == nullptr) || (out == nullptr) || (cap == 0))
     {
         return REX_ERR_ARG;
     }
+    if (wrote != nullptr)
+    {
+        *wrote = 0;
+    }
+    cs = m->reg16(UC_X86_REG_CS);
+    base = (uint32_t)cs << 4;
     if (lin == UINT64_MAX)
     {
-        const uint16_t cs = m->reg16(UC_X86_REG_CS);
-        const uint32_t base = (uint32_t)cs << 4;
         lin = m->linear_ip();
-        seg = cs;
-        off = (uint16_t)(lin - base);
     }
-    else
+    while (n < cap)
     {
-        seg = (uint16_t)((lin >> 4) & 0xF000); /* not unique; keep 0 if unknown */
-        off = (uint16_t)(lin & 0xF);
-        seg = (uint16_t)(lin >> 4);
-        off = (uint16_t)(lin - ((uint32_t)seg << 4));
-        /* Prefer CS-relative when in the same paragraph window. */
+        auto it = m->decode.find(lin);
+        rex_insn one{};
+        if (it == m->decode.end())
         {
-            const uint16_t cs = m->reg16(UC_X86_REG_CS);
-            const uint32_t base = (uint32_t)cs << 4;
+            uint8_t buf[32];
+            size_t w = 0;
+            uint16_t seg = cs;
+            uint16_t off = 0;
             if ((lin >= base) && (lin < base + 0x10000u))
             {
-                seg = cs;
                 off = (uint16_t)(lin - base);
             }
+            else
+            {
+                seg = (uint16_t)(lin >> 4);
+                off = (uint16_t)(lin - ((uint32_t)seg << 4));
+            }
+            if (m->read_mem(lin, buf, sizeof(buf)) != REX_OK)
+            {
+                break;
+            }
+            if (rex_disasm_block(REX_ARCH_I8086, lin, seg, off, buf, sizeof(buf), &one, 1, &w) !=
+                    REX_OK ||
+                (w == 0) || (one.size == 0))
+            {
+                break;
+            }
+            const_cast<dos_machine *>(m)->decode[lin] = one;
+            it = m->decode.find(lin);
+        }
+        out[n] = it->second;
+        if ((out[n].linear >= base) && (out[n].linear < base + 0x10000u))
+        {
+            out[n].seg = cs;
+            out[n].off = (uint16_t)(out[n].linear - base);
+        }
+        lin = out[n].linear + (uint64_t)out[n].size;
+        n++;
+        if (it->second.size == 0)
+        {
+            break;
         }
     }
-    if (m->read_mem(lin, buf, sizeof(buf)) != REX_OK)
+    if (wrote != nullptr)
     {
-        return REX_ERR_MEM;
+        *wrote = n;
     }
-    return rex_disasm_block(REX_ARCH_I8086, lin, seg, off, buf, sizeof(buf), out, cap, wrote);
+    return (n > 0) ? REX_OK : REX_ERR_CPU;
 }

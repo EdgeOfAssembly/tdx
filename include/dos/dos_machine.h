@@ -15,6 +15,7 @@
 #endif
 #include <cstdio>
 #include <deque>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -83,6 +84,9 @@ struct dos_machine
     uint16_t cursor_y = 0;
     uint32_t dta = 0x10080; /**< Default DTA inside PSP. */
     uint64_t entry_linear = 0;
+    uint64_t image_base = 0;
+    uint32_t image_bytes = 0;
+    std::map<uint64_t, rex_insn> decode; /**< Capstone once at load. */
     uint32_t alloc_bump = 0; /**< Next free paragraph for INT 21 AH=48. */
     bool skip_bp = false;
     bool at_break = false;
@@ -140,6 +144,7 @@ struct dos_machine
     rex_status bp_del(uint32_t id);
     void bp_clear(void);
 
+    void rebuild_decode(void);
     void vcr_seed(void);
     rex_status vcr_forward(bool step_into);
     rex_status vcr_back(void);

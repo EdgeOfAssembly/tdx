@@ -790,6 +790,18 @@ static void handle_int10(dos_machine *m)
         m->set_reg16(UC_X86_REG_AX, (uint16_t)((80u << 8) | m->video_mode));
         m->set_reg16(UC_X86_REG_BX, 0);
         break;
+    case 0x06:
+    case 0x07:
+        /* Scroll/clear window. AL=0 → fill. Graphics: wipe CGA RAM (title leftovers). */
+        if ((m->video_mode == 0x04) || (m->video_mode == 0x05) || (m->video_mode == 0x06))
+        {
+            if (al == 0)
+            {
+                std::memset(m->ram + 0xB8000, 0, 0x8000);
+                m->video_dirty = true;
+            }
+        }
+        break;
     default:
         break;
     }

@@ -782,7 +782,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         }
         if (ui.running && (!rex_session_halted(session)))
         {
-            rex_session_run(session, 20000);
+            rex_session_run(session, 250000);
             if (rex_session_stop_reason(session) == REX_STOP_BREAK)
             {
                 ui.running = false;
