@@ -81,7 +81,17 @@ tests/fixtures/loop.com: tests/fixtures/loop.asm
 tests/fixtures/far.com: tests/fixtures/far.asm
 	nasm -f bin -o $@ $<
 
-fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com
+tests/fixtures/setblock.com: tests/fixtures/setblock.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/int3pad.com: tests/fixtures/int3pad.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/fcbopen.com: tests/fixtures/fcbopen.asm
+	nasm -f bin -o $@ $<
+
+fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
+	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com
 
 test: tdx tdxview tests/run_tests
 	./tests/run_tests
@@ -108,7 +118,8 @@ verify: test
 clean:
 	rm -f tdx tdxview tests/run_tests $(REX_OBJS) $(TDX_OBJS) $(VIEW_OBJS) \
 		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
-		tests/fixtures/far.com
+		tests/fixtures/far.com tests/fixtures/setblock.com tests/fixtures/int3pad.com \
+		tests/fixtures/fcbopen.com
 
 release:
 	$(MAKE) $(BUILD_FLAGS) clean CXXFLAGS="$(CXXFLAGS_RELEASE)" \

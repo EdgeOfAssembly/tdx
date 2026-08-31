@@ -37,7 +37,8 @@ void tdx_print_usage(FILE *fp)
         "      --scale N         CPU window integer scale (default: 2)\n"
         "\n"
         "Keys (CPU window): F7 trace, F8 step over, F9 run/pause, F2 breakpoint,\n"
-        "  Alt-X quit. CGA user screen: tdxview --sock PATH (own Xmux session).\n"
+        "  Ctrl-F2 reset program, Alt-X quit.\n"
+        "  CGA user screen: tdxview --sock PATH (own Xmux session).\n"
         "  Agent: tdxctl --sock PATH step|over|cga|regs|shot|...\n"
         "\n"
         "tdx " TDX_VERSION_STRING "\n",

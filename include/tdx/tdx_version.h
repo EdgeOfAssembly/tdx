@@ -6,9 +6,9 @@
 #define TDX_VERSION_H
 
 /** Product version; bump on meaningful behavior change. */
-#define TDX_VERSION_STRING "0.2"
+#define TDX_VERSION_STRING "0.3"
 
 /** Reusable debug-core ABI version (same series as TDX). */
-#define REX_VERSION_STRING "0.2"
+#define REX_VERSION_STRING "0.3"
 
 #endif /* TDX_VERSION_H */

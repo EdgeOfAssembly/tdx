@@ -19,6 +19,96 @@ static void step_until_halt(rex_session *s, int max_steps)
     REQUIRE(rex_session_halted(s));
 }
 
+TEST_CASE("PSP word at offset 2 is 640K conventional end")
+{
+    rex_session *s = rex_session_create();
+    uint8_t b[2] = {0, 0};
+    uint16_t end = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_read_mem(s, 0x10002ull, b, 2) == REX_OK);
+    end = (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8));
+    REQUIRE(end == 0xA000);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("far.com run executes lcall helper then INT20")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/far.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ax == 0xAABB);
+    REQUIRE(rex_session_halted(s));
+    rex_session_destroy(s);
+}
+
+TEST_CASE("reset after halt restores entry and clears halted")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_reset(s) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ip == 0x0100);
+    REQUIRE(r.ax == 0);
+    REQUIRE_FALSE(rex_session_halted(s));
+    rex_session_destroy(s);
+}
+
+TEST_CASE("reset rewinds tiny.com to entry")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_step(s) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ax == 1);
+    REQUIRE(rex_session_reset(s) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ip == 0x0100);
+    REQUIRE(r.ax == 0);
+    REQUIRE_FALSE(rex_session_halted(s));
+    rex_session_destroy(s);
+}
+
+TEST_CASE("INT3 padding does not stop run")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/int3pad.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(r.ax == 1);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("INT21 FCB open TINY.COM succeeds")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_load(s, "tests/fixtures/fcbopen.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_exit_code(s) == 0);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("INT21 AH=4A BX=FFFF reports max and sets CF")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/setblock.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE((r.flags & 1u) != 0); /* CF */
+    REQUIRE(r.bx != 0xFFFF);
+    REQUIRE(r.bx > 0);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("tiny.com steps to AX=4 then INT20 halt")
 {
     rex_session *s = rex_session_create();

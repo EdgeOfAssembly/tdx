@@ -22,5 +22,16 @@ still fire.
 **CGA window:** BIOS mode 04h/05h VRAM at `B800:0000` (even/odd banks) decoded
 to 320×200×4. Writes into `0xB8000–0xBFFFF` mark the surface dirty.
 
+**DOS memory:** PSP word at offset 2 is `A000h` (640 KiB), matching DOS 5 with
+`max_alloc=FFFFh`. BASCOM reads that before INT 21; a tight image-sized block
+makes it RETF to PSP:0000 (INT 20) without SETBLOCK.
+
+**FCB I/O:** INT 21 AH=0Fh/10h/14h/16h/21h/27h (open/close/seq/create/random).
+Bushido loads `.TP*` / `.DAT` this way, then sits in CGA mode 4.
+
+**Reset:** Ctrl-F2 / `{"cmd":"reset"}` reloads the same image in-process (keep
+breakpoints). Never `xmux run` of the SDL GUI — it blocks until the window
+exits.
+
 **Other platforms:** `rex_arch` already has Z80 / 6502 / M68K slots. A future
 backend replaces `dos_machine` and keeps `rex_session_*`.

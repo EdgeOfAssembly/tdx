@@ -10,6 +10,9 @@
 #include "rex/rex.h"
 
 #include <cstdint>
+#ifndef UINT64_MAX
+#include <limits>
+#endif
 #include <cstdio>
 #include <deque>
 #include <string>
@@ -25,6 +28,7 @@ enum
     DOS_PSP_SEG = 0x1000,
     DOS_LOAD_SEG = 0x1010, /**< EXE image; COM uses PSP_SEG:0100. */
     DOS_ENV_SEG = 0x0F80,
+    DOS_MEM_END_PARA = 0xA000, /**< 640 KiB conventional; PSP word at offset 2. */
     DOS_MAX_FILES = 32,
     DOS_MAX_RELOCS = 8192
 };
@@ -65,6 +69,7 @@ struct dos_machine
     uint32_t alloc_bump = 0; /**< Next free paragraph for INT 21 AH=48. */
     bool skip_bp = false;
     bool at_break = false;
+    uint64_t run_ignore_bp = UINT64_MAX;
     rex_stop last_stop = REX_STOP_NONE;
     uint32_t next_bp_id = 1;
     std::unordered_map<uint64_t, uint32_t> bps;

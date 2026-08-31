@@ -218,7 +218,11 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
     std::snprintf(line, sizeof(line), "CS %04X  DS %04X  ES %04X  SS %04X  IP %04X", r.cs, r.ds, r.es,
                   r.ss, r.ip);
     put_str(ui, 1, 19, line, 15, 1);
-    std::snprintf(line, sizeof(line), "NV UP EI PL NZ NA PO NC   FLAGS %04X  mode %02X", r.flags,
+    std::snprintf(line, sizeof(line), "%s %s %s %s %s %s %s %s   FLAGS %04X  mode %02X",
+                  (r.flags & 0x800u) ? "OV" : "NV", (r.flags & 0x400u) ? "DN" : "UP",
+                  (r.flags & 0x200u) ? "EI" : "DI", (r.flags & 0x80u) ? "NG" : "PL",
+                  (r.flags & 0x40u) ? "ZR" : "NZ", (r.flags & 0x10u) ? "AC" : "NA",
+                  (r.flags & 0x04u) ? "PE" : "PO", (r.flags & 0x01u) ? "CY" : "NC", r.flags,
                   rex_session_video_mode(s));
     put_str(ui, 1, 20, line, 11, 1);
 
@@ -252,7 +256,8 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         stop = ui->running ? "running" : "stopped";
         break;
     }
-    std::snprintf(line, sizeof(line), " F7-Trace  F8-Over  F9-Run  F2-Break  Alt-X-Quit   %s", stop);
+    std::snprintf(line, sizeof(line),
+                  " F7-Trace  F8-Over  F9-Run  F2-Break  C-F2-Reset  Alt-X-Quit  %s", stop);
     put_str(ui, 0, 24, line, 0, 7);
 }
 
@@ -374,6 +379,11 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                     {
                         rex_session_request_stop(session);
                     }
+                }
+                else if ((mod & KMOD_CTRL) && (k == SDLK_F2))
+                {
+                    ui.running = false;
+                    rex_session_reset(session);
                 }
                 else if (k == SDLK_F2)
                 {

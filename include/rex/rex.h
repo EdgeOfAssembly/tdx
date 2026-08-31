@@ -54,6 +54,13 @@ REX_API void rex_session_destroy(rex_session *s);
 REX_API rex_status rex_session_load(rex_session *s, const char *path, const char *cwd);
 
 /**
+ * @brief Reload the same image at entry (Turbo Debugger Ctrl-F2).
+ *
+ * Breakpoints are kept. Keyboard buffer and CON output are cleared.
+ */
+REX_API rex_status rex_session_reset(rex_session *s);
+
+/**
  * @brief Execute one instruction (F7 Trace).
  */
 REX_API rex_status rex_session_step(rex_session *s);

@@ -9,6 +9,7 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"over"}
 {"cmd":"run"}
 {"cmd":"stop"}
+{"cmd":"reset"}
 {"cmd":"regs"}
 {"cmd":"disasm"}
 {"cmd":"mem","addr":"B800:0000","len":64}

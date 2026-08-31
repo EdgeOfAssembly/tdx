@@ -382,6 +382,14 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["regs"] = regs_json(s);
         resp["con"] = rex_session_con_out(s);
     }
+    else if (cmd == "reset")
+    {
+        if (rex_session_reset(s) != REX_OK)
+        {
+            resp["ok"] = false;
+            resp["error"] = "reset";
+        }
+    }
     else if (cmd == "quit")
     {
         resp["quit"] = true;
@@ -390,7 +398,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop regs disasm mem bp bpdel bplist shot key status cga quit";
+            "step over run stop reset regs disasm mem bp bpdel bplist shot key status cga quit";
     }
     else
     {

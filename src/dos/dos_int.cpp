@@ -15,7 +15,9 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <dirent.h>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 void dos_machine::write_dos_string(const char *text)
@@ -93,6 +95,177 @@ static void rewind_software_int(dos_machine *m, uint16_t nbytes)
     uc_emu_stop(m->uc);
 }
 
+static void fcb_to_name(const uint8_t *fcb, char *out, size_t n)
+{
+    char name[9];
+    char ext[4];
+    size_t i = 0;
+    size_t k = 0;
+    assert((fcb != nullptr) && (out != nullptr) && (n > 0));
+    for (i = 0; (i < 8) && (k < sizeof(name) - 1); i++)
+    {
+        const char c = (char)fcb[1 + i];
+        if ((c == ' ') || (c == '\0'))
+        {
+            break;
+        }
+        name[k++] = c;
+    }
+    name[k] = 0;
+    k = 0;
+    for (i = 0; (i < 3) && (k < sizeof(ext) - 1); i++)
+    {
+        const char c = (char)fcb[9 + i];
+        if ((c == ' ') || (c == '\0'))
+        {
+            break;
+        }
+        ext[k++] = c;
+    }
+    ext[k] = 0;
+    if (ext[0] != 0)
+    {
+        std::snprintf(out, n, "%s.%s", name, ext);
+    }
+    else
+    {
+        std::snprintf(out, n, "%s", name);
+    }
+}
+
+static FILE *fopen_ci(const std::string &cwd, const char *name, const char *mode)
+{
+    FILE *fp = nullptr;
+    DIR *dir = nullptr;
+    std::string exact;
+    char want[16];
+    size_t i = 0;
+    if ((name == nullptr) || (mode == nullptr) || (name[0] == '\0'))
+    {
+        return nullptr;
+    }
+    exact = cwd + "/" + name;
+    fp = std::fopen(exact.c_str(), mode);
+    if (fp != nullptr)
+    {
+        return fp;
+    }
+    for (i = 0; (name[i] != 0) && (i + 1u < sizeof(want)); i++)
+    {
+        want[i] = (char)std::toupper((unsigned char)name[i]);
+    }
+    want[i] = 0;
+    dir = opendir(cwd.c_str());
+    if (dir == nullptr)
+    {
+        return nullptr;
+    }
+    for (;;)
+    {
+        const struct dirent *de = readdir(dir);
+        char have[256];
+        if (de == nullptr)
+        {
+            break;
+        }
+        for (i = 0; (de->d_name[i] != 0) && (i + 1u < sizeof(have)); i++)
+        {
+            have[i] = (char)std::toupper((unsigned char)de->d_name[i]);
+        }
+        have[i] = 0;
+        if (std::strcmp(have, want) == 0)
+        {
+            exact = cwd + "/" + de->d_name;
+            fp = std::fopen(exact.c_str(), mode);
+            break;
+        }
+    }
+    closedir(dir);
+    return fp;
+}
+
+static uint16_t fcb_recsize(const uint8_t *fcb)
+{
+    const uint16_t sz = (uint16_t)(fcb[0x0E] | ((uint16_t)fcb[0x0F] << 8));
+    return (sz == 0) ? 128u : sz;
+}
+
+static uint32_t fcb_random_rec(const uint8_t *fcb)
+{
+    return (uint32_t)fcb[0x21] | ((uint32_t)fcb[0x22] << 8) | ((uint32_t)fcb[0x23] << 16) |
+           ((uint32_t)fcb[0x24] << 24);
+}
+
+static int fcb_handle(const uint8_t *fcb)
+{
+    if (fcb[0x19] != 0xFC)
+    {
+        return -1;
+    }
+    return (int)fcb[0x18];
+}
+
+static void fcb_set_handle(uint8_t *fcb, int fd)
+{
+    fcb[0x18] = (uint8_t)fd;
+    fcb[0x19] = 0xFC;
+}
+
+static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, bool sequential)
+{
+    const int fd = fcb_handle(fcb);
+    const uint16_t recsize = fcb_recsize(fcb);
+    uint32_t rec = 0;
+    uint16_t got_recs = 0;
+    if ((fd < 0) || (fd >= DOS_MAX_FILES) || (m->files[fd].fp == nullptr) || (nrec == 0))
+    {
+        return 1;
+    }
+    if (sequential)
+    {
+        const uint16_t block = (uint16_t)(fcb[0x0C] | ((uint16_t)fcb[0x0D] << 8));
+        rec = ((uint32_t)block * 128u) + (uint32_t)fcb[0x20];
+    }
+    else
+    {
+        rec = fcb_random_rec(fcb);
+    }
+    if (std::fseek(m->files[fd].fp, (long)rec * (long)recsize, SEEK_SET) != 0)
+    {
+        return 1;
+    }
+    {
+        std::vector<uint8_t> tmp((size_t)nrec * (size_t)recsize);
+        const size_t want = tmp.size();
+        const size_t got = std::fread(tmp.data(), 1, want, m->files[fd].fp);
+        if (got > 0)
+        {
+            std::memcpy(m->ram + m->dta, tmp.data(), got);
+        }
+        got_recs = (uint16_t)(got / recsize);
+        if (sequential && (got_recs > 0))
+        {
+            uint32_t next = rec + got_recs;
+            fcb[0x20] = (uint8_t)(next % 128u);
+            {
+                const uint16_t block = (uint16_t)(next / 128u);
+                fcb[0x0C] = (uint8_t)(block & 0xFFu);
+                fcb[0x0D] = (uint8_t)(block >> 8);
+            }
+        }
+        if (got == 0)
+        {
+            return 1;
+        }
+        if (got < want)
+        {
+            return 3;
+        }
+    }
+    (void)got_recs;
+    return 0;
+}
+
 static void handle_int21(dos_machine *m)
 {
     const uint16_t ax = m->reg16(UC_X86_REG_AX);
@@ -105,11 +278,20 @@ static void handle_int21(dos_machine *m)
     const uint16_t es = m->reg16(UC_X86_REG_ES);
     const uint16_t si = m->reg16(UC_X86_REG_SI);
 
+    rex_logf((ah == 0x00 || ah == 0x0F || ah == 0x16 || ah == 0x3D || ah == 0x48 || ah == 0x4A ||
+              ah == 0x4C)
+                 ? REX_LOG_INFO
+                 : REX_LOG_DEBUG,
+             "INT21 AH=%02X AX=%04X BX=%04X CX=%04X DX=%04X DS=%04X ES=%04X @%04X:%04X", ah, ax, bx,
+             cx, dx, ds, es, m->reg16(UC_X86_REG_CS), m->reg16(UC_X86_REG_IP));
+
     switch (ah)
     {
     case 0x00:
+        rex_logf(REX_LOG_INFO, "INT21 AH=00 terminate");
         m->halted = true;
         m->exit_code = 0;
+        m->last_stop = REX_STOP_HALTED;
         uc_emu_stop(m->uc);
         break;
     case 0x02:
@@ -175,6 +357,77 @@ static void handle_int21(dos_machine *m)
         m->kbd.clear();
         m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u));
         break;
+    case 0x0F:
+    case 0x16:
+    {
+        uint8_t *fcb = m->ptr_segoff(ds, dx);
+        char nbuf[16];
+        const int fd = m->alloc_handle();
+        FILE *fp = nullptr;
+        struct stat st{};
+        fcb_to_name(fcb, nbuf, sizeof(nbuf));
+        if (fd < 0)
+        {
+            m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | 0xFFu));
+            break;
+        }
+        fp = fopen_ci(m->dos_cwd, nbuf, (ah == 0x16) ? "w+b" : "rb");
+        if ((fp == nullptr) && (ah == 0x0F))
+        {
+            fp = fopen_ci(m->dos_cwd, nbuf, "r+b");
+        }
+        if (fp == nullptr)
+        {
+            m->close_handle(fd);
+            rex_logf(REX_LOG_INFO, "INT21 FCB open fail %s", nbuf);
+            m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | 0xFFu));
+            break;
+        }
+        m->files[fd].fp = fp;
+        fcb_set_handle(fcb, fd);
+        if (fcb_recsize(fcb) == 128u)
+        {
+            fcb[0x0E] = 128;
+            fcb[0x0F] = 0;
+        }
+        if (fstat(fileno(fp), &st) == 0)
+        {
+            const uint32_t sz = (uint32_t)st.st_size;
+            fcb[0x10] = (uint8_t)(sz & 0xFFu);
+            fcb[0x11] = (uint8_t)((sz >> 8) & 0xFFu);
+            fcb[0x12] = (uint8_t)((sz >> 16) & 0xFFu);
+            fcb[0x13] = (uint8_t)((sz >> 24) & 0xFFu);
+        }
+        rex_logf(REX_LOG_INFO, "INT21 FCB %s %s -> %d", (ah == 0x16) ? "create" : "open", nbuf, fd);
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u));
+        break;
+    }
+    case 0x10:
+    {
+        uint8_t *fcb = m->ptr_segoff(ds, dx);
+        const int fd = fcb_handle(fcb);
+        if (fd >= 0)
+        {
+            m->close_handle(fd);
+            fcb[0x19] = 0;
+        }
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u));
+        break;
+    }
+    case 0x14:
+    case 0x21:
+    case 0x27:
+    {
+        uint8_t *fcb = m->ptr_segoff(ds, dx);
+        const uint16_t nrec = (ah == 0x27) ? ((cx == 0) ? 1u : cx) : 1u;
+        const uint8_t alv = fcb_read_records(m, fcb, nrec, (ah == 0x14));
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | alv));
+        if (ah == 0x27)
+        {
+            m->set_reg16(UC_X86_REG_CX, (alv == 0) ? nrec : 0);
+        }
+        break;
+    }
     case 0x19:
         m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u)); /* drive A=0, report C=2 */
         m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | 2u));
@@ -402,30 +655,86 @@ static void handle_int21(dos_machine *m)
         m->set_cf(false);
         break;
     }
+    case 0x0D:
+        m->set_cf(false);
+        break;
+    case 0x0E:
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | 3u)); /* AL = last drive */
+        m->set_cf(false);
+        break;
+    case 0x36:
+        m->set_cf(false);
+        m->set_reg16(UC_X86_REG_AX, 8);    /* sectors/cluster */
+        m->set_reg16(UC_X86_REG_BX, 0x1000);
+        m->set_reg16(UC_X86_REG_CX, 512);
+        m->set_reg16(UC_X86_REG_DX, 0x1000);
+        break;
+    case 0x38:
+        m->set_cf(false);
+        m->set_reg16(UC_X86_REG_BX, 1); /* USA */
+        break;
     case 0x48:
-        if ((uint32_t)m->alloc_bump + (uint32_t)bx < 0x9000u)
+    {
+        const uint32_t room =
+            (m->alloc_bump < 0xA000u) ? (0xA000u - (uint32_t)m->alloc_bump) : 0u;
+        if ((bx != 0u) && ((uint32_t)bx <= room))
         {
             m->set_cf(false);
             m->set_reg16(UC_X86_REG_AX, (uint16_t)m->alloc_bump);
-            m->alloc_bump += bx;
+            m->alloc_bump = (uint32_t)m->alloc_bump + (uint32_t)bx;
         }
         else
         {
             m->set_cf(true);
             m->set_reg16(UC_X86_REG_AX, 8);
-            m->set_reg16(UC_X86_REG_BX, 0x1000);
+            m->set_reg16(UC_X86_REG_BX, (uint16_t)room);
         }
         break;
+    }
     case 0x49:
         m->set_cf(false);
         break;
     case 0x4A:
+    {
+        /* DOS: BX=FFFF probes max; CF=1 and BX=available. Success only if BX fits. */
+        const uint32_t max_paras =
+            (es < 0xA000u) ? (0xA000u - (uint32_t)es) : 16u;
+        if ((uint32_t)bx > max_paras)
+        {
+            m->set_cf(true);
+            m->set_reg16(UC_X86_REG_AX, 8);
+            m->set_reg16(UC_X86_REG_BX, (uint16_t)max_paras);
+        }
+        else
+        {
+            m->set_cf(false);
+            if (es == (uint16_t)DOS_PSP_SEG)
+            {
+                const uint16_t end = (uint16_t)(es + bx);
+                m->ram[0x10002] = (uint8_t)(end & 0xFFu);
+                m->ram[0x10003] = (uint8_t)(end >> 8);
+                m->alloc_bump = end;
+            }
+        }
+        break;
+    }
+    case 0x50:
         m->set_cf(false);
-        (void)es;
+        break;
+    case 0x51:
+    case 0x62:
+        m->set_reg16(UC_X86_REG_BX, (uint16_t)DOS_PSP_SEG);
+        m->set_cf(false);
+        break;
+    case 0x59:
+        m->set_reg16(UC_X86_REG_AX, 8);
+        m->set_reg16(UC_X86_REG_BX, 0);
+        m->set_cf(false);
         break;
     case 0x4C:
         m->halted = true;
         m->exit_code = (int)al;
+        m->last_stop = REX_STOP_HALTED;
         uc_emu_stop(m->uc);
         rex_logf(REX_LOG_INFO, "DOS exit %d", m->exit_code);
         break;
@@ -531,9 +840,10 @@ void dos_machine::handle_intr(uint32_t intno)
     switch (intno)
     {
     case 0x03:
-        at_break = true;
-        last_stop = REX_STOP_BREAK;
-        uc_emu_stop(uc);
+        /* Guest INT3. User BPs are CODE-hook linear addresses, not 0xCC patches.
+         * BASCOM pads with CC; stopping here aborts F9 in the padding. */
+        rex_logf(REX_LOG_DEBUG, "INT3 padding @ %04X:%04X", reg16(UC_X86_REG_CS),
+                 reg16(UC_X86_REG_IP));
         break;
     case 0x10:
         handle_int10(this);
@@ -562,8 +872,11 @@ void dos_machine::handle_intr(uint32_t intno)
     case 0x1C:
         break;
     case 0x20:
+        rex_logf(REX_LOG_INFO, "INT20 terminate from %04X:%04X", reg16(UC_X86_REG_CS),
+                 (uint16_t)(reg16(UC_X86_REG_IP) - 2u));
         halted = true;
         exit_code = 0;
+        last_stop = REX_STOP_HALTED;
         uc_emu_stop(uc);
         break;
     case 0x21:

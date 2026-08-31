@@ -47,6 +47,10 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
     {
         return;
     }
+    if (address == m->run_ignore_bp)
+    {
+        return;
+    }
     if (m->skip_bp)
     {
         m->skip_bp = false;
@@ -253,15 +257,15 @@ rex_status dos_machine::init_cpu()
     uc_hook hh = 0;
     uint8_t *aligned = nullptr;
 
-    if (ram != nullptr)
-    {
-        std::free(ram);
-        ram = nullptr;
-    }
     if (uc != nullptr)
     {
         uc_close(uc);
         uc = nullptr;
+    }
+    if (ram != nullptr)
+    {
+        std::free(ram);
+        ram = nullptr;
     }
     ram_size = (size_t)k_ram;
     aligned = static_cast<uint8_t *>(aligned_alloc(4096, ram_size));
@@ -321,6 +325,18 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     uint32_t mem_end = 0;
 
     assert(path != nullptr);
+    {
+        int fi = 0;
+        for (fi = 0; fi < DOS_MAX_FILES; fi++)
+        {
+            close_handle(fi);
+        }
+        kbd.clear();
+        con_out.clear();
+        halted = false;
+        wait_key = false;
+        stop_req = false;
+    }
     if (init_cpu() != REX_OK)
     {
         return REX_ERR_CPU;
@@ -366,13 +382,14 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
             return REX_ERR_FMT;
         }
         std::memcpy(ram + 0x10100, file.data(), file.size());
-        mem_end = DOS_PSP_SEG + 0x1000;
+        /* DOS gives a COM the rest of conventional memory (max_alloc style). */
+        mem_end = DOS_MEM_END_PARA;
         build_psp(ram + 0x10000, (uint16_t)mem_end, DOS_ENV_SEG);
         cs = DOS_PSP_SEG;
         ip = 0x0100;
         ss = DOS_PSP_SEG;
         sp = 0xFFFE;
-        alloc_bump = DOS_PSP_SEG + 0x1000;
+        alloc_bump = DOS_MEM_END_PARA;
         entry_linear = 0x10100;
         rex_logf(REX_LOG_INFO, "loaded COM %s size=%zu entry=%04X:%04X", path, file.size(), cs, ip);
     }
@@ -408,10 +425,25 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
         ip = info.ip;
         ss = (uint16_t)(info.ss + DOS_LOAD_SEG);
         sp = info.sp;
-        mem_end = DOS_LOAD_SEG + ((info.image_size + 15u) / 16u) + info.min_alloc + 1u;
-        if (mem_end < (DOS_LOAD_SEG + 0x1000u))
+        /* DOS 5: one MCB from PSP through min(image+max_alloc, 640 KiB).
+         * BASCOM reads PSP[2] before INT 21; a tight image-sized block makes
+         * it RETF to PSP:0000 (INT 20) without ever calling SETBLOCK. */
         {
-            mem_end = DOS_LOAD_SEG + 0x1000u;
+            const uint32_t image_end =
+                (uint32_t)DOS_LOAD_SEG + ((info.image_size + 15u) / 16u) + (uint32_t)info.min_alloc;
+            if ((info.max_alloc == 0xFFFFu) ||
+                ((image_end + (uint32_t)info.max_alloc) >= (uint32_t)DOS_MEM_END_PARA))
+            {
+                mem_end = DOS_MEM_END_PARA;
+            }
+            else
+            {
+                mem_end = image_end + (uint32_t)info.max_alloc;
+            }
+            if (mem_end < (image_end + 1u))
+            {
+                mem_end = image_end + 1u;
+            }
         }
         build_psp(ram + 0x10000, (uint16_t)mem_end, DOS_ENV_SEG);
         alloc_bump = mem_end;
@@ -598,23 +630,40 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
     }
     stop_req = false;
     at_break = false;
+    {
+        const uint64_t start_lin = linear_ip();
+        if (skip_bp || until_valid)
+        {
+            run_ignore_bp = start_lin;
+        }
+        else
+        {
+            run_ignore_bp = UINT64_MAX;
+        }
+    }
     while ((left > 0) && (!halted) && (!at_break) && (!wait_key) && (!stop_req))
     {
         const uint64_t lin = linear_ip();
         const size_t chunk = (left > 50000ull) ? 50000u : (size_t)left;
         uc_err e = UC_ERR_OK;
-        if ((bps.find(lin) != bps.end()) && (!skip_bp))
+        if (lin != run_ignore_bp)
+        {
+            run_ignore_bp = UINT64_MAX;
+        }
+        if ((bps.find(lin) != bps.end()) && (lin != run_ignore_bp) && (!skip_bp))
         {
             at_break = true;
             skip_bp = true;
             last_stop = REX_STOP_BREAK;
             break;
         }
+        skip_bp = false;
         e = uc_emu_start(uc, lin, until, 0, chunk);
         sync_ip_from_eip();
         left -= (left < 50000ull) ? left : 50000ull;
         if (until_valid && (linear_ip() == until_linear))
         {
+            run_ignore_bp = UINT64_MAX;
             last_stop = REX_STOP_STEP;
             return REX_OK;
         }
@@ -626,6 +675,7 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         }
         (void)e;
     }
+    run_ignore_bp = UINT64_MAX;
     if (halted)
     {
         last_stop = REX_STOP_HALTED;

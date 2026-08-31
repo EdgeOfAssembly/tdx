@@ -27,6 +27,8 @@ struct rex_session
     std::unique_ptr<dos_machine> dos;
     rex_arch arch = REX_ARCH_I8086;
     std::unordered_map<uint64_t, std::string> syms;
+    std::string load_path;
+    std::string load_cwd;
 };
 
 const char *rex_version(void)
@@ -81,7 +83,32 @@ rex_status rex_session_load(rex_session *s, const char *path, const char *cwd)
     }
     s->dos = std::make_unique<dos_machine>();
     s->arch = REX_ARCH_I8086;
+    s->load_path = path;
+    s->load_cwd = (cwd != nullptr) ? cwd : "";
     return s->dos->load_path(path, cwd);
+}
+
+rex_status rex_session_reset(rex_session *s)
+{
+    if ((s == nullptr) || s->load_path.empty() || (!s->dos))
+    {
+        return REX_ERR_ARG;
+    }
+    const auto bps = s->dos->bps;
+    const auto bp_by_id = s->dos->bp_by_id;
+    const uint32_t next_id = s->dos->next_bp_id;
+    const char *cwd = s->load_cwd.empty() ? nullptr : s->load_cwd.c_str();
+    const rex_status st = s->dos->load_path(s->load_path.c_str(), cwd);
+    if (st != REX_OK)
+    {
+        return st;
+    }
+    s->dos->bps = bps;
+    s->dos->bp_by_id = bp_by_id;
+    s->dos->next_bp_id = next_id;
+    rex_logf(REX_LOG_INFO, "reset %s entry linear=0x%llx", s->load_path.c_str(),
+             (unsigned long long)s->dos->entry_linear);
+    return REX_OK;
 }
 
 static dos_machine *need_dos(rex_session *s)

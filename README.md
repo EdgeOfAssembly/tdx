@@ -44,7 +44,10 @@ scripts/tdx-xmux.sh /mnt/bushido/bushido/BUSHIDO.EXE /mnt/bushido/bushido
 `tdx` is the driver. `tdxview` only paints whatever framebuffer `tdx` exposes (`cga` on the socket). Optional `--game` still embeds CGA in the tdx process.
 
 Keys: **F7** trace, **F8** step over (CALL / INT / REP / LOOP), **F9** run/pause,
-**F2** breakpoint at CS:IP, **Alt-X** quit.
+**F2** breakpoint at CS:IP, **Ctrl-F2** reload program (keep breakpoints), **Alt-X** quit.
+
+Reload after halt is **in-process** (`tdxctl reset` or Ctrl-F2). Never `xmux run` of
+`tdx` — that blocks until the SDL window exits.
 
 Agent:
 

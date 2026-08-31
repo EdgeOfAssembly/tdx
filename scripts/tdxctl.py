@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.2"
+VERSION = "0.3"
 
 
 def usage() -> None:
@@ -20,7 +20,7 @@ def usage() -> None:
   Talk to a running tdx process over its UNIX socket.
 
 Commands:
-  step | over | run | stop | regs | disasm | status | cga | quit | help
+  step | over | run | stop | reset | regs | disasm | status | cga | quit | help
   mem <seg:off> [len]
   bp <seg:off>
   bpdel <id>
