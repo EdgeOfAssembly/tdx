@@ -1,0 +1,110 @@
+# TDX / librex — debug by default (gnu-make + linker-dynamic).
+CXX := g++ -Wl,--as-needed
+CC  := gcc -Wl,--as-needed
+MAKEFLAGS += --no-print-directory
+
+export PKG_CONFIG_PATH ?= $(HOME)/.local/share/pkgconfig:$(HOME)/.local/lib64/pkgconfig:$(HOME)/.local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+
+SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
+SDL_LIBS   := $(shell pkg-config --libs sdl2)
+PKG_CS  := $(shell pkg-config --cflags --libs capstone)
+PKG_UC  := $(shell pkg-config --cflags --libs unicorn)
+CATCH_CFLAGS := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --cflags catch2-with-main)
+CATCH_LIBS   := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --libs catch2-with-main)
+
+CXXFLAGS_COMMON := -std=gnu++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
+	-fno-omit-frame-pointer -Iinclude
+CFLAGS_COMMON := -std=gnu23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
+	-fno-omit-frame-pointer -Iinclude
+
+CXXFLAGS_OPTIMIZED := -O3 -march=x86-64 -mtune=generic -fno-omit-frame-pointer
+CXXFLAGS_DEBUG := $(CXXFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined -rdynamic
+LDFLAGS_DEBUG  := -fsanitize=address,undefined -rdynamic
+CXXFLAGS_RELEASE := $(CXXFLAGS_COMMON) -DNDEBUG $(CXXFLAGS_OPTIMIZED)
+LDFLAGS_RELEASE  :=
+
+CXXFLAGS := $(CXXFLAGS_DEBUG)
+LDFLAGS  := $(LDFLAGS_DEBUG)
+CFLAGS   := $(CFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined
+
+BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
+
+REX_CXX := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp
+DOS_CXX := src/dos/dos_machine.cpp src/dos/dos_int.cpp
+DOS_C   := src/dos/mz_parse.c src/dos/dos_cga.c
+TDX_CXX := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp
+
+REX_OBJS := $(REX_CXX:.cpp=.o) $(DOS_CXX:.cpp=.o) $(DOS_C:.c=.o)
+TDX_OBJS := $(TDX_CXX:.cpp=.o)
+
+TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp
+
+PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
+
+.PHONY: all clean test tests verify fixtures release profile install
+
+all: tdx
+
+src/dos/%.o: src/dos/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/dos/%.o: src/dos/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+src/rex/%.o: src/rex/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+src/tdx/%.o: src/tdx/%.cpp
+	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) -c $< -o $@
+
+tdx: $(REX_OBJS) $(TDX_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(REX_OBJS) $(TDX_OBJS) $(SDL_LIBS) $(PKG_CS) $(PKG_UC)
+
+tests/run_tests: $(REX_OBJS) src/tdx/tdx_cli.o $(TEST_SRCS) fixtures
+	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(TEST_SRCS) src/tdx/tdx_cli.o $(REX_OBJS) \
+		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC)
+
+tests/fixtures/tiny.com: tests/fixtures/tiny.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/over.com: tests/fixtures/over.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/loop.com: tests/fixtures/loop.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/far.com: tests/fixtures/far.asm
+	nasm -f bin -o $@ $<
+
+fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com
+
+test: tdx tests/run_tests
+	./tests/run_tests
+	./tdx -h >/dev/null
+	./tdx -v
+	./tdx --no-ui --no-sock tests/fixtures/tiny.com >/dev/null
+	$(PY) scripts/tdxctl.py -h >/dev/null
+	$(PY) scripts/tdxctl.py -v
+tests: test
+
+verify: test
+	$(HOME)/.local/bin/cbmc formal/verify_mz.c src/dos/mz_parse.c -Iinclude \
+		--bounds-check --pointer-check --unwind 40 --unwinding-assertions
+
+clean:
+	rm -f tdx tests/run_tests $(REX_OBJS) $(TDX_OBJS) \
+		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
+		tests/fixtures/far.com
+
+release:
+	$(MAKE) $(BUILD_FLAGS) clean CXXFLAGS="$(CXXFLAGS_RELEASE)" \
+		CFLAGS="$(CFLAGS_COMMON) -O3 -DNDEBUG" LDFLAGS="$(LDFLAGS_RELEASE)" all
+
+profile:
+	$(MAKE) $(BUILD_FLAGS) clean \
+		CXXFLAGS="$(CXXFLAGS_COMMON) -DNDEBUG $(CXXFLAGS_OPTIMIZED) -g -pg -fno-inline" \
+		LDFLAGS="-pg" all
+
+install: tdx
+	install -m 755 tdx /usr/local/bin/tdx
+	install -m 755 scripts/tdxctl.py /usr/local/bin/tdxctl

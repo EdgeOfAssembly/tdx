@@ -1,0 +1,1220 @@
+BORLANDC/
+├── BGI
+│   ├── ATT.BGI
+│   ├── BGIDEMO.C
+│   ├── BGIOBJ.EXE
+│   ├── BOLD.CHR
+│   ├── CGA.BGI
+│   ├── EGAVGA.BGI
+│   ├── EURO.CHR
+│   ├── GOTH.CHR
+│   ├── HERC.BGI
+│   ├── IBM8514.BGI
+│   ├── LCOM.CHR
+│   ├── LITT.CHR
+│   ├── PC3270.BGI
+│   ├── SANS.CHR
+│   ├── SCRI.CHR
+│   ├── SIMP.CHR
+│   ├── TRIP.CHR
+│   └── TSCR.CHR
+├── BIN
+│   ├── BC.EXE
+│   ├── BCC.EXE
+│   ├── BUILTINS.MAK
+│   ├── CPP.EXE
+│   ├── DPMI16BI.OVL
+│   ├── DPMIINST.EXE
+│   ├── DPMILOAD.EXE
+│   ├── DPMIMEM.DLL
+│   ├── DPMIRES.EXE
+│   ├── EMSTEST.COM
+│   ├── GREP.COM
+│   ├── GREP2MSG.EXE
+│   ├── H2ASH.EXE
+│   ├── IMPDEF.EXE
+│   ├── IMPL2MSG.EXE
+│   ├── IMPLIB.EXE
+│   ├── MAKE.EXE
+│   ├── MAKER.EXE
+│   ├── MAKERSP.EXE
+│   ├── OBJXREF.COM
+│   ├── PATCH.COM
+│   ├── PRJ2MAK.EXE
+│   ├── PRJCFG.EXE
+│   ├── PRJCNVT.EXE
+│   ├── SERVER.DIF
+│   ├── TASM.EXE
+│   ├── TASM.TAH
+│   ├── TASM2MSG.EXE
+│   ├── TASMX.EXE
+│   ├── TCHELP.TCH
+│   ├── TCREF.EXE
+│   ├── TD.EXE
+│   ├── TD286.EXE
+│   ├── TD286INS.EXE
+│   ├── TD386.EXE
+│   ├── TDDEV.EXE
+│   ├── TDH386.SYS
+│   ├── TDHELP.TDH
+│   ├── TDINST.EXE
+│   ├── TDMAP.EXE
+│   ├── TDMEM.EXE
+│   ├── TDNMI.COM
+│   ├── TDREMOTE.EXE
+│   ├── TDRF.EXE
+│   ├── TDSTRIP.EXE
+│   ├── TDUMP.EXE
+│   ├── TEMC.EXE
+│   ├── TF386.EXE
+│   ├── TFHELP.TFH
+│   ├── TFINST.EXE
+│   ├── TFREMOTE.EXE
+│   ├── THELP.CFG
+│   ├── THELP.COM
+│   ├── TLIB.EXE
+│   ├── TLINK.CFG
+│   ├── TLINK.EXE
+│   ├── TOUCH.COM
+│   ├── TPROF.EXE
+│   ├── TRANCOPY.EXE
+│   ├── TRIGRAPH.EXE
+│   ├── TURBOC.CFG
+│   └── UNZIP.EXE
+├── CLASSLIB
+│   ├── EXAMPLES
+│   │   ├── DIRECTRY.CPP
+│   │   ├── DIRECTRY.H
+│   │   ├── DIRECTRY.PRJ
+│   │   ├── FILEDATA.CPP
+│   │   ├── FILEDATA.H
+│   │   ├── LOOKUP.CPP
+│   │   ├── LOOKUP.PRJ
+│   │   ├── QUEUETST.CPP
+│   │   ├── QUEUETST.PRJ
+│   │   ├── REVERSE.CPP
+│   │   ├── REVERSE.PRJ
+│   │   ├── STRNGMAX.CPP
+│   │   ├── STRNGMAX.PRJ
+│   │   └── TESTDIR.CPP
+│   ├── INCLUDE
+│   │   ├── ABSTARRY.H
+│   │   ├── ARRAY.H
+│   │   ├── ARRAYS.H
+│   │   ├── ASSOC.H
+│   │   ├── BAG.H
+│   │   ├── BAGS.H
+│   │   ├── BTREE.H
+│   │   ├── CHECKS.H
+│   │   ├── CLSDEFS.H
+│   │   ├── CLSTYPES.H
+│   │   ├── COLLECT.H
+│   │   ├── CONTAIN.H
+│   │   ├── DBLLIST.H
+│   │   ├── DEQUE.H
+│   │   ├── DEQUES.H
+│   │   ├── DICT.H
+│   │   ├── DLISTIMP.H
+│   │   ├── HASHTBL.H
+│   │   ├── LDATE.H
+│   │   ├── LIST.H
+│   │   ├── LISTIMP.H
+│   │   ├── LTIME.H
+│   │   ├── MEMMGR.H
+│   │   ├── OBJECT.H
+│   │   ├── PRIORTYQ.H
+│   │   ├── QUEUE.H
+│   │   ├── QUEUES.H
+│   │   ├── RESOURCE.H
+│   │   ├── SET.H
+│   │   ├── SETS.H
+│   │   ├── SHDDEL.H
+│   │   ├── SORTABLE.H
+│   │   ├── SORTARRY.H
+│   │   ├── STACK.H
+│   │   ├── STACKS.H
+│   │   ├── STDTEMPL.H
+│   │   ├── STRNG.H
+│   │   ├── TIMER.H
+│   │   └── VECTIMP.H
+│   ├── LIB
+│   │   ├── BIDSDBL.LIB
+│   │   ├── BIDSDBS.LIB
+│   │   ├── BIDSDLL.LIB
+│   │   ├── BIDSL.LIB
+│   │   ├── BIDSS.LIB
+│   │   ├── TCLASDBL.LIB
+│   │   ├── TCLASDBS.LIB
+│   │   ├── TCLASDLL.LIB
+│   │   ├── TCLASSL.LIB
+│   │   └── TCLASSS.LIB
+│   ├── MAKEFILE
+│   └── SOURCE
+│       ├── ABSTARRY.CPP
+│       ├── ARRAY.CPP
+│       ├── ASSOC.CPP
+│       ├── BABSTARY.CPP
+│       ├── BDICT.CPP
+│       ├── BIDS.DEF
+│       ├── BSORTARY.CPP
+│       ├── BTREE.CPP
+│       ├── BTREEINN.CPP
+│       ├── BTREELFN.CPP
+│       ├── CLASMAIN.CPP
+│       ├── COLLECT.CPP
+│       ├── CONTAIN.CPP
+│       ├── DBLLIST.CPP
+│       ├── DEQUE.CPP
+│       ├── DICT.CPP
+│       ├── HASHTBL.CPP
+│       ├── LDATE.CPP
+│       ├── LIST.CPP
+│       ├── LTIME.CPP
+│       ├── MEMMGR.CPP
+│       ├── OBJECT.CPP
+│       ├── SORTARRY.CPP
+│       ├── STACK.CPP
+│       ├── STRNG.CPP
+│       ├── TCLASS.DEF
+│       ├── TIMER.CPP
+│       └── TMPLINST.CPP
+├── CRTL
+│   ├── ALL.BAT
+│   ├── BUILD.BAT
+│   ├── CLIB
+│   │   ├── ABS.CAS
+│   │   ├── ABSREAD.CAS
+│   │   ├── ACCESS.C
+│   │   ├── ALLOCA.ASM
+│   │   ├── ALLOCMEM.CAS
+│   │   ├── ASSERT.C
+│   │   ├── ATEXIT.C
+│   │   ├── ATOL.CAS
+│   │   ├── BCD1.C
+│   │   ├── BCD2.CPP
+│   │   ├── BDOS.CAS
+│   │   ├── BDOSPTR.CAS
+│   │   ├── BIOSCOM.CAS
+│   │   ├── BIOSDISK.CAS
+│   │   ├── BIOSEQU.CAS
+│   │   ├── BIOSKEY.CAS
+│   │   ├── BIOSPRIN.CAS
+│   │   ├── BIOS_COM.CAS
+│   │   ├── BIOS_DSK.CAS
+│   │   ├── BIOS_EQU.CAS
+│   │   ├── BIOS_KEY.CAS
+│   │   ├── BIOS_PRN.CAS
+│   │   ├── BRK.CAS
+│   │   ├── BSEARCH.C
+│   │   ├── CALLOC.C
+│   │   ├── CASTMPTR.CPP
+│   │   ├── CGETS.C
+│   │   ├── CHAININT.ASM
+│   │   ├── CHDIR.CAS
+│   │   ├── CHDRIVE.C
+│   │   ├── CHMOD.C
+│   │   ├── CHMODA.CAS
+│   │   ├── CHSIZE.CAS
+│   │   ├── CLEARERR.C
+│   │   ├── CLIB.MAK
+│   │   ├── CLIBOBJ.MAK
+│   │   ├── CLOCK.CAS
+│   │   ├── CLOSE.C
+│   │   ├── CLOSEA.CAS
+│   │   ├── CLOSEALL.C
+│   │   ├── CLREOL.C
+│   │   ├── CLRSCR.C
+│   │   ├── COLOR.C
+│   │   ├── CONSTREA.CPP
+│   │   ├── CORELEFT.CAS
+│   │   ├── COUNTRY.CAS
+│   │   ├── CPLX1.CPP
+│   │   ├── CPLX2.CPP
+│   │   ├── CPRINTF.C
+│   │   ├── CPUTS.C
+│   │   ├── CREAT.CAS
+│   │   ├── CREATA.CAS
+│   │   ├── CRTINIT.CAS
+│   │   ├── CSCANF.C
+│   │   ├── CTIME.C
+│   │   ├── CTRLBRK.C
+│   │   ├── CTYPE.C
+│   │   ├── CURSOR.C
+│   │   ├── CVTFAK.ASM
+│   │   ├── DDVT.ASM
+│   │   ├── DEL.CPP
+│   │   ├── DELAY.CAS
+│   │   ├── DELF.CPP
+│   │   ├── DIRECT.C
+│   │   ├── DIVT.CAS
+│   │   ├── DOSALLOC.C
+│   │   ├── DOSCLOSE.C
+│   │   ├── DOSCMD.C
+│   │   ├── DOSCMMIT.C
+│   │   ├── DOSCREAT.CAS
+│   │   ├── DOSDFREE.C
+│   │   ├── DOSENV.C
+│   │   ├── DOSEXT.CAS
+│   │   ├── DOSFATTR.CAS
+│   │   ├── DOSFIND.CAS
+│   │   ├── DOSFREE.C
+│   │   ├── DOSGDATE.C
+│   │   ├── DOSGDRIV.C
+│   │   ├── DOSGFTIM.C
+│   │   ├── DOSKEEP.C
+│   │   ├── DOSLOCK.C
+│   │   ├── DOSOPEN.CAS
+│   │   ├── DOSREAD.CAS
+│   │   ├── DOSSDATE.C
+│   │   ├── DOSSEEK.C
+│   │   ├── DOSSETBL.C
+│   │   ├── DOSSFTIM.C
+│   │   ├── DOSTIMU.CAS
+│   │   ├── DOSVECT.CAS
+│   │   ├── DOSWRITE.CAS
+│   │   ├── DUP2.CAS
+│   │   ├── EOF.CAS
+│   │   ├── ERRORMSG.C
+│   │   ├── EXEC.ASM
+│   │   ├── EXECL.C
+│   │   ├── EXECLE.C
+│   │   ├── EXECLP.C
+│   │   ├── EXECLPE.C
+│   │   ├── EXECV.C
+│   │   ├── EXECVE.C
+│   │   ├── EXECVP.C
+│   │   ├── EXECVPE.C
+│   │   ├── EXIT.C
+│   │   ├── FARFUNCS.MAK
+│   │   ├── FARHEAP.ASM
+│   │   ├── FBRK.C
+│   │   ├── FCALLOC.CAS
+│   │   ├── FCLOSE.C
+│   │   ├── FCORELFT.C
+│   │   ├── FDDVT.ASM
+│   │   ├── FDOPEN.C
+│   │   ├── FFLUSH.C
+│   │   ├── FFMALLOC.C
+│   │   ├── FGETPOS.C
+│   │   ├── FGETS.C
+│   │   ├── FHEAPCHK.ASM
+│   │   ├── FILES.C
+│   │   ├── FILES2.C
+│   │   ├── FINDFIRS.CAS
+│   │   ├── FLENGTH.CAS
+│   │   ├── FLUSHALL.C
+│   │   ├── FMODE.C
+│   │   ├── FNMERGE.C
+│   │   ├── FNSPLIT.C
+│   │   ├── FOPEN.C
+│   │   ├── FPRINTF.C
+│   │   ├── FPSTKLEN.C
+│   │   ├── FPUTS.C
+│   │   ├── FREAD.C
+│   │   ├── FREEMEM.CAS
+│   │   ├── FREOPEN.C
+│   │   ├── FSCANF.C
+│   │   ├── FSEEK.C
+│   │   ├── FSETPOS.C
+│   │   ├── FSTAT.CAS
+│   │   ├── FTIME.C
+│   │   ├── FULLPATH.C
+│   │   ├── FWRITE.C
+│   │   ├── F_LXMUL.ASM
+│   │   ├── F_PCMP.ASM
+│   │   ├── F_SCOPY.ASM
+│   │   ├── GETC.CAS
+│   │   ├── GETCBRK.C
+│   │   ├── GETCH.CAS
+│   │   ├── GETCURDI.CAS
+│   │   ├── GETCWD.C
+│   │   ├── GETDATE.C
+│   │   ├── GETDCWD.CAS
+│   │   ├── GETDISK.C
+│   │   ├── GETDTA.CAS
+│   │   ├── GETENV.CAS
+│   │   ├── GETFAT.CAS
+│   │   ├── GETFTIME.CAS
+│   │   ├── GETPASS.C
+│   │   ├── GETPSP.C
+│   │   ├── GETS.C
+│   │   ├── GETSWIT.C
+│   │   ├── GETVECT.CAS
+│   │   ├── GETVERF.CAS
+│   │   ├── GETW.C
+│   │   ├── GEXIT.C
+│   │   ├── GFREEMEM.C
+│   │   ├── GGETMEM.C
+│   │   ├── GOTOXY.C
+│   │   ├── GPTEXT.C
+│   │   ├── GREGISTR.C
+│   │   ├── HARD.C
+│   │   ├── HARDERR.CAS
+│   │   ├── HEAPLEN.C
+│   │   ├── H_LDIV.ASM
+│   │   ├── H_LLSH.ASM
+│   │   ├── H_LRSH.ASM
+│   │   ├── H_LURSH.ASM
+│   │   ├── H_PADA.ASM
+│   │   ├── H_PADD.ASM
+│   │   ├── H_PINA.ASM
+│   │   ├── H_PSBH.ASM
+│   │   ├── H_PSBP.ASM
+│   │   ├── H_SPUSH.ASM
+│   │   ├── INPORT.CAS
+│   │   ├── INSLINE.C
+│   │   ├── INT86.CAS
+│   │   ├── INTDOS.CAS
+│   │   ├── INTR.CAS
+│   │   ├── IOCTL.CAS
+│   │   ├── IOERROR.CAS
+│   │   ├── IS.CAS
+│   │   ├── ISATTY.CAS
+│   │   ├── KBHIT.CAS
+│   │   ├── KEEP.C
+│   │   ├── LABS.C
+│   │   ├── LDIVT.CAS
+│   │   ├── LOADPROG.C
+│   │   ├── LOCALE.C
+│   │   ├── LOCK.CAS
+│   │   ├── LOCKING.C
+│   │   ├── LONGTOA.CAS
+│   │   ├── LROTL.CAS
+│   │   ├── LROTR.CAS
+│   │   ├── LSEARCH.C
+│   │   ├── LSEEK.CAS
+│   │   ├── LTOA1.C
+│   │   ├── MAKEPATH.C
+│   │   ├── MEMCCPY.CAS
+│   │   ├── MEMCHR.CAS
+│   │   ├── MEMCMP.CAS
+│   │   ├── MEMCPY.CAS
+│   │   ├── MEMICMP.C
+│   │   ├── MEMSET.CAS
+│   │   ├── MKDIR.CAS
+│   │   ├── MKNAME.C
+│   │   ├── MKTEMP.C
+│   │   ├── MOVEDATA.CAS
+│   │   ├── MOVETEXT.C
+│   │   ├── MOVMEM.CAS
+│   │   ├── MULTBYTE.C
+│   │   ├── NEARHEAP.ASM
+│   │   ├── NEW.CPP
+│   │   ├── NEWF.CPP
+│   │   ├── NHEAPCHK.ASM
+│   │   ├── N_LXMUL.ASM
+│   │   ├── N_PCMP.ASM
+│   │   ├── N_SCOPY.ASM
+│   │   ├── OPEN.CAS
+│   │   ├── OPENA.CAS
+│   │   ├── OUTPORT.CAS
+│   │   ├── PARSFNM.CAS
+│   │   ├── PEEK.C
+│   │   ├── PERROR.C
+│   │   ├── POKE.C
+│   │   ├── PRINTF.C
+│   │   ├── PUREERR.CPP
+│   │   ├── PUTC.C
+│   │   ├── PUTCH.C
+│   │   ├── PUTENV.CAS
+│   │   ├── PUTS.C
+│   │   ├── PUTW.C
+│   │   ├── QSORT.CAS
+│   │   ├── RAND.C
+│   │   ├── RANDBLK.CAS
+│   │   ├── READ.CAS
+│   │   ├── READA.CAS
+│   │   ├── READU.ASM
+│   │   ├── REALCVT.ASM
+│   │   ├── REMOVE.CAS
+│   │   ├── RENAME.CAS
+│   │   ├── REWIND.C
+│   │   ├── RMDIR.CAS
+│   │   ├── RMTMP.C
+│   │   ├── ROTL.CAS
+│   │   ├── ROTR.CAS
+│   │   ├── SCANF.C
+│   │   ├── SCANNER.CAS
+│   │   ├── SCANTOD.ASM
+│   │   ├── SCANTOL.CAS
+│   │   ├── SCREEN.C
+│   │   ├── SCROLL.C
+│   │   ├── SEARCHP.CAS
+│   │   ├── SEGREAD.CAS
+│   │   ├── SETARGV.ASM
+│   │   ├── SETBLOCK.CAS
+│   │   ├── SETBUF.C
+│   │   ├── SETDATE.CAS
+│   │   ├── SETDTA.CAS
+│   │   ├── SETENVP.ASM
+│   │   ├── SETFTIME.CAS
+│   │   ├── SETJMP.CAS
+│   │   ├── SETMODE.C
+│   │   ├── SETUPIO.C
+│   │   ├── SETVBUF.C
+│   │   ├── SIGDATA.C
+│   │   ├── SIGNAL.C
+│   │   ├── SLEEP.C
+│   │   ├── SOPEN.C
+│   │   ├── SOUND.CAS
+│   │   ├── SPAWN.ASM
+│   │   ├── SPAWNL.C
+│   │   ├── SPAWNLE.C
+│   │   ├── SPAWNLP.C
+│   │   ├── SPAWNLPE.C
+│   │   ├── SPAWNV.C
+│   │   ├── SPAWNVE.C
+│   │   ├── SPAWNVP.C
+│   │   ├── SPAWNVPE.C
+│   │   ├── SPLITPTH.C
+│   │   ├── SPRINTF.C
+│   │   ├── SRCHPATH.C
+│   │   ├── SSCANF.C
+│   │   ├── STACK.ASM
+│   │   ├── STAT.CAS
+│   │   ├── STIME.C
+│   │   ├── STKAVAIL.ASM
+│   │   ├── STKLEN.C
+│   │   ├── STPCPY.C
+│   │   ├── STRCAT.CAS
+│   │   ├── STRCHR.CAS
+│   │   ├── STRCMP.CAS
+│   │   ├── STRCOLL.C
+│   │   ├── STRCPY.CAS
+│   │   ├── STRCSPN.C
+│   │   ├── STRDATE.C
+│   │   ├── STRDUP.C
+│   │   ├── STRERROR.C
+│   │   ├── STRICMP.CAS
+│   │   ├── STRLEN.CAS
+│   │   ├── STRLWR.CAS
+│   │   ├── STRNCAT.C
+│   │   ├── STRNCMP.CAS
+│   │   ├── STRNCPY.CAS
+│   │   ├── STRNICMP.CAS
+│   │   ├── STRNSET.C
+│   │   ├── STRPBRK.C
+│   │   ├── STRRCHR.C
+│   │   ├── STRREV.CAS
+│   │   ├── STRSET.C
+│   │   ├── STRSPN.C
+│   │   ├── STRSTR.CAS
+│   │   ├── STRTOK.C
+│   │   ├── STRTOL.C
+│   │   ├── STRTOUL.C
+│   │   ├── STRUPR.CAS
+│   │   ├── STRXFRM.C
+│   │   ├── SWAB.CAS
+│   │   ├── SYSTEM.C
+│   │   ├── TASM.CFG
+│   │   ├── TELL.C
+│   │   ├── TEMPNAM.C
+│   │   ├── TEXTMODE.C
+│   │   ├── TIMECVT.C
+│   │   ├── TMPFILE.C
+│   │   ├── TMPNAM.C
+│   │   ├── TOLOWER.C
+│   │   ├── TOUPPER.C
+│   │   ├── TURBOC.CFG
+│   │   ├── TZSET.CAS
+│   │   ├── UMASK.C
+│   │   ├── UNGETC.CAS
+│   │   ├── UNLINK.CAS
+│   │   ├── UTIME.C
+│   │   ├── VAPP.CPP
+│   │   ├── VAPPV.CPP
+│   │   ├── VDEL.CPP
+│   │   ├── VDELF.CPP
+│   │   ├── VDELN.CPP
+│   │   ├── VFPRINTF.C
+│   │   ├── VFSCANF.C
+│   │   ├── VIDINFO.C
+│   │   ├── VNEW.CPP
+│   │   ├── VNEWF.CPP
+│   │   ├── VNEWN.CPP
+│   │   ├── VNEWV.CPP
+│   │   ├── VNEWVF.CPP
+│   │   ├── VNEWVN.CPP
+│   │   ├── VPRINTER.CAS
+│   │   ├── VPRINTF.C
+│   │   ├── VRAM.CAS
+│   │   ├── VSCANF.C
+│   │   ├── WHEREXY.C
+│   │   ├── WILD.ASM
+│   │   ├── WILDARGS.ASM
+│   │   ├── WINDOW.C
+│   │   ├── WRITE.C
+│   │   ├── WRITEA.CAS
+│   │   ├── WRITEU.ASM
+│   │   ├── WSCROLL.C
+│   │   ├── XCLOSE.C
+│   │   ├── XFCLOSE.C
+│   │   ├── XFFLUSH.C
+│   │   ├── ZAPCTLZ.CAS
+│   │   ├── _FSOPEN.C
+│   │   └── _STPCPY.C
+│   ├── CRTL.DOC
+│   ├── EMU
+│   │   ├── E87TRANS.ASM
+│   │   ├── EMURULES.ASI
+│   │   ├── EMUVARS.ASI
+│   │   ├── EQUATES.ASI
+│   │   └── FPINIT.ASM
+│   ├── IOSTREAM
+│   │   ├── FSATTCH.CPP
+│   │   ├── FSBATTCH.CPP
+│   │   ├── FSBCLOSE.CPP
+│   │   ├── FSBCTR1.CPP
+│   │   ├── FSBCTR2.CPP
+│   │   ├── FSBCTR3.CPP
+│   │   ├── FSBDTR.CPP
+│   │   ├── FSBOFLOW.CPP
+│   │   ├── FSBOPEN.CPP
+│   │   ├── FSBSBUF.CPP
+│   │   ├── FSBSKOFF.CPP
+│   │   ├── FSBSYNC.CPP
+│   │   ├── FSBUFLOW.CPP
+│   │   ├── FSCLOSE.CPP
+│   │   ├── FSCTR1.CPP
+│   │   ├── FSCTR2.CPP
+│   │   ├── FSCTR3.CPP
+│   │   ├── FSCTR4.CPP
+│   │   ├── FSDTR.CPP
+│   │   ├── FSOPEN.CPP
+│   │   ├── FSSBUF.CPP
+│   │   ├── IFSCTR1.CPP
+│   │   ├── IFSCTR2.CPP
+│   │   ├── IFSCTR3.CPP
+│   │   ├── IFSCTR4.CPP
+│   │   ├── IFSDTR.CPP
+│   │   ├── IOFSCTR1.CPP
+│   │   ├── IOFSCTR2.CPP
+│   │   ├── IOFSCTR3.CPP
+│   │   ├── IOFSCTR4.CPP
+│   │   ├── IOFSDTR.CPP
+│   │   ├── IOSRCTR1.CPP
+│   │   ├── IOSRCTR2.CPP
+│   │   ├── IOSRDTR.CPP
+│   │   ├── IOSTASN1.CPP
+│   │   ├── IOSTASN2.CPP
+│   │   ├── IOSTCTR1.CPP
+│   │   ├── IOSTCTR2.CPP
+│   │   ├── IOSTCTR3.CPP
+│   │   ├── IOSTDTR1.CPP
+│   │   ├── IOSTDTR2.CPP
+│   │   ├── IOSTOBJ.MAK
+│   │   ├── IOSTREAM.MAK
+│   │   ├── IOSTSTD.CPP
+│   │   ├── ISRCTR1.CPP
+│   │   ├── ISRCTR2.CPP
+│   │   ├── ISRDTR.CPP
+│   │   ├── ISTASN1.CPP
+│   │   ├── ISTASN2.CPP
+│   │   ├── ISTCTR1.CPP
+│   │   ├── ISTCTR2.CPP
+│   │   ├── ISTCTR3.CPP
+│   │   ├── ISTCTR4.CPP
+│   │   ├── ISTDGET.CPP
+│   │   ├── ISTDIPFX.CPP
+│   │   ├── ISTDTR1.CPP
+│   │   ├── ISTDTR2.CPP
+│   │   ├── ISTEATWH.CPP
+│   │   ├── ISTEBUF.CPP
+│   │   ├── ISTECHP.CPP
+│   │   ├── ISTEDBL.CPP
+│   │   ├── ISTEFLT.CPP
+│   │   ├── ISTEINT.CPP
+│   │   ├── ISTELDBL.CPP
+│   │   ├── ISTELNG.CPP
+│   │   ├── ISTESCHR.CPP
+│   │   ├── ISTESH.CPP
+│   │   ├── ISTEUCHR.CPP
+│   │   ├── ISTEUINT.CPP
+│   │   ├── ISTEULNG.CPP
+│   │   ├── ISTEUSH.CPP
+│   │   ├── ISTGBUF.CPP
+│   │   ├── ISTGET.CPP
+│   │   ├── ISTGLINE.CPP
+│   │   ├── ISTGSCHR.CPP
+│   │   ├── ISTGSTR.CPP
+│   │   ├── ISTGUCHR.CPP
+│   │   ├── ISTIGN.CPP
+│   │   ├── ISTMANIP.CPP
+│   │   ├── ISTPBACK.CPP
+│   │   ├── ISTREAD.CPP
+│   │   ├── ISTSKOFF.CPP
+│   │   ├── ISTSKPOS.CPP
+│   │   ├── ISTTELLG.CPP
+│   │   ├── ISTWS.CPP
+│   │   ├── ISTX.CPP
+│   │   ├── MNRSTFLG.CPP
+│   │   ├── MNSBASE.CPP
+│   │   ├── MNSETFLG.CPP
+│   │   ├── MNSETW.CPP
+│   │   ├── MNSFILL.CPP
+│   │   ├── MNSPREC.CPP
+│   │   ├── OFSCTR1.CPP
+│   │   ├── OFSCTR2.CPP
+│   │   ├── OFSCTR3.CPP
+│   │   ├── OFSCTR4.CPP
+│   │   ├── OFSDTR.CPP
+│   │   ├── OSRCTR1.CPP
+│   │   ├── OSRCTR2.CPP
+│   │   ├── OSRDTR.CPP
+│   │   ├── OSTASN1.CPP
+│   │   ├── OSTASN2.CPP
+│   │   ├── OSTCTR1.CPP
+│   │   ├── OSTCTR2.CPP
+│   │   ├── OSTCTR3.CPP
+│   │   ├── OSTDTR1.CPP
+│   │   ├── OSTDTR2.CPP
+│   │   ├── OSTENDL.CPP
+│   │   ├── OSTENDS.CPP
+│   │   ├── OSTFLOAT.CPP
+│   │   ├── OSTFLUSH.CPP
+│   │   ├── OSTIBUF.CPP
+│   │   ├── OSTINT.CPP
+│   │   ├── OSTISCHR.CPP
+│   │   ├── OSTMANIP.CPP
+│   │   ├── OSTMFLSH.CPP
+│   │   ├── OSTOPFX.CPP
+│   │   ├── OSTOSFX.CPP
+│   │   ├── OSTOUTST.CPP
+│   │   ├── OSTPTR.CPP
+│   │   ├── OSTSKOFF.CPP
+│   │   ├── OSTSKPOS.CPP
+│   │   ├── OSTTELLP.CPP
+│   │   ├── OSTWRITE.CPP
+│   │   ├── OSTX.CPP
+│   │   ├── SDBCTR.CPP
+│   │   ├── SDBDTR.CPP
+│   │   ├── SDBOFLOW.CPP
+│   │   ├── SDBPBFL.CPP
+│   │   ├── SDBSKOFF.CPP
+│   │   ├── SDBSYNC.CPP
+│   │   ├── SDBUFLOW.CPP
+│   │   ├── SDCTR.CPP
+│   │   ├── SDDTR.CPP
+│   │   ├── SRBCTR1.CPP
+│   │   ├── SRBCTR2.CPP
+│   │   ├── SRBCTR3.CPP
+│   │   ├── SRBCTR4.CPP
+│   │   ├── SRBCTR5.CPP
+│   │   ├── SRBDALC.CPP
+│   │   ├── SRBDTR.CPP
+│   │   ├── SRBFREEZ.CPP
+│   │   ├── SRBINIT.CPP
+│   │   ├── SRBOFLOW.CPP
+│   │   ├── SRBSBUF.CPP
+│   │   ├── SRBSKOFF.CPP
+│   │   ├── SRBSTR.CPP
+│   │   ├── SRBSYNC.CPP
+│   │   ├── SRBUFLOW.CPP
+│   │   ├── SRCTR1.CPP
+│   │   ├── SRCTR2.CPP
+│   │   ├── SRDTR.CPP
+│   │   ├── STBALC.CPP
+│   │   ├── STBCTR1.CPP
+│   │   ├── STBCTR2.CPP
+│   │   ├── STBDBP.CPP
+│   │   ├── STBDNEXT.CPP
+│   │   ├── STBDSGTN.CPP
+│   │   ├── STBDSPTN.CPP
+│   │   ├── STBDTR.CPP
+│   │   ├── STBOFLOW.CPP
+│   │   ├── STBPBFL.CPP
+│   │   ├── STBSBUF.CPP
+│   │   ├── STBSETB.CPP
+│   │   ├── STBSETG.CPP
+│   │   ├── STBSETP.CPP
+│   │   ├── STBSGETN.CPP
+│   │   ├── STBSKOFF.CPP
+│   │   ├── STBSKPOS.CPP
+│   │   ├── STBSPUTN.CPP
+│   │   ├── STBSTB1.CPP
+│   │   ├── STBSYNC.CPP
+│   │   ├── STBTALC.CPP
+│   │   ├── STBUFLOW.CPP
+│   │   ├── STCLEAR.CPP
+│   │   ├── STCTR1.CPP
+│   │   ├── STCTR2.CPP
+│   │   ├── STDEC.CPP
+│   │   ├── STDTR.CPP
+│   │   ├── STFLAGS.CPP
+│   │   ├── STHEX.CPP
+│   │   ├── STINIT.CPP
+│   │   ├── STIWORD.CPP
+│   │   ├── STOCT.CPP
+│   │   ├── STPWORD.CPP
+│   │   ├── STSETF1.CPP
+│   │   ├── STSETF2.CPP
+│   │   ├── STSETST.CPP
+│   │   ├── STSKIP.CPP
+│   │   ├── STSYNC.CPP
+│   │   ├── STTIE.CPP
+│   │   ├── STUNSET.CPP
+│   │   ├── STUSIZE.CPP
+│   │   ├── STXALC.CPP
+│   │   └── TCDLL.CFG
+│   ├── MAKEDIRS.BAT
+│   ├── MAKEFILE
+│   ├── MATH
+│   │   ├── ACOSASIN.CAS
+│   │   ├── ACOSSINL.CAS
+│   │   ├── ATAN.CAS
+│   │   ├── ATAN2.CAS
+│   │   ├── ATAN2L.CAS
+│   │   ├── ATANL.CAS
+│   │   ├── ATOF.C
+│   │   ├── ATOLD.C
+│   │   ├── CEIL.CAS
+│   │   ├── CEILL.CAS
+│   │   ├── CLEAR87.CAS
+│   │   ├── COS.CAS
+│   │   ├── COSH.CAS
+│   │   ├── COSHL.CAS
+│   │   ├── COSL.CAS
+│   │   ├── CTRL87.CAS
+│   │   ├── DIFFTIME.C
+│   │   ├── EFCVT.C
+│   │   ├── EMUVARS.ASM
+│   │   ├── EMUVARS.H
+│   │   ├── EXP.CAS
+│   │   ├── EXPL.CAS
+│   │   ├── EXPLD.CAS
+│   │   ├── FABS.CAS
+│   │   ├── FABSL.CAS
+│   │   ├── FBSTP.ASM
+│   │   ├── FLAGS87.ASM
+│   │   ├── FLOOR.CAS
+│   │   ├── FLOORL.CAS
+│   │   ├── FMOD.CAS
+│   │   ├── FMODL.CAS
+│   │   ├── FPERR.C
+│   │   ├── FPRESET.C
+│   │   ├── FREXP.CAS
+│   │   ├── FREXPL.CAS
+│   │   ├── FTOL.ASM
+│   │   ├── GCVT.C
+│   │   ├── HUGEVAL.C
+│   │   ├── HYPOT.CAS
+│   │   ├── HYPOTL.CAS
+│   │   ├── LDEXP.CAS
+│   │   ├── LDEXPL.CAS
+│   │   ├── LDTRUNC.CAS
+│   │   ├── LOG.CAS
+│   │   ├── LOG10.CAS
+│   │   ├── LOG10L.CAS
+│   │   ├── LOGL.CAS
+│   │   ├── MATH.MAK
+│   │   ├── MATHERR.C
+│   │   ├── MATHERRL.C
+│   │   ├── MATHOBJ.MAK
+│   │   ├── MATHWHY.C
+│   │   ├── MODF.CAS
+│   │   ├── MODFL.CAS
+│   │   ├── POLY.CAS
+│   │   ├── POLYL.CAS
+│   │   ├── POW.CAS
+│   │   ├── POW10D.C
+│   │   ├── POW10L.C
+│   │   ├── POWL.CAS
+│   │   ├── REALCVT.CAS
+│   │   ├── ROUND.CAS
+│   │   ├── SCANTOD.CAS
+│   │   ├── SIN.CAS
+│   │   ├── SINH.CAS
+│   │   ├── SINHL.CAS
+│   │   ├── SINL.CAS
+│   │   ├── SQRT.CAS
+│   │   ├── SQRTL.CAS
+│   │   ├── STAT87.CAS
+│   │   ├── STRTOD.C
+│   │   ├── TAN.CAS
+│   │   ├── TANH.CAS
+│   │   ├── TANHL.CAS
+│   │   ├── TANL.CAS
+│   │   ├── WINTRANS.ASM
+│   │   ├── XCVT.CAS
+│   │   ├── _MATHERL.C
+│   │   ├── _MATHERR.C
+│   │   └── _POW10.CAS
+│   ├── RETURN.TXT
+│   ├── RTLINC
+│   │   ├── ASMRULES.H
+│   │   ├── FAKEIEEE.H
+│   │   ├── FILESYS.H
+│   │   ├── INSTDATA.H
+│   │   ├── IOCONFIG.H
+│   │   ├── MATHERR.ASI
+│   │   ├── RTLDATA.H
+│   │   ├── RULES.ASI
+│   │   ├── RULES.H
+│   │   ├── SUBALLOC.H
+│   │   ├── USER.H
+│   │   ├── _DIR.H
+│   │   ├── _FARFUNC.H
+│   │   ├── _FHEAP.H
+│   │   ├── _GRAPH.H
+│   │   ├── _HEAP.H
+│   │   ├── _HEAP.INC
+│   │   ├── _IO.H
+│   │   ├── _MATH.H
+│   │   ├── _PRINTF.H
+│   │   ├── _PROCESS.H
+│   │   ├── _SCANF.H
+│   │   ├── _STDIO.H
+│   │   ├── _VECTOR.H
+│   │   ├── _VIDEO.H
+│   │   └── _WIN.H
+│   ├── RULES.MAK
+│   ├── VARS.BAT
+│   └── WINLIB
+│       ├── ABORT.C
+│       ├── ASMMEM.ASM
+│       ├── ASSERT.C
+│       ├── BCRTL.DEF
+│       ├── EASYWIN.CPP
+│       ├── ERREXIT.C
+│       ├── EWCONIO.C
+│       ├── EWINPROC.CPP
+│       ├── FARHEAP.CPP
+│       ├── FHEAP.CPP
+│       ├── FPERR.ASM
+│       ├── FPINIT.ASM
+│       ├── GDI.DEF
+│       ├── HEAP.CPP
+│       ├── H_CHKSTK.ASM
+│       ├── IMPORT.MAK
+│       ├── INDEP
+│       │   ├── NOTIMP.CPP
+│       │   ├── NOTIMP.EXE
+│       │   └── NOTIMP.LST
+│       ├── INDEP.MAK
+│       ├── INSTDATA.CPP
+│       ├── INT86.CAS
+│       ├── INTDOS.CAS
+│       ├── INTR.CAS
+│       ├── IOCTL.CAS
+│       ├── KERNEL.DEF
+│       ├── KEYBOARD.DEF
+│       ├── NECP.C
+│       ├── PROFC.ASM
+│       ├── PTABLE.ASM
+│       ├── RTLDATA.CPP
+│       ├── RTLMAIN.C
+│       ├── SETARGV.C
+│       ├── SETARGV0.C
+│       ├── SETENV.C
+│       ├── SETENVRN.C
+│       ├── SETJMP.ASM
+│       ├── SIGNAL.C
+│       ├── SOUND.DEF
+│       ├── SUBALLOC.CPP
+│       ├── TASM.CFG
+│       ├── TCDLL.CFG
+│       ├── TURBOC.CFG
+│       ├── USER.DEF
+│       ├── WCFNCPTR.CPP
+│       ├── WEP.C
+│       ├── WIN31.DEF
+│       ├── WIN87EM.DEF
+│       ├── WINDLL.MAK
+│       ├── WINLIB.MAK
+│       ├── WINMAIN.C
+│       ├── WINMEM.ASM
+│       ├── WINOBJ.MAK
+│       ├── WREALCVT.ASM
+│       └── WSCANTOD.ASM
+├── DOC
+│   ├── BRIEF.TEM
+│   ├── CMACROS.TEM
+│   ├── DBGBOARD.TD
+│   ├── DEFAULTS.TEM
+│   ├── DOSEDIT.TEM
+│   ├── EPSILON.TEM
+│   ├── H2ASH.TSM
+│   ├── HDWDEBUG.TD
+│   ├── HELPME!.DOC
+│   ├── HELPME!.PRF
+│   ├── HELPME!.TD
+│   ├── HELPME!.TSM
+│   ├── MANUAL.BCA
+│   ├── MANUAL.PRF
+│   ├── MANUAL.TD
+│   ├── MANUAL.TSM
+│   ├── SAMPLES.BCA
+│   ├── TCREF.TSM
+│   ├── UTIL.DOC
+│   ├── UTILS.PRF
+│   ├── UTILS.TD
+│   ├── WIN31.DOC
+│   ├── WINMEM.DOC
+│   ├── WINPEN.DOC
+│   └── WINSPCTR.DOC
+├── EXAMPLES
+│   ├── BARCHART.C
+│   ├── DEF2.CPP
+│   ├── DEF2.H
+│   ├── FILTER.H
+│   ├── GETOPT.C
+│   ├── GREP2MSG.C
+│   ├── HELLO.C
+│   ├── IMPL2MSG.C
+│   ├── LIST2.CPP
+│   ├── LIST2.H
+│   ├── MYFUNCS.CPP
+│   ├── MYFUNCS.H
+│   ├── MYMAIN.CPP
+│   ├── RC2MSG.C
+│   ├── TASM
+│   │   ├── ASMPSCL.ASM
+│   │   ├── AVERAGE.ASM
+│   │   ├── BIOS.INC
+│   │   ├── CALCAVG.CPP
+│   │   ├── CALLCT.CPP
+│   │   ├── CALLPROC.ASM
+│   │   ├── CASMLINK.ASM
+│   │   ├── COMPROG.ASM
+│   │   ├── CONCISE.ASM
+│   │   ├── COUNT.ASM
+│   │   ├── COUNTADD.ASM
+│   │   ├── COUNTADD.CPP
+│   │   ├── COUNTLG.ASM
+│   │   ├── CSPEC.ASM
+│   │   ├── DBLCOLON.ASM
+│   │   ├── DLLPROG.ASM
+│   │   ├── DOS.INC
+│   │   ├── DOTOTAL.ASM
+│   │   ├── ENVMOD.ASM
+│   │   ├── ENVSTR.PAS
+│   │   ├── EXCHMOD.ASM
+│   │   ├── EXEPROG.ASM
+│   │   ├── FILT
+│   │   │   ├── CONVERT1.INC
+│   │   │   ├── CONVERT2.INC
+│   │   │   ├── DEMO2.BAT
+│   │   │   ├── DEMO3.BAT
+│   │   │   ├── FILT.ASM
+│   │   │   ├── FILT.DOC
+│   │   │   ├── FILT.MAK
+│   │   │   ├── FILT.RSP
+│   │   │   ├── GLOBALS.INC
+│   │   │   ├── OBYTEHI.ASM
+│   │   │   ├── OBYTELOW.ASM
+│   │   │   ├── OBYTENRM.ASM
+│   │   │   ├── OCMDNUM.ASM
+│   │   │   ├── OERREXIT.ASM
+│   │   │   ├── OFCREATE.ASM
+│   │   │   ├── OFILALOC.ASM
+│   │   │   ├── OFILCLOS.ASM
+│   │   │   ├── OFILEFIL.ASM
+│   │   │   ├── OFILFREE.ASM
+│   │   │   ├── OFILREAD.ASM
+│   │   │   ├── OFILWRIT.ASM
+│   │   │   ├── OFLFLUSH.ASM
+│   │   │   ├── OFOPENR.ASM
+│   │   │   ├── OFOPENW.ASM
+│   │   │   ├── OLOCASE.ASM
+│   │   │   ├── OPARSCMD.ASM
+│   │   │   ├── OPRCBYTE.ASM
+│   │   │   ├── OPROCDOC.ASM
+│   │   │   ├── OPROCLIN.ASM
+│   │   │   ├── OSETOPTN.ASM
+│   │   │   ├── OSPACES.ASM
+│   │   │   ├── OSTORSPC.ASM
+│   │   │   ├── OSTORTAB.ASM
+│   │   │   ├── OTABCLR.ASM
+│   │   │   ├── OTABNEXT.ASM
+│   │   │   ├── OTABRSET.ASM
+│   │   │   ├── OTABSET.ASM
+│   │   │   ├── OUPCASE.ASM
+│   │   │   ├── SHOW87.ASM
+│   │   │   ├── SHOW87.DOC
+│   │   │   ├── VIDEO1.INC
+│   │   │   └── VIDEO2.INC
+│   │   ├── FINDCHAR.ASM
+│   │   ├── HEAP
+│   │   │   ├── DEMO_MEM.BAT
+│   │   │   ├── DISPLAY.ASM
+│   │   │   ├── DISPLAY.INC
+│   │   │   ├── MEM.ASM
+│   │   │   ├── MEM.INC
+│   │   │   ├── MEMTEST.ASM
+│   │   │   ├── MEMTEST.MAK
+│   │   │   └── VMTUTIL.INC
+│   │   ├── HELLO1.ASM
+│   │   ├── HELLO2.ASM
+│   │   ├── HELLO3.ASM
+│   │   ├── HEX.ASM
+│   │   ├── HEX.PAS
+│   │   ├── HEXMOD.ASM
+│   │   ├── KBD.INC
+│   │   ├── LINK2ASM.CPP
+│   │   ├── MBIOS.MAC
+│   │   ├── MDOS.MAC
+│   │   ├── MMACROS.MAC
+│   │   ├── PRIMES.ASM
+│   │   ├── PRMSTACK.ASM
+│   │   ├── QUEUE
+│   │   │   ├── LIST.ASM
+│   │   │   ├── LIST.ASO
+│   │   │   ├── NODE.ASM
+│   │   │   ├── NODE.ASO
+│   │   │   ├── OOP.ASM
+│   │   │   ├── QUEUE.ASM
+│   │   │   ├── QUEUE.ASO
+│   │   │   ├── STACK.ASM
+│   │   │   └── STACK.ASO
+│   │   ├── REVERSE.ASM
+│   │   ├── SHOWTOT.CPP
+│   │   ├── SOMESTR.ASM
+│   │   ├── VAREXCH.ASM
+│   │   ├── VAREXCH.PAS
+│   │   ├── WHEREIS
+│   │   │   ├── BIOS.INC
+│   │   │   ├── BIOSMAC.DOC
+│   │   │   ├── DEMO1.BAT
+│   │   │   ├── DOS.INC
+│   │   │   ├── DOSMAC.DOC
+│   │   │   ├── IASCIIZS.ASM
+│   │   │   ├── IBIOS.MAC
+│   │   │   ├── IBYTECPY.ASM
+│   │   │   ├── IDELCHAR.ASM
+│   │   │   ├── IDOS.INC
+│   │   │   ├── IDOS.MAC
+│   │   │   ├── IEXECDOS.ASM
+│   │   │   ├── IFINDBYT.ASM
+│   │   │   ├── IFINDFIL.ASM
+│   │   │   ├── IFINDREP.ASM
+│   │   │   ├── ILOCSTRG.ASM
+│   │   │   ├── IMACROS.MAC
+│   │   │   ├── IPARAM.ASM
+│   │   │   ├── IPARSEFN.ASM
+│   │   │   ├── ISKPWHIT.ASM
+│   │   │   ├── IWHEREIS.ASM
+│   │   │   ├── IWHGLOBL.INC
+│   │   │   ├── IWRITEPS.ASM
+│   │   │   ├── KBD.INC
+│   │   │   ├── WHEREIS.DOC
+│   │   │   ├── WHEREIS.MAK
+│   │   │   └── WHUSAGE.INC
+│   │   └── WINPROG.ASM
+│   ├── TASM2MSG.C
+│   ├── TCALC
+│   │   ├── TCALC.C
+│   │   ├── TCALC.DOC
+│   │   ├── TCALC.H
+│   │   ├── TCALC.PRJ
+│   │   ├── TCDISPLY.C
+│   │   ├── TCINPUT.C
+│   │   ├── TCOMMAND.C
+│   │   ├── TCPARSER.C
+│   │   └── TCUTIL.C
+│   ├── TD
+│   │   ├── BCDEMO.C
+│   │   ├── BCDEMO.EXE
+│   │   ├── BCDEMOB.C
+│   │   └── BCDEMOB.EXE
+│   ├── VCIRC.CPP
+│   ├── VCIRC.PRJ
+│   ├── VPOINT.CPP
+│   └── VPOINT.H
+├── FILELIST.DOC
+├── INCLUDE
+│   ├── ALLOC.H
+│   ├── ASSERT.H
+│   ├── BCD.H
+│   ├── BIOS.H
+│   ├── COMPLEX.H
+│   ├── CONIO.H
+│   ├── CONSTREA.H
+│   ├── CTYPE.H
+│   ├── DIR.H
+│   ├── DIRECT.H
+│   ├── DIRENT.H
+│   ├── DOS.H
+│   ├── ERRNO.H
+│   ├── FCNTL.H
+│   ├── FLOAT.H
+│   ├── FSTREAM.H
+│   ├── GENERIC.H
+│   ├── GRAPHICS.H
+│   ├── IO.H
+│   ├── IOMANIP.H
+│   ├── IOSTREAM.H
+│   ├── LIMITS.H
+│   ├── LOCALE.H
+│   ├── MALLOC.H
+│   ├── MATH.H
+│   ├── MEM.H
+│   ├── MEMORY.H
+│   ├── NEW.H
+│   ├── PROCESS.H
+│   ├── SEARCH.H
+│   ├── SETJMP.H
+│   ├── SHARE.H
+│   ├── SIGNAL.H
+│   ├── STDARG.H
+│   ├── STDDEF.H
+│   ├── STDIO.H
+│   ├── STDIOSTR.H
+│   ├── STDLIB.H
+│   ├── STRING.H
+│   ├── STRSTREA.H
+│   ├── SYS
+│   │   ├── LOCKING.H
+│   │   ├── STAT.H
+│   │   ├── TIMEB.H
+│   │   └── TYPES.H
+│   ├── TIME.H
+│   ├── UTIME.H
+│   ├── VALUES.H
+│   ├── VARARGS.H
+│   ├── _DEFS.H
+│   ├── _NFILE.H
+│   └── _NULL.H
+├── LIB
+│   ├── BWCC.LIB
+│   ├── C0C.OBJ
+│   ├── C0FC.OBJ
+│   ├── C0FH.OBJ
+│   ├── C0FL.OBJ
+│   ├── C0FM.OBJ
+│   ├── C0FS.OBJ
+│   ├── C0FT.OBJ
+│   ├── C0H.OBJ
+│   ├── C0L.OBJ
+│   ├── C0M.OBJ
+│   ├── C0S.OBJ
+│   ├── C0T.OBJ
+│   ├── CC.LIB
+│   ├── CH.LIB
+│   ├── CL.LIB
+│   ├── CM.LIB
+│   ├── CS.LIB
+│   ├── EMU.LIB
+│   ├── FILES.C
+│   ├── FILES2.C
+│   ├── FP87.LIB
+│   ├── GRAPHICS.LIB
+│   ├── IMPORT.LIB
+│   ├── MATHC.LIB
+│   ├── MATHERR.C
+│   ├── MATHH.LIB
+│   ├── MATHL.LIB
+│   ├── MATHM.LIB
+│   ├── MATHS.LIB
+│   ├── OVERLAY.LIB
+│   ├── STARTUP
+│   │   ├── BUILD-C0.BAT
+│   │   ├── C0.ASM
+│   │   ├── C0D.ASM
+│   │   ├── C0W.ASM
+│   │   └── RULES.ASI
+│   └── WILDARGS.OBJ
+├── README
+├── README.COM
+└── log.txt
+
+29 directories, 1189 files

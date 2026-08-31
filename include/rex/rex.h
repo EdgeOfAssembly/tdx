@@ -1,0 +1,147 @@
+/**
+ * @file rex.h
+ * @brief Stable C ABI for librex — reusable debugger core.
+ *
+ * @note Link with `-lrex` (or the in-tree static library). DOS 8086 is the
+ *       first target; the same session API is intended for other backends.
+ *
+ * Thread safety: a session is not thread-safe. Guard with an external mutex
+ * if UI and socket threads share one session.
+ */
+#ifndef REX_H
+#define REX_H
+
+#include "rex_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct rex_session rex_session;
+
+/**
+ * @brief Library version string (same as TDX_VERSION_STRING in v0.1).
+ */
+REX_API const char *rex_version(void);
+
+/**
+ * @brief Human-readable status name.
+ */
+REX_API const char *rex_status_str(rex_status st);
+
+/**
+ * @brief Create an empty session (no program loaded).
+ * @return Heap session; caller must @c rex_session_destroy. NULL on OOM.
+ */
+REX_API rex_session *rex_session_create(void);
+
+/**
+ * @brief Destroy a session and its target (idempotent on NULL).
+ */
+REX_API void rex_session_destroy(rex_session *s);
+
+/**
+ * @brief Load a DOS MZ EXE or .COM into a fresh 8086 machine.
+ *
+ * @param[in] s    Session.
+ * @param[in] path Host path to the binary.
+ * @param[in] cwd  DOS current directory for INT 21 files; NULL = dirname(path).
+ *
+ * @retval REX_OK      Loaded; CS:IP at entry; not yet executed.
+ * @retval REX_ERR_IO  Cannot read file.
+ * @retval REX_ERR_FMT Not a COM/MZ image we understand.
+ */
+REX_API rex_status rex_session_load(rex_session *s, const char *path, const char *cwd);
+
+/**
+ * @brief Execute one instruction (F7 Trace).
+ */
+REX_API rex_status rex_session_step(rex_session *s);
+
+/**
+ * @brief Step over CALL / INT / REP / LOOP (F8).
+ *
+ * LOOP at the loop instruction runs remaining iterations until fall-through.
+ * Inner breakpoints still fire.
+ *
+ * @param[in] s         Session.
+ * @param[in] max_insns Safety cap (0 = default 10 million).
+ */
+REX_API rex_status rex_session_step_over(rex_session *s, uint64_t max_insns);
+
+/**
+ * @brief Run until break, halt, fault, wait-key, or @p max_insns.
+ *
+ * @param[in] max_insns 0 = default 50 million.
+ */
+REX_API rex_status rex_session_run(rex_session *s, uint64_t max_insns);
+
+/**
+ * @brief Request stop of a long run (F9 toggle / agent STOP).
+ */
+REX_API rex_status rex_session_request_stop(rex_session *s);
+
+REX_API rex_stop rex_session_stop_reason(const rex_session *s);
+REX_API bool rex_session_halted(const rex_session *s);
+REX_API int rex_session_exit_code(const rex_session *s);
+REX_API rex_arch rex_session_arch(const rex_session *s);
+
+REX_API rex_status rex_session_get_regs_i8086(const rex_session *s, rex_regs_i8086 *out);
+REX_API rex_status rex_session_set_regs_i8086(rex_session *s, const rex_regs_i8086 *in);
+
+REX_API rex_status rex_session_read_mem(const rex_session *s, uint64_t linear, void *dst, size_t n);
+REX_API rex_status rex_session_write_mem(rex_session *s, uint64_t linear, const void *src, size_t n);
+
+/**
+ * @brief Disassemble @p count instructions starting at CS:IP or @p linear.
+ *
+ * @param[in]  linear  UINT64_MAX = use current CS:IP.
+ * @param[out] out     Array of @p cap entries.
+ * @param[in]  cap     Capacity.
+ * @param[out] wrote   Optional count written.
+ */
+REX_API rex_status rex_session_disasm(const rex_session *s, uint64_t linear, rex_insn *out,
+                                      size_t cap, size_t *wrote);
+
+/**
+ * @brief Add an execution breakpoint.
+ * @param[out] id Optional assigned id.
+ */
+REX_API rex_status rex_bp_add_linear(rex_session *s, uint64_t linear, uint32_t *id);
+REX_API rex_status rex_bp_add_segoff(rex_session *s, uint16_t seg, uint16_t off, uint32_t *id);
+REX_API rex_status rex_bp_del(rex_session *s, uint32_t id);
+REX_API rex_status rex_bp_del_linear(rex_session *s, uint64_t linear);
+REX_API rex_status rex_bp_clear(rex_session *s);
+REX_API size_t rex_bp_count(const rex_session *s);
+REX_API bool rex_bp_at(const rex_session *s, uint64_t linear);
+
+/** Load a TSV/MAP symbol file (`seg:off\\tname` or `linear\\tname`). */
+REX_API rex_status rex_symbols_load(rex_session *s, const char *path);
+REX_API const char *rex_symbols_lookup(const rex_session *s, uint64_t linear);
+
+/** Inject a DOS key (ASCII + optional scancode) for INT 16. */
+REX_API rex_status rex_session_push_key(rex_session *s, uint8_t ascii, uint8_t scan);
+
+/** Video: BIOS mode byte (BDA 0x449). */
+REX_API uint8_t rex_session_video_mode(const rex_session *s);
+
+/**
+ * @brief Decode CGA mode-4/5 VRAM into 320×200 indices 0..3.
+ * @param[out] px  64000 bytes.
+ */
+REX_API rex_status rex_session_cga_decode(const rex_session *s, uint8_t *px, size_t px_size);
+
+/** Host directory used as DOS cwd (INT 21 files). */
+REX_API const char *rex_session_dos_cwd(const rex_session *s);
+
+/** Linear entry point after load. */
+REX_API uint64_t rex_session_entry_linear(const rex_session *s);
+
+/** Bytes written to DOS CON (INT 21 AH=02/09/40 handles 1/2). */
+REX_API const char *rex_session_con_out(const rex_session *s);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* REX_H */

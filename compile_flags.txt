@@ -1,0 +1,5 @@
+-std=gnu++23
+-Iinclude
+-Wall
+-Wextra
+-D_REENTRANT

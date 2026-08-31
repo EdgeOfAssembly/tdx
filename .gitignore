@@ -1,0 +1,34 @@
+# Build
+/tdx
+/tdx_test
+/tests/run_tests
+/tests/fixtures/*.com
+/tests/fixtures/*.exe
+*.o
+*.a
+/build/
+/gmon.out
+profile.txt
+
+# Tooling
+/tags
+compile_commands.json
+.cache/
+*.sock
+/ghidra_work/
+*.log
+
+# Shots / agent dumps
+*.bmp
+*.ppm
+/tmp_shots/
+/shots/
+
+# Local Borland C++ 3.1 reference tree (copyrighted; not shipped)
+/BORLANDC/
+
+# Editor
+*.swp
+*~
+.idea/
+.vscode/

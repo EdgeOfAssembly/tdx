@@ -1,0 +1,33 @@
+/**
+ * @file tdx_cli.h
+ * @brief TDX command-line options (order-independent).
+ */
+#ifndef TDX_CLI_H
+#define TDX_CLI_H
+
+#include <cstdio>
+#include <string>
+
+struct tdx_cli
+{
+    bool help = false;
+    bool version = false;
+    bool usage_error = false;
+    bool no_ui = false;
+    bool no_game = false;
+    bool no_sock = false;
+    bool run = false;
+    bool ghidra = false;
+    bool verbose = false;
+    std::string sock_path = "/tmp/tdx.sock";
+    std::string log_file;
+    std::string symbols;
+    std::string input;
+    std::string cwd;
+    int scale = 2;
+};
+
+bool tdx_cli_parse(int argc, char **argv, tdx_cli *out);
+void tdx_print_usage(FILE *fp);
+
+#endif /* TDX_CLI_H */

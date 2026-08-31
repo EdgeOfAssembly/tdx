@@ -1,0 +1,44 @@
+.Dd August 31, 2026
+.Dt TDX 1
+.Os
+.Sh NAME
+.Nm tdx
+.Nd Turbo Debugger X — native Linux debugger for DOS EXE/COM
+.Sh SYNOPSIS
+.Nm
+.Op options
+.Op Ar file.exe|file.com
+.Sh DESCRIPTION
+.Nm
+loads a DOS MZ EXE or .COM into an 8086 real-mode machine (Unicorn),
+shows a Turbo Debugger–like CPU window (SDL2) and an optional CGA user
+screen, and listens on a UNIX socket for agent commands.
+.Pp
+Options and the input path may appear in any order.
+With no arguments,
+.Nm
+prints this usage text.
+.Sh OPTIONS
+.Bl -tag -width "--symbols PATH"
+.It Fl h , Fl -help
+Show help and exit.
+.It Fl v , Fl -version
+Show version and exit.
+.It Fl -no-ui
+Headless (no SDL windows).
+.It Fl -no-game
+Do not open the CGA window.
+.It Fl -no-sock
+Do not listen on the agent socket.
+.It Fl -sock Ar PATH
+Agent socket (default
+.Pa /tmp/tdx.sock ).
+.It Fl -run
+Run until break or halt after load.
+.El
+.Sh KEYS
+F7 trace, F8 step over, F9 run/pause, F2 breakpoint, Alt-X quit.
+.Sh SEE ALSO
+.Nm tdxctl
+.Sh AUTHORS
+TDX / librex
