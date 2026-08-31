@@ -24,7 +24,28 @@ constexpr int k_cols = 80;
 constexpr int k_rows = 25;
 constexpr int k_cw = 8;
 constexpr int k_ch = 16;
+constexpr int k_foot0 = 23; /**< First key-legend row; slightly shorter glyphs. */
+constexpr int k_foot_ch = 12;
 constexpr int k_list_rows = 14;
+
+int row_height(int y)
+{
+    return (y >= k_foot0) ? k_foot_ch : k_ch;
+}
+
+int row_top(int y)
+{
+    if (y < k_foot0)
+    {
+        return y * k_ch;
+    }
+    return k_foot0 * k_ch + (y - k_foot0) * k_foot_ch;
+}
+
+int cpu_tex_h(void)
+{
+    return k_foot0 * k_ch + (k_rows - k_foot0) * k_foot_ch;
+}
 
 const uint32_t k_vga[16] = {
     0xFF000000, 0xFF0000A8, 0xFF00A800, 0xFF00A8A8, 0xFFA80000, 0xFFA800A8, 0xFFA85400, 0xFFA8A8A8,
@@ -141,8 +162,6 @@ void paint_dump16(tdx_ui *ui, int y, const char *tag, uint16_t seg, uint16_t off
 
 void render_cpu(tdx_ui *ui)
 {
-    const int pw = k_cols * k_cw;
-    const int ph = k_rows * k_ch;
     uint32_t *pix = nullptr;
     int pitch = 0;
     int y = 0;
@@ -154,6 +173,8 @@ void render_cpu(tdx_ui *ui)
     }
     for (y = 0; y < k_rows; y++)
     {
+        const int rh = row_height(y);
+        const int y0 = row_top(y);
         for (x = 0; x < k_cols; x++)
         {
             const cell c = ui->grid[y][x];
@@ -162,10 +183,19 @@ void render_cpu(tdx_ui *ui)
             const uint32_t bg = k_vga[c.bg & 15];
             int row = 0;
             int col = 0;
-            for (row = 0; row < k_ch; row++)
+            for (row = 0; row < rh; row++)
             {
-                const uint8_t bits = g[row];
-                uint32_t *dst = pix + (y * k_ch + row) * (pitch / 4) + x * k_cw;
+                uint8_t bits = 0;
+                uint32_t *dst = pix + (y0 + row) * (pitch / 4) + x * k_cw;
+                if (rh == k_ch)
+                {
+                    bits = g[row];
+                }
+                else
+                {
+                    /* 8×16 cropped to 12 rows (drop 2px top and bottom). */
+                    bits = g[row + 2];
+                }
                 for (col = 0; col < k_cw; col++)
                 {
                     dst[col] = (bits & (uint8_t)(0x80 >> col)) ? fg : bg;
@@ -177,8 +207,6 @@ void render_cpu(tdx_ui *ui)
     SDL_RenderClear(ui->cpu_ren);
     SDL_RenderCopy(ui->cpu_ren, ui->cpu_tex, nullptr, nullptr);
     SDL_RenderPresent(ui->cpu_ren);
-    (void)pw;
-    (void)ph;
 }
 
 void render_game(tdx_ui *ui, rex_session *s)
@@ -382,7 +410,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
     tdx_ui ui{};
     const int scale = (cli != nullptr && cli->scale > 0) ? cli->scale : 2;
     const int cpu_w = k_cols * k_cw * scale;
-    const int cpu_h = k_rows * k_ch * scale;
+    const int cpu_h = cpu_tex_h() * scale;
     const int game_w = 320 * 2;
     const int game_h = 200 * 2;
     SDL_Event ev{};
@@ -394,11 +422,14 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         std::fprintf(stderr, "tdx: SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     ui.cpu_win = SDL_CreateWindow("TDX " TDX_VERSION_STRING, SDL_WINDOWPOS_UNDEFINED,
-                                 SDL_WINDOWPOS_UNDEFINED, cpu_w, cpu_h, SDL_WINDOW_RESIZABLE);
+                                 SDL_WINDOWPOS_UNDEFINED, cpu_w, cpu_h,
+                                 SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
     ui.cpu_ren = SDL_CreateRenderer(ui.cpu_win, -1, SDL_RENDERER_ACCELERATED);
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                   k_cols * k_cw, k_rows * k_ch);
+                                   k_cols * k_cw, cpu_tex_h());
+    SDL_MaximizeWindow(ui.cpu_win);
     if ((cli != nullptr) && cli->game)
     {
         ui.game_win = SDL_CreateWindow("TDX — User screen", SDL_WINDOWPOS_UNDEFINED,
