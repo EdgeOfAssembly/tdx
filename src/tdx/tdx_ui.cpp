@@ -196,51 +196,49 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         fill_row(ui, y, 1);
     }
     put_str(ui, 0, 0, " File  Edit  View  Run  Breakpoints  Data  Options  Window  Help", 14, 1);
-    put_str(ui, 0, 1, " CPU -- TDX " TDX_VERSION_STRING " ", 14, 1);
 
     rex_session_get_regs_i8086(s, &r);
     rex_session_disasm(s, UINT64_MAX, ins, 16, &n);
-    for (i = 0; i < n && (int)i < 14; i++)
+    for (i = 0; i < n && (int)i < k_list_rows; i++)
     {
         const bool cur = (i == 0);
         const bool bp = rex_bp_at(s, ins[i].linear);
         const uint8_t fg = bp ? 12 : (cur ? 0 : 15);
         const uint8_t bg = cur ? 14 : 1;
-        char bytes[20];
+        char bytes[24];
         int b = 0;
         bytes[0] = 0;
         for (b = 0; b < ins[i].size && b < 6; b++)
         {
             char t[4];
-            std::snprintf(t, sizeof(t), "%02X", ins[i].bytes[b]);
+            std::snprintf(t, sizeof(t), "%s%02X", (b == 0) ? "" : " ", ins[i].bytes[b]);
             std::strcat(bytes, t);
         }
-        std::snprintf(line, sizeof(line), "%04X:%04X  %-12s %s", ins[i].seg, ins[i].off, bytes,
+        std::snprintf(line, sizeof(line), "%04X:%04X  %-17s %s", ins[i].seg, ins[i].off, bytes,
                       ins[i].text);
-        put_str(ui, 1, 2 + (int)i, line, fg, bg);
+        put_str(ui, 1, 1 + (int)i, line, fg, bg);
         {
             const char *sym = rex_symbols_lookup(s, ins[i].linear);
             if (sym != nullptr)
             {
-                put_str(ui, 52, 2 + (int)i, sym, 11, bg);
+                put_str(ui, 56, 1 + (int)i, sym, 11, bg);
             }
         }
     }
 
     std::snprintf(line, sizeof(line), "AX %04X  BX %04X  CX %04X  DX %04X", r.ax, r.bx, r.cx, r.dx);
-    put_str(ui, 1, 17, line, 15, 1);
+    put_str(ui, 1, 16, line, 15, 1);
     std::snprintf(line, sizeof(line), "SI %04X  DI %04X  BP %04X  SP %04X", r.si, r.di, r.bp, r.sp);
-    put_str(ui, 1, 18, line, 15, 1);
+    put_str(ui, 1, 17, line, 15, 1);
     std::snprintf(line, sizeof(line), "CS %04X  DS %04X  ES %04X  SS %04X  IP %04X", r.cs, r.ds, r.es,
                   r.ss, r.ip);
-    put_str(ui, 1, 19, line, 15, 1);
-    std::snprintf(line, sizeof(line), "%s %s %s %s %s %s %s %s   FLAGS %04X  mode %02X",
+    put_str(ui, 1, 18, line, 15, 1);
+    std::snprintf(line, sizeof(line), "FLAGS %04X  O=%s D=%s I=%s S=%s Z=%s A=%s P=%s C=%s", r.flags,
                   (r.flags & 0x800u) ? "OV" : "NV", (r.flags & 0x400u) ? "DN" : "UP",
                   (r.flags & 0x200u) ? "EI" : "DI", (r.flags & 0x80u) ? "NG" : "PL",
                   (r.flags & 0x40u) ? "ZR" : "NZ", (r.flags & 0x10u) ? "AC" : "NA",
-                  (r.flags & 0x04u) ? "PE" : "PO", (r.flags & 0x01u) ? "CY" : "NC", r.flags,
-                  rex_session_video_mode(s));
-    put_str(ui, 1, 20, line, 11, 1);
+                  (r.flags & 0x04u) ? "PE" : "PO", (r.flags & 0x01u) ? "CY" : "NC");
+    put_str(ui, 1, 19, line, 11, 1);
 
     if (rex_session_read_mem(s, rex_segoff_to_linear(r.ds, r.si), dump, sizeof(dump)) == REX_OK)
     {
@@ -251,7 +249,8 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         {
             p += std::snprintf(hex + p, sizeof(hex) - (size_t)p, "%02X ", dump[i]);
         }
-        put_str(ui, 1, 21, hex, 7, 1);
+        std::snprintf(hex + p, sizeof(hex) - (size_t)p, "  CGA %02X", rex_session_video_mode(s));
+        put_str(ui, 1, 20, hex, 7, 1);
     }
 
     switch (rex_session_stop_reason(s))
@@ -362,8 +361,8 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         std::fprintf(stderr, "tdx: SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
-    ui.cpu_win = SDL_CreateWindow("TDX — CPU", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                 cpu_w, cpu_h, SDL_WINDOW_RESIZABLE);
+    ui.cpu_win = SDL_CreateWindow("TDX " TDX_VERSION_STRING, SDL_WINDOWPOS_UNDEFINED,
+                                 SDL_WINDOWPOS_UNDEFINED, cpu_w, cpu_h, SDL_WINDOW_RESIZABLE);
     ui.cpu_ren = SDL_CreateRenderer(ui.cpu_win, -1, SDL_RENDERER_ACCELERATED);
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                    k_cols * k_cw, k_rows * k_ch);
