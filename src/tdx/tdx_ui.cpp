@@ -244,7 +244,7 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         stop = "breakpoint";
         break;
     case REX_STOP_HALTED:
-        stop = "program terminated";
+        stop = "terminated";
         break;
     case REX_STOP_WAIT_KEY:
         stop = "waiting for key";
@@ -257,7 +257,7 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         break;
     }
     std::snprintf(line, sizeof(line),
-                  " F7-Trace  F8-Over  F9-Run  F2-Break  C-F2-Reset  Alt-X-Quit  %s", stop);
+                  " F7-Trace  F8-Over  F9-Run  F2-Break  Ctrl-F2-Reset  Alt-X-Quit  %s", stop);
     put_str(ui, 0, 24, line, 0, 7);
 }
 
