@@ -273,7 +273,7 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         break;
     }
     std::snprintf(line, sizeof(line),
-                  " F7-Into F8/↓-Over ↑-Back Pg±14 Home/End F9-Run C-F2 Alt-X  %s", stop);
+                  " F7-Into F8-Over Up-Back PgUp/Dn Home/End F9-Run Ctrl-F2 Alt-X %s", stop);
     put_str(ui, 0, 24, line, 0, 7);
 }
 
