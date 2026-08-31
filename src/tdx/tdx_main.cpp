@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 
+#include <csignal>
 #include <unistd.h>
 
 static int print_headless(rex_session *s)
@@ -61,6 +62,7 @@ static int maybe_ghidra(const tdx_cli *cli)
 int main(int argc, char **argv)
 {
     tdx_cli cli{};
+    (void)std::signal(SIGPIPE, SIG_IGN);
     rex_session *s = nullptr;
     rex_sock *sk = nullptr;
     FILE *logfp = nullptr;

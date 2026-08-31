@@ -102,24 +102,25 @@ static bool parse_addr(const std::string &s, uint64_t *lin)
     return false;
 }
 
-static void send_all(int fd, const std::string &s)
+static bool send_all(int fd, const std::string &s)
 {
     const char *p = s.c_str();
     size_t left = s.size();
     while (left > 0)
     {
-        const ssize_t n = write(fd, p, left);
+        const ssize_t n = send(fd, p, left, MSG_NOSIGNAL);
         if (n < 0)
         {
             if (errno == EINTR)
             {
                 continue;
             }
-            break;
+            return false;
         }
         p += n;
         left -= (size_t)n;
     }
+    return true;
 }
 
 static json regs_json(rex_session *s)
@@ -652,7 +653,11 @@ int rex_sock_poll(rex_sock *sk, rex_session *s)
                 line.pop_back();
             }
             const std::string out = handle_line(sk, s, line);
-            send_all(cl.fd, out);
+            if (!send_all(cl.fd, out))
+            {
+                drop = true;
+                break;
+            }
             handled++;
         }
         if (drop)

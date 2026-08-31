@@ -17,6 +17,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <csignal>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -229,7 +230,7 @@ bool send_line(int fd, const std::string &line)
     size_t off = 0;
     while (off < msg.size())
     {
-        const ssize_t n = write(fd, msg.data() + off, msg.size() - off);
+        const ssize_t n = send(fd, msg.data() + off, msg.size() - off, MSG_NOSIGNAL);
         if (n < 0)
         {
             if (errno == EINTR)
@@ -268,7 +269,7 @@ bool recv_line(int fd, std::string *acc, std::string *line)
             int pr = 0;
             pfd.fd = fd;
             pfd.events = POLLIN;
-            pr = poll(&pfd, 1, 250);
+            pr = poll(&pfd, 1, 5000);
             if (pr == 0)
             {
                 return false;
@@ -544,6 +545,7 @@ std::string view_handle(void *user, const std::string &line)
 int main(int argc, char **argv)
 {
     view_cli cli{};
+    (void)std::signal(SIGPIPE, SIG_IGN);
     SDL_Window *win = nullptr;
     SDL_Renderer *ren = nullptr;
     SDL_Texture *tex = nullptr;

@@ -34,7 +34,7 @@ static bool send_all(int fd, const std::string &s)
     size_t off = 0;
     while (off < s.size())
     {
-        const ssize_t n = write(fd, s.data() + off, s.size() - off);
+        const ssize_t n = send(fd, s.data() + off, s.size() - off, MSG_NOSIGNAL);
         if (n < 0)
         {
             if (errno == EINTR)
