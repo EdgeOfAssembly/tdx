@@ -54,19 +54,6 @@ struct tdx_ui
     cell grid[k_rows][k_cols]{};
 };
 
-void grab_keys(SDL_Window *win)
-{
-    if (win == nullptr)
-    {
-        return;
-    }
-    SDL_RaiseWindow(win);
-    SDL_SetWindowInputFocus(win);
-#if SDL_VERSION_ATLEAST(2, 0, 16)
-    SDL_SetWindowKeyboardGrab(win, SDL_TRUE);
-#endif
-}
-
 void vcr_pages(rex_session *s, bool fwd)
 {
     int i = 0;
@@ -293,33 +280,46 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
 int save_texture_bmp(SDL_Renderer *ren, SDL_Texture *tex, int w, int h, const char *path)
 {
     SDL_Surface *surf = nullptr;
+    SDL_Texture *tgt = nullptr;
     int rc = -1;
-    int ow = w;
-    int oh = h;
+    int tw = w;
+    int th = h;
     if ((ren == nullptr) || (tex == nullptr) || (path == nullptr))
     {
         return -1;
     }
-    SDL_GetRendererOutputSize(ren, &ow, &oh);
-    if ((ow < 1) || (oh < 1))
+    SDL_QueryTexture(tex, nullptr, nullptr, &tw, &th);
+    if ((tw < 1) || (th < 1))
     {
-        ow = w;
-        oh = h;
+        tw = w;
+        th = h;
     }
-    surf = SDL_CreateRGBSurfaceWithFormat(0, ow, oh, 32, SDL_PIXELFORMAT_ARGB8888);
-    if (surf == nullptr)
+    surf = SDL_CreateRGBSurfaceWithFormat(0, tw, th, 32, SDL_PIXELFORMAT_ARGB8888);
+    tgt = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, tw, th);
+    if ((surf == nullptr) || (tgt == nullptr))
     {
+        if (surf != nullptr)
+        {
+            SDL_FreeSurface(surf);
+        }
+        if (tgt != nullptr)
+        {
+            SDL_DestroyTexture(tgt);
+        }
         return -1;
     }
-    SDL_SetRenderTarget(ren, nullptr);
-    SDL_RenderClear(ren);
-    SDL_RenderCopy(ren, tex, nullptr, nullptr);
-    rc = SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
-    if (rc == 0)
+    if (SDL_SetRenderTarget(ren, tgt) == 0)
     {
-        rc = SDL_SaveBMP(surf, path);
+        SDL_RenderClear(ren);
+        SDL_RenderCopy(ren, tex, nullptr, nullptr);
+        rc = SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, surf->pixels, surf->pitch);
+        SDL_SetRenderTarget(ren, nullptr);
+        if (rc == 0)
+        {
+            rc = SDL_SaveBMP(surf, path);
+        }
     }
-    SDL_RenderPresent(ren);
+    SDL_DestroyTexture(tgt);
     SDL_FreeSurface(surf);
     return rc;
 }
@@ -362,20 +362,18 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         std::fprintf(stderr, "tdx: SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
-    ui.cpu_win = SDL_CreateWindow("TDX — CPU", 0, 0, cpu_w, cpu_h, 0);
+    ui.cpu_win = SDL_CreateWindow("TDX — CPU", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                 cpu_w, cpu_h, SDL_WINDOW_RESIZABLE);
     ui.cpu_ren = SDL_CreateRenderer(ui.cpu_win, -1, SDL_RENDERER_ACCELERATED);
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                    k_cols * k_cw, k_rows * k_ch);
-    SDL_SetWindowPosition(ui.cpu_win, 0, 0);
-    grab_keys(ui.cpu_win);
     if ((cli != nullptr) && cli->game)
     {
-        ui.game_win = SDL_CreateWindow("TDX — User screen", cpu_w, 0, game_w, game_h, 0);
+        ui.game_win = SDL_CreateWindow("TDX — User screen", SDL_WINDOWPOS_UNDEFINED,
+                                       SDL_WINDOWPOS_UNDEFINED, game_w, game_h, SDL_WINDOW_RESIZABLE);
         ui.game_ren = SDL_CreateRenderer(ui.game_win, -1, SDL_RENDERER_ACCELERATED);
         ui.game_tex = SDL_CreateTexture(ui.game_ren, SDL_PIXELFORMAT_ARGB8888,
                                         SDL_TEXTUREACCESS_STREAMING, 320, 200);
-        SDL_SetWindowPosition(ui.game_win, cpu_w, 0);
-        grab_keys(ui.game_win);
     }
     if (sock != nullptr)
     {

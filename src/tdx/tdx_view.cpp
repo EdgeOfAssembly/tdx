@@ -576,17 +576,12 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "tdxview: SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
-    win = SDL_CreateWindow("TDX — User screen", 0, 0, DOS_CGA_WIDTH * cli.scale,
-                           DOS_CGA_HEIGHT * cli.scale, SDL_WINDOW_BORDERLESS);
+    win = SDL_CreateWindow("TDX — User screen", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                           DOS_CGA_WIDTH * cli.scale, DOS_CGA_HEIGHT * cli.scale,
+                           SDL_WINDOW_RESIZABLE);
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                             DOS_CGA_WIDTH, DOS_CGA_HEIGHT);
-    SDL_SetWindowPosition(win, 0, 0);
-    SDL_RaiseWindow(win);
-    SDL_SetWindowInputFocus(win);
-#if SDL_VERSION_ATLEAST(2, 0, 16)
-    SDL_SetWindowKeyboardGrab(win, SDL_TRUE);
-#endif
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     vst.ren = ren;
     vst.tex = tex;
