@@ -782,7 +782,8 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         }
         if (ui.running && (!rex_session_halted(session)))
         {
-            rex_session_run(session, 250000);
+            /* Small slices so SDL/F9/tdxctl are polled; 250k starved input. */
+            rex_session_run(session, 8000);
             if (rex_session_stop_reason(session) == REX_STOP_BREAK)
             {
                 ui.running = false;
@@ -791,6 +792,10 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
             {
                 ui.running = false;
             }
+        }
+        if (sock != nullptr)
+        {
+            rex_sock_poll(sock, session);
         }
         paint_cpu(&ui, session);
         if (ui.help)
@@ -802,7 +807,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         {
             render_game(&ui, session);
         }
-        SDL_Delay(16);
+        SDL_Delay(1);
     }
 
     if (ui.game_tex != nullptr)
