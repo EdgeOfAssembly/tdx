@@ -376,8 +376,16 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         }
         else if (cur)
         {
-            bg = 14;
-            fg = 0;
+            if (ui->running)
+            {
+                bg = 2; /* green = F9 live, not a stop */
+                fg = 15;
+            }
+            else
+            {
+                bg = 14; /* yellow = paused on this insn */
+                fg = 0;
+            }
         }
         bytes[0] = 0;
         for (b = 0; b < ins[i].size && b < 6; b++)
@@ -626,16 +634,6 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 {
                     ui.quit = true;
                 }
-                else if (k == SDLK_F7)
-                {
-                    ui.running = false;
-                    (void)rex_session_vcr_forward(session, true);
-                }
-                else if (k == SDLK_F8)
-                {
-                    ui.running = false;
-                    (void)rex_session_vcr_forward(session, false);
-                }
                 else if (k == SDLK_F9)
                 {
                     ui.running = !ui.running;
@@ -669,6 +667,46 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                             rex_bp_add_segoff(session, r.cs, r.ip, &id);
                         }
                     }
+                }
+                else if (ui.running)
+                {
+                    /* F9 is play/pause. Do not abort run on F7/F8/arrows. */
+                    if (k == SDLK_LEFT)
+                    {
+                        rex_session_push_key(session, 0, 0x4B);
+                    }
+                    else if (k == SDLK_RIGHT)
+                    {
+                        rex_session_push_key(session, 0, 0x4D);
+                    }
+                    else if (k == SDLK_UP)
+                    {
+                        rex_session_push_key(session, 0, 0x48);
+                    }
+                    else if (k == SDLK_DOWN)
+                    {
+                        rex_session_push_key(session, 0, 0x50);
+                    }
+                    else if (k == SDLK_SPACE)
+                    {
+                        rex_session_push_key(session, 32, 0x39);
+                    }
+                    else if ((k >= 32) && (k < 127))
+                    {
+                        rex_session_push_key(session, (uint8_t)k, 0);
+                    }
+                    else if (k == SDLK_RETURN)
+                    {
+                        rex_session_push_key(session, 13, 0x1C);
+                    }
+                }
+                else if (k == SDLK_F7)
+                {
+                    (void)rex_session_vcr_forward(session, true);
+                }
+                else if (k == SDLK_F8)
+                {
+                    (void)rex_session_vcr_forward(session, false);
                 }
                 else if (k == SDLK_UP)
                 {
