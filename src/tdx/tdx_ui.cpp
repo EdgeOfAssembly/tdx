@@ -103,6 +103,42 @@ void fill_row(tdx_ui *ui, int y, uint8_t bg)
     }
 }
 
+void fill_row_attr(tdx_ui *ui, int y, uint8_t fg, uint8_t bg)
+{
+    int x = 0;
+    for (x = 0; x < k_cols; x++)
+    {
+        put_cell(ui, x, y, ' ', fg, bg);
+    }
+}
+
+void paint_dump16(tdx_ui *ui, int y, const char *tag, uint16_t seg, uint16_t off, rex_session *s,
+                  const char *tail)
+{
+    uint8_t dump[16];
+    char hex[80];
+    int p = 0;
+    size_t i = 0;
+    if ((ui == nullptr) || (tag == nullptr) || (s == nullptr))
+    {
+        return;
+    }
+    if (rex_session_read_mem(s, rex_segoff_to_linear(seg, off), dump, sizeof(dump)) != REX_OK)
+    {
+        return;
+    }
+    p = std::snprintf(hex, sizeof(hex), "%s ", tag);
+    for (i = 0; i < sizeof(dump); i++)
+    {
+        p += std::snprintf(hex + p, sizeof(hex) - (size_t)p, "%02X ", dump[i]);
+    }
+    if ((tail != nullptr) && (tail[0] != '\0'))
+    {
+        std::snprintf(hex + p, sizeof(hex) - (size_t)p, " %s", tail);
+    }
+    put_str(ui, 1, y, hex, 7, 1);
+}
+
 void render_cpu(tdx_ui *ui)
 {
     const int pw = k_cols * k_cw;
@@ -185,7 +221,6 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
     size_t n = 0;
     size_t i = 0;
     char line[160];
-    uint8_t dump[16];
     int y = 0;
     const char *stop = "";
 
@@ -240,17 +275,11 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
                   (r.flags & 0x04u) ? "PE" : "PO", (r.flags & 0x01u) ? "CY" : "NC");
     put_str(ui, 1, 19, line, 11, 1);
 
-    if (rex_session_read_mem(s, rex_segoff_to_linear(r.ds, r.si), dump, sizeof(dump)) == REX_OK)
     {
-        char hex[80];
-        int p = 0;
-        p = std::snprintf(hex, sizeof(hex), "DS:SI ");
-        for (i = 0; i < sizeof(dump); i++)
-        {
-            p += std::snprintf(hex + p, sizeof(hex) - (size_t)p, "%02X ", dump[i]);
-        }
-        std::snprintf(hex + p, sizeof(hex) - (size_t)p, "  CGA %02X", rex_session_video_mode(s));
-        put_str(ui, 1, 20, hex, 7, 1);
+        char cga[12];
+        std::snprintf(cga, sizeof(cga), "CGA %02X", rex_session_video_mode(s));
+        paint_dump16(ui, 20, "DS:SI", r.ds, r.si, s, cga);
+        paint_dump16(ui, 21, "ES:DI", r.es, r.di, s, nullptr);
     }
 
     switch (rex_session_stop_reason(s))
@@ -271,8 +300,12 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         stop = ui->running ? "running" : "stopped";
         break;
     }
-    std::snprintf(line, sizeof(line),
-                  " F7-Into F8-Over Up-Back PgUp/Dn Home/End F9-Run Ctrl-F2 Alt-X %s", stop);
+    fill_row_attr(ui, 23, 0, 7);
+    fill_row_attr(ui, 24, 0, 7);
+    put_str(ui, 0, 23, " F7 Into   F8 Over (CALL/INT/REP/LOOP)   F9 Run/Pause   F2 Break   Alt-X Quit",
+            0, 7);
+    std::snprintf(line, sizeof(line), " Up Back  Down Fwd  PgUp/Dn x14  Home  End  Ctrl-F2 Reset  %s",
+                  stop);
     put_str(ui, 0, 24, line, 0, 7);
 }
 
