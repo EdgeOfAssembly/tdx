@@ -43,10 +43,18 @@ scripts/tdx-xmux.sh /mnt/bushido/bushido/BUSHIDO.EXE /mnt/bushido/bushido
 
 `tdx` is the driver. `tdxview` only paints whatever framebuffer `tdx` exposes (`cga` on the socket). Optional `--game` still embeds CGA in the tdx process.
 
-Keys: **F7** trace, **F8** step over (CALL / INT / REP / LOOP), **F9** run/pause
-(ignore key-repeat; works from CPU *or* CGA window), **F2** breakpoint at CS:IP,
-**Ctrl-F2** reload program (keep breakpoints), **Alt-X** quit. Game keys (letters,
-arrows, Enter, Space) from either window go to INT 16.
+Keys (CPU window — VCR tape, CGA follows):
+
+- **↓ / F8** one unit **over** CALL, INT, REP, LOOP (loop/rep runs to completion)
+- **F7** one insn **into** CALL
+- **↑** reverse one unit (registers + RAM, so the game screen rewinds)
+- **PgDn / PgUp** 14 units forward / back
+- **Home / End** start / end of the tape
+- Jcc/JMP follow **live flags** (not skipped)
+- **F9** run/pause (reseeds the tape); **F2** breakpoint; **Ctrl-F2** reset; **Alt-X** quit
+
+Game window: letters, arrows, Enter, Space → INT 16 (and start F9). Agent control:
+`tdxctl` on `/tmp/tdx.sock` (`key`, `nav`, `shot`, `cga`) — does not need Xmux.
 
 Reload after halt is **in-process** (`tdxctl reset` or Ctrl-F2). Never `xmux run` of
 `tdx` — that blocks until the SDL window exits.

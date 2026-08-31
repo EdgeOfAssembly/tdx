@@ -24,6 +24,7 @@ constexpr int k_cols = 80;
 constexpr int k_rows = 25;
 constexpr int k_cw = 8;
 constexpr int k_ch = 16;
+constexpr int k_list_rows = 14;
 
 const uint32_t k_vga[16] = {
     0xFF000000, 0xFF0000A8, 0xFF00A800, 0xFF00A8A8, 0xFFA80000, 0xFFA800A8, 0xFFA85400, 0xFFA8A8A8,
@@ -50,9 +51,37 @@ struct tdx_ui
     int game_scale = 2;
     bool running = false;
     bool quit = false;
-    int list_scroll = 0;
     cell grid[k_rows][k_cols]{};
 };
+
+void grab_keys(SDL_Window *win)
+{
+    if (win == nullptr)
+    {
+        return;
+    }
+    SDL_RaiseWindow(win);
+    SDL_SetWindowInputFocus(win);
+#if SDL_VERSION_ATLEAST(2, 0, 16)
+    SDL_SetWindowKeyboardGrab(win, SDL_TRUE);
+#endif
+}
+
+void vcr_pages(rex_session *s, bool fwd)
+{
+    int i = 0;
+    for (i = 0; i < k_list_rows; i++)
+    {
+        if (fwd)
+        {
+            (void)rex_session_vcr_forward(s, false);
+        }
+        else
+        {
+            (void)rex_session_vcr_back(s);
+        }
+    }
+}
 
 void put_cell(tdx_ui *ui, int x, int y, char ch, uint8_t fg, uint8_t bg)
 {
@@ -257,7 +286,7 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
         break;
     }
     std::snprintf(line, sizeof(line),
-                  " F7-Trace  F8-Over  F9-Run  F2-Break  Ctrl-F2-Reset  Alt-X-Quit  %s", stop);
+                  " F7-Into F8/↓-Over ↑-Back Pg±14 Home/End F9-Run C-F2 Alt-X  %s", stop);
     put_str(ui, 0, 24, line, 0, 7);
 }
 
@@ -333,6 +362,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                    k_cols * k_cw, k_rows * k_ch);
     SDL_SetWindowPosition(ui.cpu_win, 0, 0);
+    grab_keys(ui.cpu_win);
     if ((cli != nullptr) && cli->game)
     {
         ui.game_win = SDL_CreateWindow("TDX — User screen", cpu_w, 0, game_w, game_h, 0);
@@ -340,6 +370,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         ui.game_tex = SDL_CreateTexture(ui.game_ren, SDL_PIXELFORMAT_ARGB8888,
                                         SDL_TEXTUREACCESS_STREAMING, 320, 200);
         SDL_SetWindowPosition(ui.game_win, cpu_w, 0);
+        grab_keys(ui.game_win);
     }
     if (sock != nullptr)
     {
@@ -369,12 +400,12 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 else if (k == SDLK_F7)
                 {
                     ui.running = false;
-                    rex_session_step(session);
+                    (void)rex_session_vcr_forward(session, true);
                 }
                 else if (k == SDLK_F8)
                 {
                     ui.running = false;
-                    rex_session_step_over(session, 0);
+                    (void)rex_session_vcr_forward(session, false);
                 }
                 else if (k == SDLK_F9)
                 {
@@ -382,6 +413,10 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                     if (!ui.running)
                     {
                         rex_session_request_stop(session);
+                    }
+                    else
+                    {
+                        rex_session_vcr_seed(session);
                     }
                 }
                 else if ((mod & KMOD_CTRL) && (k == SDLK_F2))
@@ -406,21 +441,35 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                         }
                     }
                 }
-                else if (k == SDLK_LEFT)
-                {
-                    rex_session_push_key(session, 0, 0x4B);
-                }
-                else if (k == SDLK_RIGHT)
-                {
-                    rex_session_push_key(session, 0, 0x4D);
-                }
                 else if (k == SDLK_UP)
                 {
-                    rex_session_push_key(session, 0, 0x48);
+                    ui.running = false;
+                    (void)rex_session_vcr_back(session);
                 }
                 else if (k == SDLK_DOWN)
                 {
-                    rex_session_push_key(session, 0, 0x50);
+                    ui.running = false;
+                    (void)rex_session_vcr_forward(session, false);
+                }
+                else if (k == SDLK_PAGEUP)
+                {
+                    ui.running = false;
+                    vcr_pages(session, false);
+                }
+                else if (k == SDLK_PAGEDOWN)
+                {
+                    ui.running = false;
+                    vcr_pages(session, true);
+                }
+                else if (k == SDLK_HOME)
+                {
+                    ui.running = false;
+                    (void)rex_session_vcr_home(session);
+                }
+                else if (k == SDLK_END)
+                {
+                    ui.running = false;
+                    (void)rex_session_vcr_end(session);
                 }
                 else if (k == SDLK_SPACE)
                 {
@@ -449,11 +498,53 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 {
                     rex_session_request_stop(session);
                 }
+                else
+                {
+                    rex_session_vcr_seed(session);
+                }
             }
             else if (uic == REX_UI_STOP)
             {
                 ui.running = false;
                 rex_session_request_stop(session);
+            }
+            else if (uic == REX_UI_START_RUN)
+            {
+                if (!ui.running)
+                {
+                    rex_session_vcr_seed(session);
+                }
+                ui.running = true;
+            }
+            else if (uic == REX_UI_LIST_UP)
+            {
+                ui.running = false;
+                (void)rex_session_vcr_back(session);
+            }
+            else if (uic == REX_UI_LIST_DOWN)
+            {
+                ui.running = false;
+                (void)rex_session_vcr_forward(session, false);
+            }
+            else if (uic == REX_UI_LIST_HOME)
+            {
+                ui.running = false;
+                (void)rex_session_vcr_home(session);
+            }
+            else if (uic == REX_UI_LIST_END)
+            {
+                ui.running = false;
+                (void)rex_session_vcr_end(session);
+            }
+            else if (uic == REX_UI_LIST_PGUP)
+            {
+                ui.running = false;
+                vcr_pages(session, false);
+            }
+            else if (uic == REX_UI_LIST_PGDN)
+            {
+                ui.running = false;
+                vcr_pages(session, true);
             }
         }
         if (ui.running && (!rex_session_halted(session)))

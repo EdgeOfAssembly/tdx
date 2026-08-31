@@ -14,8 +14,8 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <fstream>
-#include <iterator>
 #include <vector>
 
 #include <stdlib.h>
@@ -68,12 +68,27 @@ void on_write(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64
     dos_machine *m = static_cast<dos_machine *>(user);
     (void)uc;
     (void)type;
-    (void)size;
-    (void)value;
     assert(m != nullptr);
     if ((address >= 0xB8000ull) && (address < 0xC0000ull))
     {
         m->video_dirty = true;
+    }
+    if ((m->vcr_rec) && (m->ram != nullptr) && (size > 0))
+    {
+        int i = 0;
+        for (i = 0; i < size; i++)
+        {
+            const uint64_t a = address + (uint64_t)i;
+            vcr_delta d{};
+            if (a >= m->ram_size)
+            {
+                break;
+            }
+            d.lin = (uint32_t)a;
+            d.oldv = m->ram[a];
+            d.newv = (uint8_t)((value >> (8 * i)) & 0xFFu);
+            m->vcr_pending.push_back(d);
+        }
     }
 }
 
@@ -299,7 +314,7 @@ rex_status dos_machine::init_cpu()
     hh_intr = hh;
     e = uc_hook_add(uc, &hh, UC_HOOK_CODE, (void *)on_code, this, 0, k_ram - 1);
     (void)e;
-    e = uc_hook_add(uc, &hh, UC_HOOK_MEM_WRITE, (void *)on_write, this, 0xB8000, 0xBFFFF);
+    e = uc_hook_add(uc, &hh, UC_HOOK_MEM_WRITE, (void *)on_write, this, 0, k_ram - 1);
     hh_memw = hh;
     e = uc_hook_add(uc, &hh, UC_HOOK_MEM_UNMAPPED, (void *)on_unmapped, this, 1, 0);
     hh_unmapped = hh;
@@ -473,6 +488,7 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     last_stop = REX_STOP_NONE;
     video_mode = 0x03;
     sync_ip_from_eip();
+    vcr_seed();
     return REX_OK;
 }
 
@@ -736,6 +752,153 @@ void dos_machine::bp_clear(void)
 {
     bps.clear();
     bp_by_id.clear();
+}
+
+void dos_machine::vcr_seed(void)
+{
+    vcr_frame f{};
+    vcr_pending.clear();
+    vcr_tape.clear();
+    get_regs(&f.regs);
+    f.video_mode = video_mode;
+    f.halted = halted;
+    vcr_tape.push_back(std::move(f));
+    vcr_pos = 0;
+    vcr_rec = false;
+}
+
+rex_status dos_machine::vcr_back(void)
+{
+    size_t i = 0;
+    if ((vcr_pos == 0) || vcr_tape.empty())
+    {
+        return REX_OK;
+    }
+    for (i = 0; i < vcr_tape[vcr_pos].undos.size(); i++)
+    {
+        const vcr_delta &d = vcr_tape[vcr_pos].undos[i];
+        if ((ram != nullptr) && ((size_t)d.lin < ram_size))
+        {
+            ram[d.lin] = d.oldv;
+        }
+    }
+    vcr_pos--;
+    set_regs(&vcr_tape[vcr_pos].regs);
+    video_mode = vcr_tape[vcr_pos].video_mode;
+    halted = vcr_tape[vcr_pos].halted;
+    wait_key = false;
+    video_dirty = true;
+    last_stop = REX_STOP_STEP;
+    return REX_OK;
+}
+
+rex_status dos_machine::vcr_end(void)
+{
+    while ((vcr_pos + 1u) < vcr_tape.size())
+    {
+        size_t i = 0;
+        vcr_pos++;
+        for (i = 0; i < vcr_tape[vcr_pos].undos.size(); i++)
+        {
+            const vcr_delta &d = vcr_tape[vcr_pos].undos[i];
+            if ((ram != nullptr) && ((size_t)d.lin < ram_size))
+            {
+                ram[d.lin] = d.newv;
+            }
+        }
+        set_regs(&vcr_tape[vcr_pos].regs);
+        video_mode = vcr_tape[vcr_pos].video_mode;
+        halted = vcr_tape[vcr_pos].halted;
+    }
+    video_dirty = true;
+    last_stop = REX_STOP_STEP;
+    return REX_OK;
+}
+
+rex_status dos_machine::vcr_home(void)
+{
+    while (vcr_pos > 0)
+    {
+        const rex_status st = vcr_back();
+        if (st != REX_OK)
+        {
+            return st;
+        }
+    }
+    return REX_OK;
+}
+
+rex_status dos_machine::vcr_forward(bool step_into)
+{
+    vcr_frame f{};
+    rex_status st = REX_OK;
+    constexpr size_t k_cap = 8192;
+
+    if (vcr_tape.empty())
+    {
+        vcr_seed();
+    }
+    if ((vcr_pos + 1u) < vcr_tape.size())
+    {
+        size_t i = 0;
+        vcr_pos++;
+        for (i = 0; i < vcr_tape[vcr_pos].undos.size(); i++)
+        {
+            const vcr_delta &d = vcr_tape[vcr_pos].undos[i];
+            if ((ram != nullptr) && ((size_t)d.lin < ram_size))
+            {
+                ram[d.lin] = d.newv;
+            }
+        }
+        set_regs(&vcr_tape[vcr_pos].regs);
+        video_mode = vcr_tape[vcr_pos].video_mode;
+        halted = vcr_tape[vcr_pos].halted;
+        video_dirty = true;
+        last_stop = REX_STOP_STEP;
+        return REX_OK;
+    }
+
+    vcr_pending.clear();
+    vcr_rec = true;
+    if (step_into)
+    {
+        st = step_one();
+    }
+    else
+    {
+        rex_insn ins{};
+        size_t n = 0;
+        if ((dos_machine_disasm(this, UINT64_MAX, &ins, 1, &n) != REX_OK) || (n == 0))
+        {
+            st = step_one();
+        }
+        else if (!(ins.is_call || ins.is_int || ins.is_rep || ins.is_loop))
+        {
+            st = step_one();
+        }
+        else
+        {
+            st = run_until(ins.linear + ins.size, 10000000ull, true);
+        }
+    }
+    vcr_rec = false;
+    get_regs(&f.regs);
+    f.video_mode = video_mode;
+    f.halted = halted;
+    f.undos = std::move(vcr_pending);
+    vcr_pending.clear();
+    vcr_tape.push_back(std::move(f));
+    vcr_pos = vcr_tape.size() - 1u;
+    while (vcr_tape.size() > k_cap)
+    {
+        vcr_tape.pop_front();
+        if (vcr_pos > 0)
+        {
+            vcr_pos--;
+        }
+    }
+    video_dirty = true;
+    return st;
 }
 
 rex_status dos_machine_disasm(const dos_machine *m, uint64_t linear, rex_insn *out, size_t cap,

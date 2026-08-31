@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.3"
+VERSION = "0.4"
 
 
 def usage() -> None:
@@ -26,7 +26,8 @@ Commands:
   bpdel <id>
   bplist
   shot
-  key <key>
+  key <key>          DOS INT 16 (also starts F9 run)
+  nav <Up|Down|Home|End|PgUp|PgDn>   CPU listing (no execute)
 
 Options:
   -h, --help         Show this help and exit
@@ -70,6 +71,8 @@ def build_line(cmd: str, rest: list[str]) -> str:
         return json.dumps({"cmd": "bpdel", "id": int(rest[0], 0)})
     if cmd == "key" and rest:
         return json.dumps({"cmd": "key", "key": rest[0]})
+    if cmd == "nav" and rest:
+        return json.dumps({"cmd": "nav", "key": rest[0]})
     return json.dumps({"cmd": cmd})
 
 

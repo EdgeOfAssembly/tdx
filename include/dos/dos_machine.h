@@ -45,6 +45,23 @@ struct dos_kbd_ev
     uint8_t scan = 0;
 };
 
+/** One byte changed during a VCR tape frame (undo/redo). */
+struct vcr_delta
+{
+    uint32_t lin = 0;
+    uint8_t oldv = 0;
+    uint8_t newv = 0;
+};
+
+/** CPU + memory diffs after one VCR unit (F8-over or F7-into). */
+struct vcr_frame
+{
+    rex_regs_i8086 regs{};
+    uint8_t video_mode = 3;
+    bool halted = false;
+    std::vector<vcr_delta> undos;
+};
+
 struct dos_machine
 {
     uc_engine *uc = nullptr;
@@ -77,6 +94,11 @@ struct dos_machine
 
     dos_file files[DOS_MAX_FILES]{};
     std::deque<dos_kbd_ev> kbd;
+
+    bool vcr_rec = false;
+    std::vector<vcr_delta> vcr_pending;
+    std::deque<vcr_frame> vcr_tape;
+    size_t vcr_pos = 0;
 
     size_t hh_intr = 0;
     size_t hh_memw = 0;
@@ -116,6 +138,12 @@ struct dos_machine
     rex_status bp_add(uint64_t linear, uint32_t *id);
     rex_status bp_del(uint32_t id);
     void bp_clear(void);
+
+    void vcr_seed(void);
+    rex_status vcr_forward(bool step_into);
+    rex_status vcr_back(void);
+    rex_status vcr_home(void);
+    rex_status vcr_end(void);
 };
 
 rex_status dos_machine_disasm(const dos_machine *m, uint64_t linear, rex_insn *out, size_t cap,

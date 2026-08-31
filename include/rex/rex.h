@@ -77,6 +77,16 @@ REX_API rex_status rex_session_step(rex_session *s);
 REX_API rex_status rex_session_step_over(rex_session *s, uint64_t max_insns);
 
 /**
+ * @brief VCR tape: Down/F8 steps over CALL/INT/REP/LOOP as one frame; F7 traces in.
+ * Jcc/JMP follow live flags. Home/End are tape start/end. Game RAM (CGA) rewinds too.
+ */
+REX_API void rex_session_vcr_seed(rex_session *s);
+REX_API rex_status rex_session_vcr_forward(rex_session *s, bool step_into);
+REX_API rex_status rex_session_vcr_back(rex_session *s);
+REX_API rex_status rex_session_vcr_home(rex_session *s);
+REX_API rex_status rex_session_vcr_end(rex_session *s);
+
+/**
  * @brief Run until break, halt, fault, wait-key, or @p max_insns.
  *
  * @param[in] max_insns 0 = default 50 million.
@@ -88,12 +98,19 @@ REX_API rex_status rex_session_run(rex_session *s, uint64_t max_insns);
  */
 REX_API rex_status rex_session_request_stop(rex_session *s);
 
-/** UI command posted by the agent socket (F9 from tdxview, etc.). */
+/** UI command posted by the agent socket (F9 / keys / listing nav). */
 enum
 {
     REX_UI_NONE = 0,
     REX_UI_TOGGLE_RUN = 1,
-    REX_UI_STOP = 2
+    REX_UI_STOP = 2,
+    REX_UI_START_RUN = 3,
+    REX_UI_LIST_UP = 4,
+    REX_UI_LIST_DOWN = 5,
+    REX_UI_LIST_HOME = 6,
+    REX_UI_LIST_END = 7,
+    REX_UI_LIST_PGUP = 8,
+    REX_UI_LIST_PGDN = 9
 };
 
 /**

@@ -391,7 +391,52 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         {
             rex_session_push_key(s, 0, 0x50);
         }
+        rex_session_post_ui_cmd(s, REX_UI_START_RUN);
         resp["key"] = k;
+    }
+    else if (cmd == "nav")
+    {
+        std::string k = req.value("key", "");
+        int nav = REX_UI_NONE;
+        if (k.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            is >> k;
+        }
+        if ((k == "Up") || (k == "up"))
+        {
+            nav = REX_UI_LIST_UP;
+        }
+        else if ((k == "Down") || (k == "down"))
+        {
+            nav = REX_UI_LIST_DOWN;
+        }
+        else if ((k == "Home") || (k == "home"))
+        {
+            nav = REX_UI_LIST_HOME;
+        }
+        else if ((k == "End") || (k == "end"))
+        {
+            nav = REX_UI_LIST_END;
+        }
+        else if ((k == "PgUp") || (k == "PageUp") || (k == "pgup"))
+        {
+            nav = REX_UI_LIST_PGUP;
+        }
+        else if ((k == "PgDn") || (k == "PageDown") || (k == "pgdn"))
+        {
+            nav = REX_UI_LIST_PGDN;
+        }
+        if (nav != REX_UI_NONE)
+        {
+            rex_session_post_ui_cmd(s, nav);
+        }
+        else
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad nav";
+        }
+        resp["nav"] = k;
     }
     else if (cmd == "status")
     {
@@ -416,7 +461,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop reset regs disasm mem bp bpdel bplist shot key status cga quit";
+            "step over run stop reset regs disasm mem bp bpdel bplist shot key nav status cga quit";
     }
     else
     {

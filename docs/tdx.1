@@ -37,7 +37,10 @@ Agent socket (default
 Run until break or halt after load.
 .El
 .Sh KEYS
-F7 trace, F8 step over, F9 run/pause, F2 breakpoint, Ctrl-F2 reset, Alt-X quit.
+F7 trace into, F8 or Down step over (CALL/INT/REP/LOOP as one VCR frame),
+Up reverse, PgUp/PgDn 14 frames, Home/End tape ends, F9 run, F2 breakpoint,
+Ctrl-F2 reset, Alt-X quit. Jcc/JMP follow live flags. Loops complete in one
+Over click.
 .Sh SEE ALSO
 .Nm tdxctl
 .Sh AUTHORS

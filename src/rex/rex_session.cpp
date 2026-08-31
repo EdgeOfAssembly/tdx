@@ -137,7 +137,56 @@ rex_status rex_session_step(rex_session *s)
     {
         return REX_ERR_ARG;
     }
-    return m->step_one();
+    return m->vcr_forward(true);
+}
+
+void rex_session_vcr_seed(rex_session *s)
+{
+    dos_machine *m = need_dos(s);
+    if (m != nullptr)
+    {
+        m->vcr_seed();
+    }
+}
+
+rex_status rex_session_vcr_forward(rex_session *s, bool step_into)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->vcr_forward(step_into);
+}
+
+rex_status rex_session_vcr_back(rex_session *s)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->vcr_back();
+}
+
+rex_status rex_session_vcr_home(rex_session *s)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->vcr_home();
+}
+
+rex_status rex_session_vcr_end(rex_session *s)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->vcr_end();
 }
 
 rex_status rex_session_step_over(rex_session *s, uint64_t max_insns)

@@ -22,8 +22,11 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"quit"}
 ```
 
-`run` / `F9` **toggles** the SDL F9 state (does not block the UI). `key` names:
-`Enter`, `Esc`, `Space`, `Left`, `Right`, `Up`, `Down`, or a single ASCII character.
+`run` / `F9` **toggles** the SDL F9 state (does not block the UI). `key` is DOS
+INT 16 and **starts** F9 so the guest actually consumes it. `nav` is the CPU VCR
+(`Up`/`Down`/`Home`/`End`/`PgUp`/`PgDn`) — Down steps **over** CALL/INT/REP/LOOP.
+
+Agents should drive tdx through this socket (`tdxctl`), not Xmux key inject.
 
 Bare words: `step`, `over`, `regs`, `cga`, `mem B800:0000 64`, `bp 1000:0100`.
 

@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <poll.h>
 #include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -239,6 +240,25 @@ bool recv_line(int fd, std::string *acc, std::string *line)
             }
             return true;
         }
+        {
+            pollfd pfd{};
+            int pr = 0;
+            pfd.fd = fd;
+            pfd.events = POLLIN;
+            pr = poll(&pfd, 1, 250);
+            if (pr == 0)
+            {
+                return false;
+            }
+            if (pr < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+                return false;
+            }
+        }
         const ssize_t n = read(fd, buf, sizeof(buf));
         if (n < 0)
         {
@@ -409,6 +429,11 @@ int main(int argc, char **argv)
     tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                             DOS_CGA_WIDTH, DOS_CGA_HEIGHT);
     SDL_SetWindowPosition(win, 0, 0);
+    SDL_RaiseWindow(win);
+    SDL_SetWindowInputFocus(win);
+#if SDL_VERSION_ATLEAST(2, 0, 16)
+    SDL_SetWindowKeyboardGrab(win, SDL_TRUE);
+#endif
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
     while (!quit)

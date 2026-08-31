@@ -86,6 +86,40 @@ TEST_CASE("INT3 padding does not stop run")
     rex_session_destroy(s);
 }
 
+TEST_CASE("VCR back undoes mov ax,1 on tiny.com")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_vcr_forward(s, true) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ax == 1);
+    REQUIRE(rex_session_vcr_back(s) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ax == 0);
+    REQUIRE(r.ip == 0x0100);
+    REQUIRE(rex_session_vcr_forward(s, true) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ax == 1);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("VCR over CALL then home returns to entry")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/over.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_vcr_forward(s, true) == REX_OK); /* xor ax,ax */
+    REQUIRE(rex_session_vcr_forward(s, false) == REX_OK); /* call helper — over */
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ax == 2);
+    REQUIRE(rex_session_vcr_home(s) == REX_OK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ip == 0x0100);
+    REQUIRE(r.ax == 0);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("INT16 waitkey consumes pushed key as exit code")
 {
     rex_session *s = rex_session_create();
