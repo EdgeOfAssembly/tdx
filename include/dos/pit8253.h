@@ -133,7 +133,6 @@ public:
             {
                 continue;
             }
-            const bool prev_out = c.out;
             if (c.bcd)
             {
                 c.count = bcd_decrement(c.count);
@@ -151,10 +150,13 @@ public:
                 const uint16_t half = (uint16_t)(((unsigned)c.reload + 1u) / 2u);
                 if (c.count == half)
                 {
+                    const bool before = c.out;
                     c.out = !c.out;
-                    if ((i == 0u) && prev_out && (!c.out))
+                    if (i == 0u)
                     {
-                        m_pic.assert_irq(0);
+                        /* Pulse on falling OUT; release the pin on rising so
+                         * the next edge can latch IRR (8259 is edge-triggered). */
+                        ch0_out_edge(before, c.out);
                     }
                 }
             }
@@ -233,6 +235,11 @@ private:
         c.latched = false;
         c.reload = 0;
         c.count = 0;
+        if (idx == 0u)
+        {
+            /* Reprogram must drop a stuck IRQ0 pin or mode-3 edges never latch. */
+            m_pic.deassert_irq(0);
+        }
     }
 
     void terminal_count(unsigned ch, counter &c)
@@ -269,10 +276,9 @@ private:
             const bool prev_out = c.out;
             c.out = !c.out;
             c.count = c.reload;
-            if ((ch == 0u) && prev_out && (!c.out))
+            if (ch == 0u)
             {
-                m_pic.deassert_irq(0);
-                m_pic.assert_irq(0);
+                ch0_out_edge(prev_out, c.out);
             }
             return;
         }
@@ -297,6 +303,26 @@ private:
         if ((c.mode == 2u) || (c.mode == 3u))
         {
             c.count = (c.reload != 0u) ? c.reload : c.count;
+        }
+    }
+
+    /**
+     * @brief Drive IRQ0 from channel-0 OUT edges.
+     *
+     * The 8259 is edge-triggered: IRR latches only on a low→high pin. If OUT
+     * falls while the pin is already high, a bare assert_irq() is a no-op and
+     * DOS delay loops freeze (Bushido courtyard wait at 1970:0C87).
+     */
+    void ch0_out_edge(bool prev_out, bool now_out)
+    {
+        if (prev_out && (!now_out))
+        {
+            m_pic.deassert_irq(0);
+            m_pic.assert_irq(0);
+        }
+        else if ((!prev_out) && now_out)
+        {
+            m_pic.deassert_irq(0);
         }
     }
 

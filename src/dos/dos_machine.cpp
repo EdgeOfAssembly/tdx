@@ -393,7 +393,8 @@ rex_status dos_machine::init_cpu()
     /* Plant a minimal BIOS default INT 08h (timer tick) + INT 1Ch (user tick)
      * handler, as a real BIOS ROM would. tdx skips POST, so without this the
      * IVT is all zeros and a hardware IRQ would vector to 0000:0000. The stub
-     * lives just below the EBDA at 0x9FC00, well above conventional load space.
+     * lives in the BIOS ROM hole at F000:0000 (linear 0xF0000). 9FC0:0000 is
+     * EBDA / top of conventional RAM — Bushido reuses that region.
      *
      * INT 08h handler:
      *   inc dword [0040:006C]     ; 18.2 Hz tick dword
@@ -404,7 +405,7 @@ rex_status dos_machine::init_cpu()
      * INT 1Ch handler: iret
      */
     {
-        const uint16_t seg = 0x9FC0;             /* BIOS-ish stub segment */
+        const uint16_t seg = 0xF000;             /* BIOS ROM hole, not conventional RAM */
         uint8_t *p = ram + ((uint32_t)seg << 4);
         size_t i = 0;
         /* ---- INT 08h (IF stays 0 until IRET; DS must be 0000 for BDA) ---- */
@@ -1232,9 +1233,9 @@ void dos_machine::deliver_pending_irq(void)
                                     ((uint16_t)ram[((uint32_t)v * 4u + 3u) & 0xFFFFF] << 8));
     const uint16_t off = (uint16_t)(ram[((uint32_t)v * 4u) & 0xFFFFF] |
                                     ((uint16_t)ram[((uint32_t)v * 4u + 1u) & 0xFFFFF] << 8));
-    /* Default BIOS stub at 9FC0:0000: do the tick in C. Jumping into Unicorn
-     * IRET after a hooked INT 1Ch left CS stuck at 9FC0 executing 00 00. */
-    if ((v == 0x08u) && (seg == 0x9FC0u) && (off == 0u))
+    /* Default BIOS stub at F000:0000: do the tick in C. Jumping into Unicorn
+     * IRET after a hooked INT 1Ch left CS stuck executing 00 00. */
+    if ((v == 0x08u) && (seg == 0xF000u) && (off == 0u))
     {
         uint32_t t = 0;
         (void)pic.ack_vector();
