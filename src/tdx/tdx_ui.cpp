@@ -28,6 +28,17 @@ constexpr int k_foot0 = 23; /**< First key-legend row; slightly shorter glyphs. 
 constexpr int k_foot_ch = 12;
 constexpr int k_list_rows = 15;
 constexpr int k_list_w = 66; /**< Leave a narrow Break box on the right. */
+#ifndef NDEBUG
+/* Unicorn + instant 3DAh retrace run the guest far faster than CGA animation.
+ * tdxview polls a 64KiB base64 frame about every 33ms and otherwise skips
+ * cells. Short slices + a few ms park also give tdxctl more SHOT slots.
+ * Release keeps the old 8k/1ms burst. Tests use --no-ui and never hit this. */
+constexpr uint64_t k_run_slice_insns = 2000;
+constexpr uint32_t k_run_slice_delay_ms = 12;
+#else
+constexpr uint64_t k_run_slice_insns = 8000;
+constexpr uint32_t k_run_slice_delay_ms = 1;
+#endif
 constexpr int k_box_x = 67;  /**< 13 cols: borders + 1010:0035 + sbar. */
 
 /* CP850 box / scrollbar (not UTF-8 — the glyph atlas is CP850). */
@@ -847,7 +858,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         if (ui.running && (!rex_session_halted(session)))
         {
             /* Small slices so SDL/F9/tdxctl are polled; 250k starved input. */
-            rex_session_run(session, 8000);
+            rex_session_run(session, k_run_slice_insns);
             {
                 const rex_stop st = rex_session_stop_reason(session);
                 if ((st == REX_STOP_BREAK) || (st == REX_STOP_FAULT) || (st == REX_STOP_HALTED) ||
@@ -871,7 +882,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         {
             render_game(&ui, session);
         }
-        SDL_Delay(1);
+        SDL_Delay(ui.running ? k_run_slice_delay_ms : 1);
     }
 
     if (ui.game_tex != nullptr)

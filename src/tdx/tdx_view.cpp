@@ -765,6 +765,8 @@ int main(int argc, char **argv)
         {
             (void)tdx_agent_poll(agent, view_handle, &vst);
         }
+        /* ~30 Hz present. Jerky animation is tdx running the guest ahead of
+         * this poll (debug F9 pace lives in tdx_ui.cpp), not this delay. */
         SDL_Delay(33);
     }
 
