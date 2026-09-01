@@ -124,6 +124,28 @@ REX_API void rex_session_post_ui_cmd(rex_session *s, int cmd);
  */
 REX_API int rex_session_take_ui_cmd(rex_session *s);
 
+/**
+ * @brief Milliseconds the CPU window parks after each F9 run slice.
+ *
+ * @return 0 if @p s is NULL. 0 means no extra wait (fastest).
+ */
+REX_API uint32_t rex_session_run_delay_ms(const rex_session *s);
+
+/**
+ * @brief Set F9 slice park. Clamped to 0..200 ms.
+ *
+ * @param[in] ms 0 = fastest. Independent of run/pause.
+ */
+REX_API void rex_session_set_run_delay_ms(rex_session *s, uint32_t ms);
+
+/**
+ * @brief Step F9 slice park by 5 ms (+ = slower, − = faster, floor 0).
+ *
+ * @param[in] dir Positive increases delay; negative decreases. Zero is a no-op.
+ * @return New delay in milliseconds, or 0 if @p s is NULL.
+ */
+REX_API uint32_t rex_session_nudge_run_delay(rex_session *s, int dir);
+
 REX_API rex_stop rex_session_stop_reason(const rex_session *s);
 REX_API bool rex_session_halted(const rex_session *s);
 REX_API int rex_session_exit_code(const rex_session *s);

@@ -514,8 +514,8 @@ std::string view_handle(void *user, const std::string &line)
         return resp.dump() + "\n";
     }
     if ((cmd == "key") || (cmd == "run") || (cmd == "F9") || (cmd == "stop") || (cmd == "pause") ||
-        (cmd == "unpause") || (cmd == "step") || (cmd == "over") || (cmd == "reset") ||
-        (cmd == "nav"))
+        (cmd == "unpause") || (cmd == "delay") || (cmd == "faster") || (cmd == "slower") ||
+        (cmd == "step") || (cmd == "over") || (cmd == "reset") || (cmd == "nav"))
     {
         std::string reply;
         std::string wire = line;
@@ -767,7 +767,7 @@ int main(int argc, char **argv)
             (void)tdx_agent_poll(agent, view_handle, &vst);
         }
         /* ~30 Hz present. Jerky animation is tdx running the guest ahead of
-         * this poll (debug F9 pace lives in tdx_ui.cpp), not this delay. */
+         * this poll (F9 slice delay: CPU +/- or tdxctl delay/faster/slower). */
         SDL_Delay(33);
     }
 

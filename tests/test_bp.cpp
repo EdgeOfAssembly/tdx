@@ -52,7 +52,25 @@ TEST_CASE("bp segoff is preserved in rex_bp_list")
     rex_session_destroy(s);
 }
 
-TEST_CASE("rex_version is 0.6")
+TEST_CASE("rex_version is 0.7")
 {
-    REQUIRE(std::string(rex_version()) == "0.6");
+    REQUIRE(std::string(rex_version()) == "0.7");
+}
+
+TEST_CASE("F9 run delay nudges in 5ms steps and will not go below 0")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_run_delay_ms(s) == 0);
+    rex_session_set_run_delay_ms(s, 5);
+    REQUIRE(rex_session_run_delay_ms(s) == 5);
+    REQUIRE(rex_session_nudge_run_delay(s, 1) == 10);
+    REQUIRE(rex_session_nudge_run_delay(s, -1) == 5);
+    REQUIRE(rex_session_nudge_run_delay(s, -1) == 0);
+    REQUIRE(rex_session_nudge_run_delay(s, -1) == 0);
+    rex_session_set_run_delay_ms(s, 9999);
+    REQUIRE(rex_session_run_delay_ms(s) == 200);
+    REQUIRE(rex_session_nudge_run_delay(s, 1) == 200);
+    rex_session_set_run_delay_ms(s, 3);
+    REQUIRE(rex_session_nudge_run_delay(s, -1) == 0);
+    rex_session_destroy(s);
 }

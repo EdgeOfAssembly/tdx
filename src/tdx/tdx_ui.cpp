@@ -31,13 +31,14 @@ constexpr int k_list_w = 66; /**< Leave a narrow Break box on the right. */
 #ifndef NDEBUG
 /* Unicorn + instant 3DAh retrace run the guest far faster than CGA animation.
  * tdxview polls a 64KiB base64 frame about every 33ms and otherwise skips
- * cells. Short slices + a few ms park also give tdxctl more SHOT slots.
- * Release keeps the old 8k/1ms burst. Tests use --no-ui and never hit this. */
+ * cells. Short slices + a default 5 ms park also give tdxctl more SHOT slots.
+ * +/- and tdxctl delay/faster/slower change the park at runtime (floor 0).
+ * Tests use --no-ui and never hit this loop. */
 constexpr uint64_t k_run_slice_insns = 4000;
-constexpr uint32_t k_run_slice_delay_ms = 5;
+constexpr uint32_t k_run_delay_default_ms = 5;
 #else
 constexpr uint64_t k_run_slice_insns = 8000;
-constexpr uint32_t k_run_slice_delay_ms = 1;
+constexpr uint32_t k_run_delay_default_ms = 0;
 #endif
 constexpr int k_box_x = 67;  /**< 13 cols: borders + 1010:0035 + sbar. */
 
@@ -488,10 +489,13 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
     fill_row_attr(ui, 24, 0, 7);
     put_str(ui, 0, 23, " F1 Help  F2 Break  F7 Into  F8 Over  F9 Run  Ctrl-F2 Reset  Alt-X Quit", 0,
             7);
-    put_str(ui, 0, 24, " Up Back  Down Fwd  PgUp  PgDn  Home  End", 0, 7);
+    put_str(ui, 0, 24, " Up Back  Down Fwd  PgUp  PgDn  Home  End  +/- Delay", 0, 7);
     {
-        const int sl = (int)std::strlen(stop);
-        put_str(ui, k_cols - sl - 1, 24, stop, 0, 7);
+        char stbuf[24];
+        const uint32_t delay_ms = rex_session_run_delay_ms(s);
+        std::snprintf(stbuf, sizeof(stbuf), "%ums %s", delay_ms, stop);
+        const int sl = (int)std::strlen(stbuf);
+        put_str(ui, k_cols - sl - 1, 24, stbuf, 0, 7);
     }
 }
 
@@ -503,6 +507,7 @@ void paint_help(tdx_ui *ui)
         "F7       Trace into one instruction",
         "F8       Step over CALL, INT, REP, LOOP",
         "F9       Run / pause",
+        "+ / -    F9 run delay (0 = fastest)",
         "Ctrl-F2  Reset program (keep breakpoints)",
         "Alt-X    Quit",
         "Up       VCR back one unit",
@@ -637,6 +642,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
     {
         rex_sock_set_shotters(sock, tdx_ui_shot_cpu, tdx_ui_shot_game, &ui);
     }
+    rex_session_set_run_delay_ms(session, k_run_delay_default_ms);
 
     while (!ui.quit)
     {
@@ -687,6 +693,14 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 {
                     ui.running = false;
                     rex_session_reset(session);
+                }
+                else if ((k == SDLK_PLUS) || (k == SDLK_KP_PLUS) || (k == SDLK_EQUALS))
+                {
+                    rex_session_nudge_run_delay(session, 1);
+                }
+                else if ((k == SDLK_MINUS) || (k == SDLK_KP_MINUS))
+                {
+                    rex_session_nudge_run_delay(session, -1);
                 }
                 else if (k == SDLK_F2)
                 {
@@ -882,7 +896,10 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         {
             render_game(&ui, session);
         }
-        SDL_Delay(ui.running ? k_run_slice_delay_ms : 1);
+        {
+            const uint32_t delay_ms = ui.running ? rex_session_run_delay_ms(session) : 1u;
+            SDL_Delay(delay_ms);
+        }
     }
 
     if (ui.game_tex != nullptr)

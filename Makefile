@@ -154,6 +154,7 @@ test: tdx tdxview tests/run_tests
 	./tdxview -v
 	$(PY) scripts/tdxctl.py -h >/dev/null
 	$(PY) scripts/tdxctl.py -h | grep -q pause
+	$(PY) scripts/tdxctl.py -h | grep -q delay
 	$(PY) scripts/tdxctl.py -v
 	@rm -f /tmp/tdx-test.sock
 	./tdx --no-ui tests/fixtures/tiny.com --sock /tmp/tdx-test.sock >/tmp/tdx-test.log 2>&1 & \
@@ -163,6 +164,8 @@ test: tdx tdxview tests/run_tests
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q b800_b64; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q '"mode"'; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q cga3d9; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock delay | grep -q delay_ms; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock slower | grep -q '"delay_ms":5'; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock quit; \
 	  wait $$(cat /tmp/tdx-test.pid) 2>/dev/null || true
 tests: test

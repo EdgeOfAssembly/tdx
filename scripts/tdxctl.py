@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.7"
+VERSION = "0.8"
 
 
 def usage() -> None:
@@ -20,10 +20,11 @@ def usage() -> None:
   Talk to tdx or tdxview over a keep-alive UNIX socket (no Xmux).
 
   run / F9 toggle run/pause (same as the CPU F9 key). pause/stop always
-  pause; unpause always resumes.
+  pause; unpause always resumes. delay/faster/slower change F9 slice park
+  (same as CPU +/- keys); 0 ms is fastest.
 
 Commands:
-  step | over | run | stop | pause | unpause | reset | regs | disasm | status | cga | ping | quit | help
+  step | over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | quit | help
   mem <seg:off> [len]
   bp <seg:off>
   bpint <n>          break on INT n (hex), e.g. bpint 10
@@ -32,6 +33,9 @@ Commands:
   shot [path]        screenshot; stdout = versioned path (Xmux-style timestamp)
   key <key>          DOS INT 16 (starts F9)
   nav <Up|Down|Home|End|PgUp|PgDn>
+  delay [N|+|-]      F9 slice park in ms (query / set / slower / faster)
+  faster             Decrease delay one 5 ms step (not below 0)
+  slower             Increase delay one 5 ms step (cap 200 ms)
 
 Options:
   -h, --help         Show this help and exit
@@ -64,6 +68,14 @@ def build_line(cmd: str, rest: list[str]) -> str:
         return json.dumps({"cmd": "nav", "key": rest[0]})
     if cmd == "shot" and rest:
         return json.dumps({"cmd": "shot", "path": rest[0]})
+    if cmd == "delay" and rest:
+        token = rest[0]
+        if token in {"+", "-"}:
+            return json.dumps({"cmd": "delay", "arg": token})
+        try:
+            return json.dumps({"cmd": "delay", "ms": int(token, 0)})
+        except ValueError:
+            return json.dumps({"cmd": "delay", "arg": token})
     return json.dumps({"cmd": cmd})
 
 

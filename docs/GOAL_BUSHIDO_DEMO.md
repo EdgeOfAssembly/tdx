@@ -33,6 +33,9 @@ high scores → title again, while the CPU window stays a live debugger.
    python3 scripts/tdxctl.py ping
    python3 scripts/tdxctl.py --view ping
    python3 scripts/tdxctl.py run          # F9
+   python3 scripts/tdxctl.py delay 10     # slower F9 slices (0 = fastest)
+   python3 scripts/tdxctl.py slower       # +5 ms (same as CPU +)
+   python3 scripts/tdxctl.py faster       # −5 ms, not below 0
    python3 scripts/tdxctl.py shot /tmp/tdx-cpu.bmp
    python3 scripts/tdxctl.py --view shot /tmp/tdx-game.bmp
    ```

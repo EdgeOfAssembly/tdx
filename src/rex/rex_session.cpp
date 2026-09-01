@@ -30,7 +30,14 @@ struct rex_session
     std::string load_path;
     std::string load_cwd;
     int ui_cmd = 0;
+    uint32_t run_delay_ms = 0;
 };
+
+namespace
+{
+constexpr uint32_t k_run_delay_step_ms = 5;
+constexpr uint32_t k_run_delay_max_ms = 200;
+} // namespace
 
 const char *rex_version(void)
 {
@@ -252,6 +259,58 @@ int rex_session_take_ui_cmd(rex_session *s)
     cmd = s->ui_cmd;
     s->ui_cmd = 0;
     return cmd;
+}
+
+uint32_t rex_session_run_delay_ms(const rex_session *s)
+{
+    return (s != nullptr) ? s->run_delay_ms : 0;
+}
+
+void rex_session_set_run_delay_ms(rex_session *s, uint32_t ms)
+{
+    if (s == nullptr)
+    {
+        return;
+    }
+    if (ms > k_run_delay_max_ms)
+    {
+        ms = k_run_delay_max_ms;
+    }
+    s->run_delay_ms = ms;
+}
+
+uint32_t rex_session_nudge_run_delay(rex_session *s, int dir)
+{
+    uint32_t ms = 0;
+    if (s == nullptr)
+    {
+        return 0;
+    }
+    ms = s->run_delay_ms;
+    if (dir > 0)
+    {
+        if (ms > k_run_delay_max_ms - k_run_delay_step_ms)
+        {
+            ms = k_run_delay_max_ms;
+        }
+        else
+        {
+            ms += k_run_delay_step_ms;
+        }
+    }
+    else if (dir < 0)
+    {
+        if (ms <= k_run_delay_step_ms)
+        {
+            ms = 0;
+        }
+        else
+        {
+            ms -= k_run_delay_step_ms;
+        }
+    }
+    s->run_delay_ms = ms;
+    return ms;
 }
 
 rex_stop rex_session_stop_reason(const rex_session *s)

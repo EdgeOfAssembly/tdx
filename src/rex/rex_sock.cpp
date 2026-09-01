@@ -215,6 +215,54 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         /* Always start F9 (unlike run/F9, which toggles). */
         rex_session_post_ui_cmd(s, REX_UI_START_RUN);
     }
+    else if ((cmd == "delay") || (cmd == "faster") || (cmd == "slower"))
+    {
+        std::string arg = req.value("arg", "");
+        if (cmd == "faster")
+        {
+            rex_session_nudge_run_delay(s, -1);
+        }
+        else if (cmd == "slower")
+        {
+            rex_session_nudge_run_delay(s, 1);
+        }
+        else if (req.contains("ms") && req["ms"].is_number())
+        {
+            const auto v = req["ms"].get<int64_t>();
+            rex_session_set_run_delay_ms(s, (v < 0) ? 0u : (uint32_t)v);
+        }
+        else
+        {
+            if (arg.empty() && req.contains("_rest"))
+            {
+                std::istringstream is(req["_rest"].get<std::string>());
+                is >> arg;
+            }
+            if ((arg == "+") || (arg == "slower"))
+            {
+                rex_session_nudge_run_delay(s, 1);
+            }
+            else if ((arg == "-") || (arg == "faster"))
+            {
+                rex_session_nudge_run_delay(s, -1);
+            }
+            else if (!arg.empty())
+            {
+                char *end = nullptr;
+                const unsigned long v = std::strtoul(arg.c_str(), &end, 0);
+                if ((end == arg.c_str()) || (end == nullptr) || (*end != '\0'))
+                {
+                    resp["ok"] = false;
+                    resp["error"] = "bad delay";
+                }
+                else
+                {
+                    rex_session_set_run_delay_ms(s, (uint32_t)v);
+                }
+            }
+        }
+        resp["delay_ms"] = rex_session_run_delay_ms(s);
+    }
     else if (cmd == "regs")
     {
         resp["regs"] = regs_json(s);
@@ -536,7 +584,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop reset regs disasm mem bp bpdel bplist shot key nav status cga ping quit";
+            "step over run stop pause unpause delay faster slower reset regs disasm mem bp bpdel bplist shot key nav status cga ping quit";
     }
     else
     {
@@ -546,6 +594,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     resp["stop"] = (int)rex_session_stop_reason(s);
     resp["halted"] = rex_session_halted(s);
+    resp["delay_ms"] = rex_session_run_delay_ms(s);
     if (!resp.contains("regs"))
     {
         resp["ip"] = regs_json(s)["ip"];

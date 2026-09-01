@@ -9,6 +9,12 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"over"}
 {"cmd":"run"}
 {"cmd":"stop"}
+{"cmd":"pause"}
+{"cmd":"unpause"}
+{"cmd":"delay"}
+{"cmd":"delay","ms":10}
+{"cmd":"faster"}
+{"cmd":"slower"}
 {"cmd":"reset"}
 {"cmd":"regs"}
 {"cmd":"disasm"}
@@ -22,9 +28,12 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"quit"}
 ```
 
-`run` / `F9` **toggles** the SDL F9 state (does not block the UI). `key` is DOS
-INT 16 and **starts** F9 so the guest actually consumes it. `nav` is the CPU VCR
-(`Up`/`Down`/`Home`/`End`/`PgUp`/`PgDn`) — Down steps **over** CALL/INT/REP/LOOP.
+`run` / `F9` **toggles** the SDL F9 state (does not block the UI). `pause` /
+`stop` always pause; `unpause` always resumes. `delay` queries F9 slice park
+(ms); `delay` + `ms` sets it (0 = fastest, cap 200). `faster` / `slower` step
+by 5 ms (same as CPU `+` / `-`). `key` is DOS INT 16 and **starts** F9 so the
+guest actually consumes it. `nav` is the CPU VCR (`Up`/`Down`/`Home`/`End`/
+`PgUp`/`PgDn`) — Down steps **over** CALL/INT/REP/LOOP.
 
 Agents drive **tdx** (`/tmp/tdx.sock`) and **tdxview** (`/tmp/tdxview.sock`)
 directly. Xmux is optional (human spectator only).
