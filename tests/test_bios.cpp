@@ -19,6 +19,20 @@ TEST_CASE("CGA port 3DAh toggles so wait-retrace loops can exit")
     rex_session_destroy(s);
 }
 
+TEST_CASE("INT 1A AH=00 returns BDA 0040:006C ticks")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/int1a.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_exit_code(s) == 0);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.dx == 0x1234);
+    REQUIRE(r.cx == 0x0005);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("OUT 3D9h writes CGA color-select to BDA 0040:0066")
 {
     rex_session *s = rex_session_create();

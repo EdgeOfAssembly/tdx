@@ -128,12 +128,15 @@ tests/fixtures/int10pal.com: tests/fixtures/int10pal.asm
 tests/fixtures/out3d9.com: tests/fixtures/out3d9.asm
 	nasm -f bin -o $@ $<
 
+tests/fixtures/int1a.com: tests/fixtures/int1a.asm
+	nasm -f bin -o $@ $<
+
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
 	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com \
 	tests/fixtures/waitkey.com tests/fixtures/int16spin.com tests/fixtures/int10.com \
 	tests/fixtures/ud.com tests/fixtures/cga3da.com tests/fixtures/int10m4.com \
 	tests/fixtures/parsefcb.com tests/fixtures/irq0.com tests/fixtures/int10pal.com \
-	tests/fixtures/out3d9.com
+	tests/fixtures/out3d9.com tests/fixtures/int1a.com
 
 test: tdx tdxview tests/run_tests
 	./tests/run_tests
@@ -169,6 +172,7 @@ clean:
 		tests/fixtures/int10.com tests/fixtures/ud.com \
 		tests/fixtures/cga3da.com tests/fixtures/int10m4.com tests/fixtures/parsefcb.com \
 		tests/fixtures/irq0.com tests/fixtures/int10pal.com tests/fixtures/out3d9.com \
+		tests/fixtures/int1a.com \
 		*.d src/**/*.d tests/**/*.d
 
 release:

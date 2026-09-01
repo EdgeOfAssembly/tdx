@@ -1154,10 +1154,38 @@ void dos_machine::handle_intr(uint32_t intno)
         handle_int16(this);
         break;
     case 0x1A:
-        set_reg16(UC_X86_REG_CX, 0);
-        set_reg16(UC_X86_REG_DX, (uint16_t)(clock() & 0xFFFF));
-        set_cf(false);
+    {
+        /* BIOS time: AH=00 returns the 18.2 Hz dword at 0040:006C, not C clock(). */
+        const uint16_t ax = reg16(UC_X86_REG_AX);
+        const uint8_t ah = (uint8_t)(ax >> 8);
+        if (ah == 0x00u)
+        {
+            const uint32_t ticks = (uint32_t)ram[0x46C] | ((uint32_t)ram[0x46D] << 8) |
+                                   ((uint32_t)ram[0x46E] << 16) | ((uint32_t)ram[0x46F] << 24);
+            const uint8_t midnight = ram[0x470];
+            ram[0x470] = 0;
+            set_reg16(UC_X86_REG_CX, (uint16_t)(ticks >> 16));
+            set_reg16(UC_X86_REG_DX, (uint16_t)ticks);
+            set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | midnight));
+            set_cf(false);
+        }
+        else if (ah == 0x01u)
+        {
+            const uint16_t cx = reg16(UC_X86_REG_CX);
+            const uint16_t dx = reg16(UC_X86_REG_DX);
+            ram[0x46C] = (uint8_t)dx;
+            ram[0x46D] = (uint8_t)(dx >> 8);
+            ram[0x46E] = (uint8_t)cx;
+            ram[0x46F] = (uint8_t)(cx >> 8);
+            ram[0x470] = 0;
+            set_cf(false);
+        }
+        else
+        {
+            set_cf(true);
+        }
         break;
+    }
     case 0x1C:
         break;
     case 0x20:
