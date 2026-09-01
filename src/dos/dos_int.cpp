@@ -219,6 +219,8 @@ static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, boo
     uint16_t got_recs = 0;
     if ((fd < 0) || (fd >= DOS_MAX_FILES) || (m->files[fd].fp == nullptr) || (nrec == 0))
     {
+        rex_logf(REX_LOG_INFO, "FCB read no-handle fd=%d nrec=%u recsize=%u", fd, (unsigned)nrec,
+                 (unsigned)recsize);
         return 1;
     }
     if (sequential)
@@ -256,8 +258,11 @@ static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, boo
                 }
             }
         }
-        rex_logf(REX_LOG_DEBUG, "FCB read dta=0x%X recsize=%u nrec=%u got=%zu", m->dta,
-                 (unsigned)recsize, (unsigned)nrec, got);
+        rex_logf(REX_LOG_DEBUG,
+                 "FCB read dta=0x%X rec=%u recsize=%u nrec=%u got=%zu seq=%d head=%02X%02X%02X%02X",
+                 m->dta, rec, (unsigned)recsize, (unsigned)nrec, got, sequential ? 1 : 0,
+                 (got > 0) ? tmp[0] : 0, (got > 1) ? tmp[1] : 0, (got > 2) ? tmp[2] : 0,
+                 (got > 3) ? tmp[3] : 0);
         got_recs = (uint16_t)(got / recsize);
         if (sequential && (got_recs > 0))
         {
@@ -401,14 +406,18 @@ static void handle_int21(dos_machine *m)
         }
         m->files[fd].fp = fp;
         fcb_set_handle(fcb, fd);
-        /* DOS FCB open (RBIL AH=0Fh): current block = 0, record size = 80h,
-         * current/random record = 0. Leftover current-record makes AH=14 seek
-         * past EOF — BUSHIDO.SCR is 256 bytes / two 128-byte records, so a
-         * dirty current-record >= 2 leaves Great Warriors empty. */
+        /* DOS FCB open: current block / current record / random rec = 0.
+         * Record size is 128 only when the guest left it 0 — Bushido sets
+         * recsize 25 *before* AH=0Fh for BUSHIDO.SCR (10×25-byte names) and
+         * then AH=21 random-reads. Forcing 128 here made every AH=21 return
+         * the same 128-byte slab so Great Warriors stayed empty. */
         fcb[0x0C] = 0;
         fcb[0x0D] = 0;
-        fcb[0x0E] = 128;
-        fcb[0x0F] = 0;
+        if ((fcb[0x0E] | fcb[0x0F]) == 0)
+        {
+            fcb[0x0E] = 128;
+            fcb[0x0F] = 0;
+        }
         fcb[0x20] = 0;
         fcb[0x21] = 0;
         fcb[0x22] = 0;

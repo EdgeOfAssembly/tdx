@@ -34,7 +34,7 @@ fcb:
         db      'TINY    '
         db      'COM'
         dw      0x1234                  ; current block (must be cleared)
-        dw      1                       ; leftover recsize
+        dw      0                       ; recsize 0 → DOS default 128
         dd      0xFFFFFFFF              ; leftover file size
         dw      0, 0                    ; date/time
         times   8 db 0xAA               ; reserved

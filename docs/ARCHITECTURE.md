@@ -27,8 +27,9 @@ to 320×200×4. Writes into `0xB8000–0xBFFFF` mark the surface dirty.
 makes it RETF to PSP:0000 (INT 20) without SETBLOCK.
 
 **FCB I/O:** INT 21 AH=0Fh/10h/14h/16h/21h/27h (open/close/seq/create/random).
-Open matches DOS: current block = 0, record size = 128, current/random record
-= 0, file size from the host file. Bushido loads `.TP*` / `.DAT` / `BUSHIDO.SCR`
+Open zeros current block / current record / random rec, fills file size, and
+sets record size to 128 only when the guest left it 0 (Bushido sets 25 before
+open for `BUSHIDO.SCR`, then AH=21). Bushido loads `.TP*` / `.DAT` / `BUSHIDO.SCR`
 this way, then sits in CGA mode 4.
 
 **Reset:** Ctrl-F2 / `{"cmd":"reset"}` reloads the same image in-process (keep
