@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.6"
+VERSION = "0.7"
 
 
 def usage() -> None:
@@ -19,8 +19,11 @@ def usage() -> None:
 
   Talk to tdx or tdxview over a keep-alive UNIX socket (no Xmux).
 
+  run / F9 toggle run/pause (same as the CPU F9 key). pause/stop always
+  pause; unpause always resumes.
+
 Commands:
-  step | over | run | stop | reset | regs | disasm | status | cga | ping | quit | help
+  step | over | run | stop | pause | unpause | reset | regs | disasm | status | cga | ping | quit | help
   mem <seg:off> [len]
   bp <seg:off>
   bpint <n>          break on INT n (hex), e.g. bpint 10

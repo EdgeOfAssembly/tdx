@@ -143,6 +143,7 @@ test: tdx tdxview tests/run_tests
 	./tdxview -h >/dev/null
 	./tdxview -v
 	$(PY) scripts/tdxctl.py -h >/dev/null
+	$(PY) scripts/tdxctl.py -h | grep -q pause
 	$(PY) scripts/tdxctl.py -v
 	@rm -f /tmp/tdx-test.sock
 	./tdx --no-ui tests/fixtures/tiny.com --sock /tmp/tdx-test.sock >/tmp/tdx-test.log 2>&1 & \

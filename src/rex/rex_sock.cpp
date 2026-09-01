@@ -202,13 +202,18 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     else if ((cmd == "run") || (cmd == "F9"))
     {
-        /* Do not run the CPU here — that blocks the SDL loop. Toggle F9. */
+        /* Same as the CPU-window F9 key: run if stopped, pause if running. */
         rex_session_post_ui_cmd(s, REX_UI_TOGGLE_RUN);
     }
-    else if (cmd == "stop")
+    else if ((cmd == "stop") || (cmd == "pause"))
     {
         rex_session_post_ui_cmd(s, REX_UI_STOP);
         rex_session_request_stop(s);
+    }
+    else if ((cmd == "unpause") || (cmd == "cont"))
+    {
+        /* Always start F9 (unlike run/F9, which toggles). */
+        rex_session_post_ui_cmd(s, REX_UI_START_RUN);
     }
     else if (cmd == "regs")
     {

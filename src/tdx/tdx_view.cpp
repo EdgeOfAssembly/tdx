@@ -513,8 +513,9 @@ std::string view_handle(void *user, const std::string &line)
         resp["quit"] = true;
         return resp.dump() + "\n";
     }
-    if ((cmd == "key") || (cmd == "run") || (cmd == "F9") || (cmd == "step") || (cmd == "over") ||
-        (cmd == "reset") || (cmd == "nav"))
+    if ((cmd == "key") || (cmd == "run") || (cmd == "F9") || (cmd == "stop") || (cmd == "pause") ||
+        (cmd == "unpause") || (cmd == "step") || (cmd == "over") || (cmd == "reset") ||
+        (cmd == "nav"))
     {
         std::string reply;
         std::string wire = line;
