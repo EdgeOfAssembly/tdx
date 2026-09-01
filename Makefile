@@ -98,6 +98,9 @@ tests/fixtures/int3pad.com: tests/fixtures/int3pad.asm
 tests/fixtures/fcbopen.com: tests/fixtures/fcbopen.asm
 	nasm -f bin -o $@ $<
 
+tests/fixtures/fcbread.com: tests/fixtures/fcbread.asm
+	nasm -f bin -o $@ $<
+
 tests/fixtures/waitkey.com: tests/fixtures/waitkey.asm
 	nasm -f bin -o $@ $<
 
@@ -133,6 +136,7 @@ tests/fixtures/int1a.com: tests/fixtures/int1a.asm
 
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
 	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com \
+	tests/fixtures/fcbread.com \
 	tests/fixtures/waitkey.com tests/fixtures/int16spin.com tests/fixtures/int10.com \
 	tests/fixtures/ud.com tests/fixtures/cga3da.com tests/fixtures/int10m4.com \
 	tests/fixtures/parsefcb.com tests/fixtures/irq0.com tests/fixtures/int10pal.com \
@@ -168,7 +172,8 @@ clean:
 	rm -f tdx tdxview tests/run_tests \
 		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
 		tests/fixtures/far.com tests/fixtures/setblock.com tests/fixtures/int3pad.com \
-		tests/fixtures/fcbopen.com tests/fixtures/waitkey.com tests/fixtures/int16spin.com \
+		tests/fixtures/fcbopen.com tests/fixtures/fcbread.com tests/fixtures/waitkey.com \
+		tests/fixtures/int16spin.com \
 		tests/fixtures/int10.com tests/fixtures/ud.com \
 		tests/fixtures/cga3da.com tests/fixtures/int10m4.com tests/fixtures/parsefcb.com \
 		tests/fixtures/irq0.com tests/fixtures/int10pal.com tests/fixtures/out3d9.com \

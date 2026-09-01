@@ -401,11 +401,19 @@ static void handle_int21(dos_machine *m)
         }
         m->files[fd].fp = fp;
         fcb_set_handle(fcb, fd);
-        if (fcb_recsize(fcb) == 128u)
-        {
-            fcb[0x0E] = 128;
-            fcb[0x0F] = 0;
-        }
+        /* DOS FCB open (RBIL AH=0Fh): current block = 0, record size = 80h,
+         * current/random record = 0. Leftover current-record makes AH=14 seek
+         * past EOF — BUSHIDO.SCR is 256 bytes / two 128-byte records, so a
+         * dirty current-record >= 2 leaves Great Warriors empty. */
+        fcb[0x0C] = 0;
+        fcb[0x0D] = 0;
+        fcb[0x0E] = 128;
+        fcb[0x0F] = 0;
+        fcb[0x20] = 0;
+        fcb[0x21] = 0;
+        fcb[0x22] = 0;
+        fcb[0x23] = 0;
+        fcb[0x24] = 0;
         if (fstat(fileno(fp), &st) == 0)
         {
             const uint32_t sz = (uint32_t)st.st_size;

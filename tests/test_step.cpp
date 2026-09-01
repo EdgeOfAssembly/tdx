@@ -144,6 +144,16 @@ TEST_CASE("INT21 FCB open TINY.COM succeeds")
     rex_session_destroy(s);
 }
 
+TEST_CASE("INT21 FCB open zeros leftover seq pointers then AH=14 reads byte 0")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_load(s, "tests/fixtures/fcbread.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_exit_code(s) == 0);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("INT21 AH=4A BX=FFFF reports max and sets CF")
 {
     rex_session *s = rex_session_create();
