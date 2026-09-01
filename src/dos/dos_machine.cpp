@@ -1164,6 +1164,10 @@ void dos_machine::pit_poll(void)
     ram[0x46D] = (uint8_t)(t >> 8);
     ram[0x46E] = (uint8_t)(t >> 16);
     ram[0x46F] = (uint8_t)(t >> 24);
+    /* Also pulse IRQ0 on the wall 18.2 Hz so attract delays still expire when
+     * debug F9 parks between short Unicorn slices (insn-only PIT would stall). */
+    pic.deassert_irq(0);
+    pic.assert_irq(0);
 }
 
 /* Advance the 8253 PIT by guest instruction count (Py86 cadence: one PIT tick
