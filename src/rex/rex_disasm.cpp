@@ -75,6 +75,10 @@ rex_status rex_disasm_block(rex_arch arch, uint64_t linear, uint16_t seg, uint16
                 dst->is_jump = dst->is_jump || (g == CS_GRP_JUMP);
             }
         }
+        if ((d != nullptr) && (d->x86.op_count > 0) && (d->x86.operands[0].type == X86_OP_IMM))
+        {
+            dst->target = (uint64_t)d->x86.operands[0].imm;
+        }
         if ((std::strncmp(insn[i].mnemonic, "loop", 4) == 0) ||
             (std::strcmp(insn[i].mnemonic, "jcxz") == 0) ||
             (std::strcmp(insn[i].mnemonic, "jecxz") == 0))

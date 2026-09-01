@@ -14,6 +14,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <ctime>
 #include <deque>
 #include <fstream>
 #include <vector>
@@ -35,13 +36,44 @@ void on_intr(uc_engine *uc, uint32_t intno, void *user)
 void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
 {
     dos_machine *m = static_cast<dos_machine *>(user);
-    (void)size;
-    assert(m != nullptr);
     if (m->stop_req)
     {
         uc_emu_stop(uc);
         m->last_stop = REX_STOP_REQUEST;
         return;
+    }
+    /* 8086 cadence: tick the 8253 once per 2 guest instructions. */
+    m->tick_pit(1);
+    /* Instruction-boundary INTR check (real hardware samples INTR between
+     * instructions) — but only when not in the one-instruction inhibit window
+     * after STI / POP SS / MOV SS,reg (8086 semantics). A pending, unmasked IRQ
+     * with IF=1 stops this burst so run_until can deliver it at a clean
+     * boundary before re-entering Unicorn. Do NOT touch last_stop/stop_req:
+     * this is an internal micro-stop, transparent to the debugger UI. */
+    if (m->intr_inhibit != 0u)
+    {
+        m->intr_inhibit--; /* the previous instruction armed it; consume here */
+    }
+    else if ((m->intr_depth == 0u) && (m->pic.pending()) &&
+             ((m->reg16(UC_X86_REG_FLAGS) & 0x0200u) != 0u))
+    {
+        uc_emu_stop(uc);
+        return;
+    }
+    /* Track STI/POP-SS/MOV-SS inhibit for the *next* instruction, and IRET that
+     * unwinds a hardware ISR (restores IF and leaves intr_depth). */
+    if ((m->ram != nullptr) && (address + 1u < m->ram_size))
+    {
+        const uint8_t op = m->ram[address];
+        if (op == 0xCFu /* IRET */ && (m->intr_depth != 0u))
+        {
+            m->intr_depth--; /* after this IRET the ISR returns, IF restored */
+        }
+        else if (op == 0xFBu /* STI */ || op == 0x17u /* POP SS */ ||
+                 (op == 0x8Eu && ((m->ram[address + 1u] >> 3) & 7u) == 2u) /* MOV SS,r/m */)
+        {
+            m->intr_inhibit = 1u;
+        }
     }
     if (m->bps.find(address) == m->bps.end())
     {
@@ -111,10 +143,24 @@ bool on_unmapped(uc_engine *uc, uc_mem_type type, uint64_t address, int size, in
 
 uint32_t on_in(uc_engine *uc, uint32_t port, int size, void *user)
 {
+    dos_machine *m = static_cast<dos_machine *>(user);
     (void)uc;
-    (void)port;
     (void)size;
-    (void)user;
+    if (m != nullptr)
+    {
+        if ((port >= 0x40u) && (port <= 0x43u))
+        {
+            return m->pit.read(port);
+        }
+        if (port == 0x20u)
+        {
+            return m->pic.read_command();
+        }
+        if (port == 0x21u)
+        {
+            return m->pic.read_data();
+        }
+    }
     return 0xFFu;
 }
 
@@ -123,11 +169,27 @@ void on_out(uc_engine *uc, uint32_t port, int size, uint32_t value, void *user)
     dos_machine *m = static_cast<dos_machine *>(user);
     (void)uc;
     (void)size;
-    if ((m != nullptr) && ((port == 0x3D8u) || (port == 0x3D9u) || (port == 0x3D4u)))
+    if (m == nullptr)
+    {
+        (void)value;
+        return;
+    }
+    if ((port == 0x3D8u) || (port == 0x3D9u) || (port == 0x3D4u))
     {
         m->video_dirty = true;
     }
-    (void)value;
+    else if ((port >= 0x40u) && (port <= 0x43u))
+    {
+        m->pit.write(port, (uint8_t)value);
+    }
+    else if (port == 0x20u)
+    {
+        m->pic.write_command((uint8_t)value);
+    }
+    else if (port == 0x21u)
+    {
+        m->pic.write_data((uint8_t)value);
+    }
 }
 
 void build_psp(uint8_t *psp, uint16_t mem_end_para, uint16_t env_seg)
@@ -310,6 +372,51 @@ rex_status dos_machine::init_cpu()
     ram[0x44A] = 80;
     ram[0x44B] = 0;
 
+    /* Plant a minimal BIOS default INT 08h (timer tick) + INT 1Ch (user tick)
+     * handler, as a real BIOS ROM would. tdx skips POST, so without this the
+     * IVT is all zeros and a hardware IRQ would vector to 0000:0000. The stub
+     * lives just below the EBDA at 0x9FC00, well above conventional load space.
+     *
+     * INT 08h handler:
+     *   inc dword [0040:006C]     ; 18.2 Hz tick dword
+     *   (rollover sets 0070h)
+     *   int 1Ch                    ; chain the user tick
+     *   mov al,20h ; out 20h,al    ; non-specific EOI to the 8259 PIC
+     *   iret
+     * INT 1Ch handler: iret
+     */
+    {
+        const uint16_t seg = 0x9FC0;             /* BIOS-ish stub segment */
+        uint8_t *p = ram + ((uint32_t)seg << 4);
+        size_t i = 0;
+        /* ---- INT 08h (IF stays 0 until IRET; DS must be 0000 for BDA) ---- */
+        p[i++] = 0x50;                           /* push ax */
+        p[i++] = 0x1E;                           /* push ds */
+        p[i++] = 0x33; p[i++] = 0xC0;            /* xor ax,ax */
+        p[i++] = 0x8E; p[i++] = 0xD8;            /* mov ds,ax */
+        p[i++] = 0xFF; p[i++] = 0x06; p[i++] = 0x6C; p[i++] = 0x04; /* inc word [046C] */
+        p[i++] = 0x75; p[i++] = 0x04;            /* jnz +4 */
+        p[i++] = 0xFF; p[i++] = 0x06; p[i++] = 0x6E; p[i++] = 0x04; /* inc word [046E] */
+        p[i++] = 0x1F;                           /* pop ds */
+        p[i++] = 0x58;                           /* pop ax */
+        p[i++] = 0xCD; p[i++] = 0x1C;            /* int 1Ch */
+        p[i++] = 0xB0; p[i++] = 0x20;            /* mov al,20h */
+        p[i++] = 0xE6; p[i++] = 0x20;            /* out 20h,al (EOI) */
+        p[i++] = 0xCF;                           /* iret */
+        const uint16_t off08 = 0;
+        const uint16_t off1c = (uint16_t)i;      /* ---- INT 1Ch ---- */
+        p[i++] = 0xCF;                           /* iret */
+        /* IVT[08] -> seg:off08, IVT[1C] -> seg:off1c */
+        ram[0x08u * 4 + 0] = (uint8_t)(off08);
+        ram[0x08u * 4 + 1] = (uint8_t)(off08 >> 8);
+        ram[0x08u * 4 + 2] = (uint8_t)(seg);
+        ram[0x08u * 4 + 3] = (uint8_t)(seg >> 8);
+        ram[0x1Cu * 4 + 0] = (uint8_t)(off1c);
+        ram[0x1Cu * 4 + 1] = (uint8_t)(off1c >> 8);
+        ram[0x1Cu * 4 + 2] = (uint8_t)(seg);
+        ram[0x1Cu * 4 + 3] = (uint8_t)(seg >> 8);
+    }
+
     e = uc_hook_add(uc, &hh, UC_HOOK_INTR, (void *)on_intr, this, 1, 0);
     hh_intr = hh;
     e = uc_hook_add(uc, &hh, UC_HOOK_CODE, (void *)on_code, this, 0, k_ram - 1);
@@ -321,6 +428,14 @@ rex_status dos_machine::init_cpu()
     e = uc_hook_add(uc, &hh, UC_HOOK_INSN, (void *)on_in, this, 1, 0, UC_X86_INS_IN);
     e = uc_hook_add(uc, &hh, UC_HOOK_INSN, (void *)on_out, this, 1, 0, UC_X86_INS_OUT);
     (void)e;
+
+    /* tdx runs no BIOS POST: put the emulated 8259 PIC + 8253 PIT in the state
+     * every booted DOS machine has, so programs (and their timer ISRs) see a
+     * live IRQ0 system tick without needing to reprogram the chipset. */
+    pic.pc_boot_state();
+    pit.pc_boot_state();
+    pit_ticks_acc = 0;
+    intr_inhibit = 0;
     return REX_OK;
 }
 
@@ -602,6 +717,15 @@ rex_status dos_machine::step_one()
     }
     at_break = false;
     wait_key = false;
+    /* A pending hardware IRQ makes the code hook stop the 1-insn execution
+     * before it runs, leaving IP frozen. Deliver the interrupt first so the
+     * step actually executes the (ISR entry) instruction it lands on. */
+    if (irq_pending_if_on())
+    {
+        deliver_pending_irq();
+        last_stop = REX_STOP_STEP;
+        return REX_OK;
+    }
     e = uc_emu_start(uc, lin, 0, 0, 1);
     sync_ip_from_eip();
     if (!at_break)
@@ -667,6 +791,15 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         const uint64_t lin = linear_ip();
         const size_t chunk = (left > 50000ull) ? 50000u : (size_t)left;
         uc_err e = UC_ERR_OK;
+        /* Deliver a pending hardware IRQ (timer/keyboard) to the guest through
+         * its IVT at this instruction boundary — exactly like real 8086
+         * hardware checks INTR between instructions. The burst below runs the
+         * ISR and its IRET, restoring the stack and returning here. */
+        if (irq_pending_if_on())
+        {
+            deliver_pending_irq();
+            continue; /* recompute lin; we just vectored into the ISR */
+        }
         if (lin != run_ignore_bp)
         {
             run_ignore_bp = UINT64_MAX;
@@ -907,6 +1040,166 @@ rex_status dos_machine::vcr_forward(bool step_into)
     }
     video_dirty = true;
     return st;
+}
+
+void dos_machine::pit_poll(void)
+{
+    /* Wall-clock tick advance (BIOS 046Ch dword + cadence for the tdx UI).
+     * The real work that unstucks DOS games is done by deliver_pending_irq()
+     * via the emulated 8259 PIC + 8253 PIT below, ticked by guest instruction
+     * count. Here we only keep the BIOS data-area tick fresh for programs that
+     * read it directly. */
+    struct timespec now{};
+    uint64_t ns = 0;
+    uint32_t t = 0;
+    if (ram == nullptr)
+    {
+        return;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    ns = (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
+    if (pit_last_ns == 0)
+    {
+        pit_last_ns = ns;
+        return;
+    }
+    if (ns - pit_last_ns < 55000000ull)
+    {
+        return;
+    }
+    pit_last_ns = ns;
+    t = (uint32_t)ram[0x46C] | ((uint32_t)ram[0x46D] << 8) | ((uint32_t)ram[0x46E] << 16) |
+        ((uint32_t)ram[0x46F] << 24);
+    t += 1u;
+    ram[0x46C] = (uint8_t)(t);
+    ram[0x46D] = (uint8_t)(t >> 8);
+    ram[0x46E] = (uint8_t)(t >> 16);
+    ram[0x46F] = (uint8_t)(t >> 24);
+}
+
+/* Advance the 8253 PIT by guest instruction count (Py86 cadence: one PIT tick
+ * per 2 guest insns). Terminal count on ch0 asserts IRQ0 through the 8259 PIC.
+ * Unicorn runs at full host speed, so wall-clock pacing (the old pit_poll)
+ * could not make timer-driven delay loops expire; instruction-cadence can. */
+void dos_machine::tick_pit(size_t insns)
+{
+    pit_ticks_acc += (uint32_t)insns;
+    while (pit_ticks_acc >= 2u)
+    {
+        pit_ticks_acc -= 2u;
+        pit.tick();
+    }
+}
+
+/* True when the guest can take a maskable interrupt right now: an unmasked IRQ
+ * is pending in the PIC, the guest has IF=1, and we are not in the one-
+ * instruction inhibit window after STI / POP SS / MOV SS (8086 semantics). */
+bool dos_machine::irq_pending_if_on(void) const
+{
+    if ((uc == nullptr) || (ram == nullptr) || halted)
+    {
+        return false;
+    }
+    if (intr_depth != 0u)
+    {
+        return false; /* already inside a hardware ISR — no nesting */
+    }
+    if (intr_inhibit != 0u)
+    {
+        return false;
+    }
+    const uint16_t flags = reg16(UC_X86_REG_FLAGS);
+    if ((flags & 0x0200u) == 0u)
+    {
+        return false;
+    }
+    if (!pic.pending())
+    {
+        return false;
+    }
+    /* Never vector through a null IVT entry: before the game installs its own
+     * ISR the table is all zeros (we skip BIOS POST), so delivering now would
+     * jump to 0000:0000. Real hardware would go to a BIOS stub; we emulate one
+     * (init_cpu plants IVT[08] = iret) so pending holds a sane fallback. */
+    const uint8_t v = pic.peek_vector();
+    if (v == 0xFFu)
+    {
+        return false;
+    }
+    const uint16_t fseg = (uint16_t)(ram[((uint32_t)v * 4u + 2u) & 0xFFFFF] |
+                                     ((uint16_t)ram[((uint32_t)v * 4u + 3u) & 0xFFFFF] << 8));
+    const uint16_t foff = (uint16_t)(ram[((uint32_t)v * 4u) & 0xFFFFF] |
+                                     ((uint16_t)ram[((uint32_t)v * 4u + 1u) & 0xFFFFF] << 8));
+    if ((fseg == 0u) && (foff == 0u))
+    {
+        return false; /* null vector: hold the IRQ until the game hooks it */
+    }
+    return true;
+}
+
+/* Perform a CPU INTA cycle against the PIC and dispatch the interrupt the way
+ * real 8086 hardware does: push FLAGS/CS/IP, clear IF+TF, load CS:IP from the
+ * IVT. The matching guest IRET pops the frame, keeping the stack balanced. */
+void dos_machine::deliver_pending_irq(void)
+{
+    if (!irq_pending_if_on())
+    {
+        return;
+    }
+    const uint8_t v = pic.peek_vector();
+    if (v == 0xFFu)
+    {
+        return;
+    }
+    const uint16_t seg = (uint16_t)(ram[((uint32_t)v * 4u + 2u) & 0xFFFFF] |
+                                    ((uint16_t)ram[((uint32_t)v * 4u + 3u) & 0xFFFFF] << 8));
+    const uint16_t off = (uint16_t)(ram[((uint32_t)v * 4u) & 0xFFFFF] |
+                                    ((uint16_t)ram[((uint32_t)v * 4u + 1u) & 0xFFFFF] << 8));
+    /* Default BIOS stub at 9FC0:0000: do the tick in C. Jumping into Unicorn
+     * IRET after a hooked INT 1Ch left CS stuck at 9FC0 executing 00 00. */
+    if ((v == 0x08u) && (seg == 0x9FC0u) && (off == 0u))
+    {
+        uint32_t t = 0;
+        (void)pic.ack_vector();
+        t = (uint32_t)ram[0x46C] | ((uint32_t)ram[0x46D] << 8) | ((uint32_t)ram[0x46E] << 16) |
+            ((uint32_t)ram[0x46F] << 24);
+        t += 1u;
+        ram[0x46C] = (uint8_t)(t);
+        ram[0x46D] = (uint8_t)(t >> 8);
+        ram[0x46E] = (uint8_t)(t >> 16);
+        ram[0x46F] = (uint8_t)(t >> 24);
+        pic.write_command(0x20); /* EOI */
+        return;
+    }
+    const uint16_t ss = reg16(UC_X86_REG_SS);
+    uint16_t sp = reg16(UC_X86_REG_SP);
+    const uint16_t cs = reg16(UC_X86_REG_CS);
+    const uint16_t ip = reg16(UC_X86_REG_IP);
+    const uint16_t flags = reg16(UC_X86_REG_FLAGS);
+
+    sp = (uint16_t)(sp - 6u);
+    const uint32_t sp_lin = (((uint32_t)ss << 4) + (uint32_t)sp);
+    if ((sp_lin + 6u) > ram_size)
+    {
+        return;
+    }
+    /* Frame fits: commit to the INTA cycle and consume the request. */
+    (void)pic.ack_vector();
+
+    /* 8086 pushes FLAGS, CS, IP — lowest address holds the return IP. */
+    ram[sp_lin + 0] = (uint8_t)(ip);
+    ram[sp_lin + 1] = (uint8_t)(ip >> 8);
+    ram[sp_lin + 2] = (uint8_t)(cs);
+    ram[sp_lin + 3] = (uint8_t)(cs >> 8);
+    ram[sp_lin + 4] = (uint8_t)(flags);
+    ram[sp_lin + 5] = (uint8_t)(flags >> 8);
+    set_reg16(UC_X86_REG_SP, sp);
+    set_reg16(UC_X86_REG_CS, seg);
+    set_reg16(UC_X86_REG_IP, off);
+    set_reg16(UC_X86_REG_FLAGS, (uint16_t)(flags & ~0x0300u));
+    intr_depth++; /* inside a hardware ISR until its IRET returns */
+    rex_logf(REX_LOG_DEBUG, "IRQ%u delivered -> %04X:%04X (depth=%u)", (unsigned)(v - 8),
+             seg, off, intr_depth);
 }
 
 void dos_machine::rebuild_decode(void)

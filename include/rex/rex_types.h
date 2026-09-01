@@ -103,6 +103,7 @@ typedef struct rex_insn
     bool is_jump;
     bool is_loop;
     bool is_rep;
+    uint64_t target; /**< IMM jump/call destination (Capstone address space). */
 } rex_insn;
 
 /**

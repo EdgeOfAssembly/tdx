@@ -394,8 +394,28 @@ void paint_cpu(tdx_ui *ui, rex_session *s)
             std::snprintf(t, sizeof(t), "%s%02X", (b == 0) ? "" : " ", ins[i].bytes[b]);
             std::strcat(bytes, t);
         }
-        std::snprintf(line, sizeof(line), "%04X:%04X  %-17s %s", ins[i].seg, ins[i].off, bytes,
-                      ins[i].text);
+        if ((ins[i].target != 0) && (ins[i].is_jump || ins[i].is_call || ins[i].is_loop))
+        {
+            const uint32_t csbase = (uint32_t)r.cs << 4;
+            char mnem[24];
+            mnem[0] = 0;
+            std::sscanf(ins[i].text, "%23s", mnem);
+            if ((ins[i].target >= csbase) && (ins[i].target < csbase + 0x10000u) && (mnem[0] != 0))
+            {
+                std::snprintf(line, sizeof(line), "%04X:%04X  %-17s %s %04X", ins[i].seg, ins[i].off,
+                              bytes, mnem, (uint16_t)(ins[i].target - csbase));
+            }
+            else
+            {
+                std::snprintf(line, sizeof(line), "%04X:%04X  %-17s %s", ins[i].seg, ins[i].off,
+                              bytes, ins[i].text);
+            }
+        }
+        else
+        {
+            std::snprintf(line, sizeof(line), "%04X:%04X  %-17s %s", ins[i].seg, ins[i].off, bytes,
+                          ins[i].text);
+        }
         line[k_list_w] = 0;
         put_str(ui, 0, (int)i, line, fg, bg);
         {

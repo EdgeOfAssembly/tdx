@@ -12,7 +12,7 @@ static uint16_t mz_u16(const uint8_t *p)
     return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
 }
 
-int mz_parse_header(const uint8_t *buf, size_t buf_len, uint32_t file_size, mz_info *out)
+REX_C_DEF int mz_parse_header(const uint8_t *buf, size_t buf_len, uint32_t file_size, mz_info *out)
 {
     uint16_t magic = 0;
     uint16_t last = 0;
@@ -77,7 +77,7 @@ int mz_parse_header(const uint8_t *buf, size_t buf_len, uint32_t file_size, mz_i
     return 0;
 }
 
-int mz_parse_relocs(const uint8_t *file, size_t file_len, const mz_info *info, mz_reloc *out,
+REX_C_DEF int mz_parse_relocs(const uint8_t *file, size_t file_len, const mz_info *info, mz_reloc *out,
                     size_t cap, size_t *wrote)
 {
     size_t i = 0;

@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-int dos_cga_decode(const uint8_t *vram, uint8_t *px, size_t px_size)
+REX_C_DEF int dos_cga_decode(const uint8_t *vram, uint8_t *px, size_t px_size)
 {
     int y = 0;
     int x = 0;
@@ -30,7 +30,7 @@ int dos_cga_decode(const uint8_t *vram, uint8_t *px, size_t px_size)
     return 0;
 }
 
-int dos_cga_encode(const uint8_t *px, size_t px_size, uint8_t *vram, size_t vram_size)
+REX_C_DEF int dos_cga_encode(const uint8_t *px, size_t px_size, uint8_t *vram, size_t vram_size)
 {
     int y = 0;
     int x = 0;

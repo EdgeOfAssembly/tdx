@@ -12,6 +12,17 @@
 extern "C" {
 #endif
 
+/* When the C sources are compiled as C++ (one-gulp build), definitions must
+ * carry C linkage to match these declarations; REX_C_DEF expands to
+ * extern "C" in that case and to nothing for a plain C compiler. */
+#ifndef REX_C_DEF
+#  ifdef __cplusplus
+#    define REX_C_DEF extern "C"
+#  else
+#    define REX_C_DEF
+#  endif
+#endif
+
 /** Parsed MZ fields needed to load a real-mode image. */
 typedef struct mz_info
 {

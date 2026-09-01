@@ -226,3 +226,48 @@ TEST_CASE("loop.com F8 on LOOP runs remaining iterations once")
     (void)i;
     rex_session_destroy(s);
 }
+
+TEST_CASE("int16spin.com INT16 AH=01/00 spin survives repeated run/reset/keys")
+{
+    /* Regression: the original Bushido crash was an ASan SEGV inside
+     * handle_int16 (dos_int.cpp) after the program looped on INT 16h.
+     * Drive the wait/check-key paths across resets and key injections;
+     * the machine must stay alive and CS/IP must stay in the fixture. */
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    int round = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/int16spin.com", nullptr) == REX_OK);
+    for (round = 0; round < 8; round++)
+    {
+        /* Run a burst; the fixture blocks on INT16 AH=00 (wait_key). */
+        (void)rex_session_run(s, 4000);
+        (void)rex_session_request_stop(s);
+        rex_session_get_regs_i8086(s, &r);
+        REQUIRE(r.cs == 0x1000);           /* COM image base segment */
+        REQUIRE(r.ip >= 0x0100);
+        REQUIRE(r.ip < 0x0120);            /* tight spin loop window */
+        /* Inject two keys (consumed by AH=01 peek + AH=00 read). */
+        rex_session_push_key(s, 'x', 0x2D);
+        rex_session_push_key(s, 'a', 0x1E);
+        /* Reload in place (Ctrl-F2 / tdxctl reset). */
+        REQUIRE(rex_session_reset(s) == REX_OK);
+        rex_session_get_regs_i8086(s, &r);
+        REQUIRE(r.cs == 0x1000);
+        REQUIRE(r.ip == 0x0100);           /* back at entry after reset */
+    }
+    rex_session_destroy(s);
+}
+
+TEST_CASE("int16spin.com disasm buffer is not overrun at cap boundary")
+{
+    /* Regression: requesting more insns than remain in a tiny image must stop
+     * at the image edge, never write past the caller's buffer. */
+    rex_session *s = rex_session_create();
+    rex_insn ins[8];
+    size_t n = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/int16spin.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_disasm(s, UINT64_MAX, ins, 8, &n) == REX_OK);
+    REQUIRE(n <= 8);                        /* never past the caller's cap */
+    REQUIRE(n > 0);
+    rex_session_destroy(s);
+}

@@ -7,6 +7,8 @@
 
 #include "dos_cga.h"
 #include "mz_parse.h"
+#include "pic8259.h"
+#include "pit8253.h"
 #include "rex/rex.h"
 
 #include <cstdint>
@@ -87,6 +89,13 @@ struct dos_machine
     uint64_t image_base = 0;
     uint32_t image_bytes = 0;
     std::map<uint64_t, rex_insn> decode; /**< Capstone once at load. */
+    uint64_t pit_last_ns = 0;
+
+    pic8259 pic;           /**< 8259A PIC: timer/keyboard hardware IRQs. */
+    pit8253 pit{pic};      /**< 8253 PIT: ch0 terminal count drives IRQ0. */
+    uint32_t pit_ticks_acc = 0; /**< Sub-burst tick accumulator. */
+    unsigned intr_inhibit = 0;  /**< STI/POP-SS one-instruction IF inhibit. */
+    unsigned intr_depth = 0;    /**< >0 while inside a hardware ISR (no nesting). */
     uint32_t alloc_bump = 0; /**< Next free paragraph for INT 21 AH=48. */
     bool skip_bp = false;
     bool at_break = false;
@@ -145,6 +154,10 @@ struct dos_machine
     void bp_clear(void);
 
     void rebuild_decode(void);
+    void pit_poll(void);
+    void tick_pit(size_t insns);
+    void deliver_pending_irq(void);
+    bool irq_pending_if_on(void) const;
     void vcr_seed(void);
     rex_status vcr_forward(bool step_into);
     rex_status vcr_back(void);

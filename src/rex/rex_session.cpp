@@ -219,6 +219,7 @@ rex_status rex_session_run(rex_session *s, uint64_t max_insns)
     {
         return REX_ERR_ARG;
     }
+    m->pit_poll();
     return m->run_until(0, (max_insns == 0) ? 50000000ull : max_insns, false);
 }
 

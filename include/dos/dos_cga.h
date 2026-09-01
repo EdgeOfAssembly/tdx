@@ -12,6 +12,15 @@
 extern "C" {
 #endif
 
+/* See mz_parse.h for why: dual linkage when compiled as C++ (one-gulp). */
+#ifndef REX_C_DEF
+#  ifdef __cplusplus
+#    define REX_C_DEF extern "C"
+#  else
+#    define REX_C_DEF
+#  endif
+#endif
+
 enum
 {
     DOS_CGA_WIDTH = 320,

@@ -17,6 +17,14 @@ CXXFLAGS_COMMON := -std=gnu++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
 CFLAGS_COMMON := -std=gnu23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
 	-fno-omit-frame-pointer -Iinclude
 
+# Header deps are still generated (-MMD -MP) so `make` knows what to rebuild,
+# but binaries are linked from ONE gulp of gcc — a single invocation compiles
+# every source file together. A stale/ABI-mismatched .o can never exist again:
+# either the whole program compiles from the current tree, or it fails loudly.
+DEPFLAGS := -MMD -MP
+CXXFLAGS_COMMON += $(DEPFLAGS)
+CFLAGS_COMMON += $(DEPFLAGS)
+
 CXXFLAGS_OPTIMIZED := -O3 -march=x86-64 -mtune=generic -fno-omit-frame-pointer
 CXXFLAGS_DEBUG := $(CXXFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined -rdynamic
 LDFLAGS_DEBUG  := -fsanitize=address,undefined -rdynamic
@@ -29,48 +37,44 @@ CFLAGS   := $(CFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined
 
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
-REX_CXX := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp
-DOS_CXX := src/dos/dos_machine.cpp src/dos/dos_int.cpp
-DOS_C   := src/dos/mz_parse.c src/dos/dos_cga.c
-TDX_CXX := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp \
+REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp \
+	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c
+TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp \
 	src/tdx/tdx_shot.cpp
-
-REX_OBJS := $(REX_CXX:.cpp=.o) $(DOS_CXX:.cpp=.o) $(DOS_C:.c=.o)
-TDX_OBJS := $(TDX_CXX:.cpp=.o)
-
+VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_agent_sock.cpp
 TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
 	tests/test_shot.cpp
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 
-VIEW_OBJS := src/tdx/tdx_view.o src/tdx/tdx_font.o src/tdx/tdx_shot.o src/tdx/tdx_agent_sock.o
-
 .PHONY: all clean test tests verify fixtures release profile install
 
 all: tdx tdxview
 
-src/dos/%.o: src/dos/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# One-gulp builds: feed every source to g++ in a single invocation so the whole
+# program is always compiled and linked from the same snapshot of the tree.
+# There are no intermediate .o files at all, so a stale/ABI-mismatched object
+# (the class of bug that segfaulted tdx inside handle_int16) cannot occur.
+# The .c sources are compiled as C++ here (their public functions use the
+# REX_C_DEF dual-linkage macro); they are still plain C23 for CBMC `verify`.
 
-src/dos/%.o: src/dos/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+tdx: $(REX_SRC) $(TDX_SRC)
+	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TDX_SRC) \
+		$(SDL_LIBS) $(PKG_CS) $(PKG_UC)
 
-src/rex/%.o: src/rex/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+tdxview: $(VIEW_SRC)
+	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(LDFLAGS) -o $@ $(VIEW_SRC) $(SDL_LIBS)
 
-src/tdx/%.o: src/tdx/%.cpp
-	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) -c $< -o $@
-
-tdx: $(REX_OBJS) $(TDX_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(REX_OBJS) $(TDX_OBJS) $(SDL_LIBS) $(PKG_CS) $(PKG_UC)
-
-tdxview: $(VIEW_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(VIEW_OBJS) $(SDL_LIBS)
-
-tests/run_tests: $(REX_OBJS) src/tdx/tdx_cli.o src/tdx/tdx_shot.o $(TEST_SRCS) fixtures
-	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(TEST_SRCS) src/tdx/tdx_cli.o \
-		src/tdx/tdx_shot.o $(REX_OBJS) \
+tests/run_tests: $(REX_SRC) $(TEST_SRCS) src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp fixtures
+	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TEST_SRCS) \
+		src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp \
 		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC)
+
+# Track every header as a dependency so `make` rebuilds the (single-object)
+# binaries whenever any header changes — with one-gulp that's automatic and
+# always correct, just a little slower. List them once here.
+HEADERS := $(shell find include -name '*.h' 2>/dev/null)
+tdx tdxview tests/run_tests: $(HEADERS)
 
 tests/fixtures/tiny.com: tests/fixtures/tiny.asm
 	nasm -f bin -o $@ $<
@@ -96,9 +100,12 @@ tests/fixtures/fcbopen.com: tests/fixtures/fcbopen.asm
 tests/fixtures/waitkey.com: tests/fixtures/waitkey.asm
 	nasm -f bin -o $@ $<
 
+tests/fixtures/int16spin.com: tests/fixtures/int16spin.asm
+	nasm -f bin -o $@ $<
+
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
 	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com \
-	tests/fixtures/waitkey.com
+	tests/fixtures/waitkey.com tests/fixtures/int16spin.com
 
 test: tdx tdxview tests/run_tests
 	./tests/run_tests
@@ -123,10 +130,11 @@ verify: test
 		--bounds-check --pointer-check --unwind 40 --unwinding-assertions
 
 clean:
-	rm -f tdx tdxview tests/run_tests $(REX_OBJS) $(TDX_OBJS) $(VIEW_OBJS) \
+	rm -f tdx tdxview tests/run_tests \
 		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
 		tests/fixtures/far.com tests/fixtures/setblock.com tests/fixtures/int3pad.com \
-		tests/fixtures/fcbopen.com tests/fixtures/waitkey.com
+		tests/fixtures/fcbopen.com tests/fixtures/waitkey.com tests/fixtures/int16spin.com \
+		*.d src/**/*.d tests/**/*.d
 
 release:
 	$(MAKE) $(BUILD_FLAGS) clean CXXFLAGS="$(CXXFLAGS_RELEASE)" \
