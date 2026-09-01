@@ -1,0 +1,9 @@
+{
+  "stopped": "loop",
+  "shots": 412,
+  "unique_hashes": 242,
+  "elapsed_sec": 132.037,
+  "first_hash": "ffff6008e1fefffffffe1ff00cf0093009300d30000003c000000ff007e0ffff",
+  "left_at": 65.00277053599984,
+  "manifest": "/mnt/TurboDebugger/docs/golden-demo/dosbox/MANIFEST.jsonl"
+}

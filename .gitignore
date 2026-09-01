@@ -24,6 +24,9 @@ compile_commands.json
 *.ppm
 /tmp_shots/
 /shots/
+/docs/golden-demo/dosbox/loop-*.png
+/docs/golden-demo/dosbox-pass1/
+/docs/golden-demo/keyframes/
 
 # Local Borland C++ 3.1 reference tree (copyrighted; not shipped)
 /BORLANDC/
