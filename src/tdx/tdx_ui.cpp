@@ -33,8 +33,8 @@ constexpr int k_list_w = 66; /**< Leave a narrow Break box on the right. */
  * tdxview polls a 64KiB base64 frame about every 33ms and otherwise skips
  * cells. Short slices + a few ms park also give tdxctl more SHOT slots.
  * Release keeps the old 8k/1ms burst. Tests use --no-ui and never hit this. */
-constexpr uint64_t k_run_slice_insns = 2000;
-constexpr uint32_t k_run_slice_delay_ms = 12;
+constexpr uint64_t k_run_slice_insns = 4000;
+constexpr uint32_t k_run_slice_delay_ms = 5;
 #else
 constexpr uint64_t k_run_slice_insns = 8000;
 constexpr uint32_t k_run_slice_delay_ms = 1;
