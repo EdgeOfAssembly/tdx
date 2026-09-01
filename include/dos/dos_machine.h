@@ -83,9 +83,14 @@ struct dos_machine
     bool stop_req = false;
     int exit_code = 0;
     uint8_t video_mode = 0x03;
+    uint8_t cga_3da = 0; /**< CGA status (port 3DAh); toggled on each IN. */
     uint16_t cursor_x = 0;
     uint16_t cursor_y = 0;
     uint32_t dta = 0x10080; /**< Default DTA inside PSP. */
+    uint64_t last_code_linear = 0; /**< Current on_code address. */
+    uint64_t prev_code_linear = 0; /**< Prior insn linear (fault traceback). */
+    uint64_t code_ring[8]{};
+    unsigned code_ring_i = 0;
     uint64_t entry_linear = 0;
     uint64_t image_base = 0;
     uint32_t image_bytes = 0;

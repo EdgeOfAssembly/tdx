@@ -37,6 +37,11 @@ void on_intr(uc_engine *uc, uint32_t intno, void *user)
 void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
 {
     dos_machine *m = static_cast<dos_machine *>(user);
+    (void)size;
+    m->prev_code_linear = m->last_code_linear;
+    m->last_code_linear = address;
+    m->code_ring[m->code_ring_i % 8u] = address;
+    m->code_ring_i++;
     if (m->stop_req)
     {
         uc_emu_stop(uc);
@@ -162,6 +167,14 @@ uint32_t on_in(uc_engine *uc, uint32_t port, int size, void *user)
         if (port == 0x21u)
         {
             return m->pic.read_data();
+        }
+        /* CGA CRT status 03DAh: bit0 display-enable, bit3 vertical retrace.
+         * Toggle every IN so "wait for retrace / wait for display" loops
+         * complete in two reads (0xFF stuck high hangs those loops). */
+        if ((port == 0x3DAu) || (port == 0x3BAu))
+        {
+            m->cga_3da ^= 0x09u;
+            return m->cga_3da;
         }
     }
     return 0xFFu;
@@ -845,6 +858,22 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         skip_bp = false;
         e = uc_emu_start(uc, lin, until, 0, chunk);
         sync_ip_from_eip();
+        /* Unicorn IRET may not hit on_code with opcode CF (prefix / EIP). If
+         * we have left the hardware ISR, drop intr_depth so IRQ0 can fire
+         * again — otherwise the guest timer countdown freezes. */
+        if (intr_depth != 0u)
+        {
+            const uint16_t isr_off =
+                (uint16_t)(ram[0x20] | ((uint16_t)ram[0x21] << 8));
+            const uint16_t isr_seg =
+                (uint16_t)(ram[0x22] | ((uint16_t)ram[0x23] << 8));
+            const uint32_t isr_lin = ((uint32_t)isr_seg << 4) + (uint32_t)isr_off;
+            const uint64_t now = linear_ip();
+            if ((now < isr_lin) || (now > (uint64_t)isr_lin + 0x80ull))
+            {
+                intr_depth = 0;
+            }
+        }
         left -= (left < 50000ull) ? left : 50000ull;
         if (until_valid && (linear_ip() == until_linear))
         {
@@ -854,12 +883,24 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         }
         if ((e != UC_ERR_OK) && (!halted) && (!at_break) && (!wait_key))
         {
+            const uint64_t flin = linear_ip();
             const uint16_t fcs = reg16(UC_X86_REG_CS);
-            const uint16_t fip = reg16(UC_X86_REG_IP);
+            const uint32_t fbase = (uint32_t)fcs << 4;
+            const uint16_t fip = (uint16_t)((flin >= fbase) ? (flin - fbase) : flin);
             uint8_t b[4] = {0, 0, 0, 0};
-            (void)read_mem(linear_ip(), b, sizeof(b));
-            rex_logf(REX_LOG_ERROR, "run: %s @ %04X:%04X  %02X %02X %02X %02X", uc_strerror(e), fcs,
-                     fip, b[0], b[1], b[2], b[3]);
+            (void)read_mem(flin, b, sizeof(b));
+            rex_logf(REX_LOG_ERROR,
+                     "run: %s @ %04X:%04X lin=0x%llX prev=0x%llX  %02X %02X %02X %02X",
+                     uc_strerror(e), fcs, fip, (unsigned long long)flin,
+                     (unsigned long long)prev_code_linear, b[0], b[1], b[2], b[3]);
+            {
+                unsigned k = 0;
+                for (k = 0; k < 8u; k++)
+                {
+                    const uint64_t a = code_ring[(code_ring_i + k) % 8u];
+                    rex_logf(REX_LOG_ERROR, "  ring[%u]=0x%llX", k, (unsigned long long)a);
+                }
+            }
             last_stop = REX_STOP_FAULT;
             return REX_ERR_CPU;
         }
@@ -1207,10 +1248,13 @@ void dos_machine::deliver_pending_irq(void)
         pic.write_command(0x20); /* EOI */
         return;
     }
+    sync_ip_from_eip();
     const uint16_t ss = reg16(UC_X86_REG_SS);
     uint16_t sp = reg16(UC_X86_REG_SP);
     const uint16_t cs = reg16(UC_X86_REG_CS);
-    const uint16_t ip = reg16(UC_X86_REG_IP);
+    const uint32_t csbase = (uint32_t)cs << 4;
+    const uint64_t rlin = linear_ip();
+    const uint16_t ip = (uint16_t)((rlin >= csbase) ? (rlin - csbase) : rlin);
     const uint16_t flags = reg16(UC_X86_REG_FLAGS);
 
     sp = (uint16_t)(sp - 6u);
@@ -1234,8 +1278,8 @@ void dos_machine::deliver_pending_irq(void)
     set_reg16(UC_X86_REG_IP, off);
     set_reg16(UC_X86_REG_FLAGS, (uint16_t)(flags & ~0x0300u));
     intr_depth++; /* inside a hardware ISR until its IRET returns */
-    rex_logf(REX_LOG_DEBUG, "IRQ%u delivered -> %04X:%04X (depth=%u)", (unsigned)(v - 8),
-             seg, off, intr_depth);
+    rex_logf(REX_LOG_INFO, "IRQ%u frame %04X:%04X lin=0x%llX -> %04X:%04X sp=%04X depth=%u",
+             (unsigned)(v - 8), cs, ip, (unsigned long long)rlin, seg, off, sp, intr_depth);
 }
 
 void dos_machine::rebuild_decode(void)

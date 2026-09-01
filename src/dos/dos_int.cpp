@@ -240,8 +240,24 @@ static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, boo
         const size_t got = std::fread(tmp.data(), 1, want, m->files[fd].fp);
         if (got > 0)
         {
-            std::memcpy(m->ram + m->dta, tmp.data(), got);
+            if (m->dta >= m->ram_size)
+            {
+                rex_logf(REX_LOG_ERROR, "FCB read DTA 0x%X past RAM", m->dta);
+                return 1;
+            }
+            {
+                const size_t room = (size_t)(m->ram_size - m->dta);
+                const size_t n = (got > room) ? room : got;
+                std::memcpy(m->ram + m->dta, tmp.data(), n);
+                if (n < got)
+                {
+                    rex_logf(REX_LOG_ERROR, "FCB read truncated %zu -> %zu @ DTA 0x%X", got, n,
+                             m->dta);
+                }
+            }
         }
+        rex_logf(REX_LOG_DEBUG, "FCB read dta=0x%X recsize=%u nrec=%u got=%zu", m->dta,
+                 (unsigned)recsize, (unsigned)nrec, got);
         got_recs = (uint16_t)(got / recsize);
         if (sequential && (got_recs > 0))
         {
@@ -432,6 +448,95 @@ static void handle_int21(dos_machine *m)
         m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u)); /* drive A=0, report C=2 */
         m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | 2u));
         break;
+    case 0x29:
+    {
+        /* Parse ASCIIZ/command-line name at DS:SI into FCB at ES:DI. */
+        uint16_t psi = si;
+        uint16_t pdi = m->reg16(UC_X86_REG_DI);
+        uint8_t *fcb = m->ptr_segoff(es, pdi);
+        uint8_t al_out = 0;
+        int ni = 0;
+        int ei = 0;
+        bool in_ext = false;
+        std::memset(fcb, 0, 16);
+        std::memset(fcb + 1, ' ', 11);
+        for (;;)
+        {
+            const uint8_t ch = *m->ptr_segoff(ds, psi);
+            if ((ch != (uint8_t)' ') && (ch != (uint8_t)'\t'))
+            {
+                break;
+            }
+            psi++;
+        }
+        {
+            const uint8_t a = *m->ptr_segoff(ds, psi);
+            const uint8_t b = *m->ptr_segoff(ds, (uint16_t)(psi + 1u));
+            if ((((a >= 'A') && (a <= 'Z')) || ((a >= 'a') && (a <= 'z'))) && (b == (uint8_t)':'))
+            {
+                fcb[0] = (uint8_t)(std::toupper((unsigned char)a) - 'A' + 1);
+                psi = (uint16_t)(psi + 2u);
+            }
+        }
+        for (;;)
+        {
+            const uint8_t ch = *m->ptr_segoff(ds, psi);
+            if ((ch == 0) || (ch == (uint8_t)' ') || (ch == (uint8_t)'\t') || (ch == (uint8_t)'\r') ||
+                (ch == (uint8_t)'\n'))
+            {
+                break;
+            }
+            if (ch == (uint8_t)'.')
+            {
+                in_ext = true;
+                ei = 0;
+                psi++;
+                continue;
+            }
+            if (ch == (uint8_t)'*')
+            {
+                al_out = 1;
+                if (!in_ext)
+                {
+                    while (ni < 8)
+                    {
+                        fcb[1 + ni++] = (uint8_t)'?';
+                    }
+                }
+                else
+                {
+                    while (ei < 3)
+                    {
+                        fcb[9 + ei++] = (uint8_t)'?';
+                    }
+                }
+                psi++;
+                continue;
+            }
+            if (ch == (uint8_t)'?')
+            {
+                al_out = 1;
+            }
+            {
+                const uint8_t up = (uint8_t)std::toupper((unsigned char)ch);
+                if (!in_ext)
+                {
+                    if (ni < 8)
+                    {
+                        fcb[1 + ni++] = up;
+                    }
+                }
+                else if (ei < 3)
+                {
+                    fcb[9 + ei++] = up;
+                }
+            }
+            psi++;
+        }
+        m->set_reg16(UC_X86_REG_SI, psi);
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | al_out));
+        break;
+    }
     case 0x1A:
         m->dta = rex_segoff_to_linear(ds, dx);
         break;
@@ -813,6 +918,12 @@ static void handle_int10(dos_machine *m)
     case 0x00:
         m->video_mode = al;
         m->ram[0x449] = al;
+        {
+            const uint8_t cols =
+                ((al == 0x00) || (al == 0x01) || (al == 0x04) || (al == 0x05)) ? 40u : 80u;
+            m->ram[0x44A] = cols;
+            m->ram[0x44B] = 0;
+        }
         m->cursor_x = 0;
         m->cursor_y = 0;
         m->blank_regen();
@@ -896,9 +1007,14 @@ static void handle_int10(dos_machine *m)
         break;
     }
     case 0x0F:
-        m->set_reg16(UC_X86_REG_AX, (uint16_t)((80u << 8) | m->video_mode));
+    {
+        const uint8_t mode = m->video_mode;
+        const uint8_t cols =
+            ((mode == 0x00) || (mode == 0x01) || (mode == 0x04) || (mode == 0x05)) ? 40u : 80u;
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)(((uint16_t)cols << 8) | mode));
         m->set_reg16(UC_X86_REG_BX, 0);
         break;
+    }
     case 0x06:
     case 0x07:
         /* AL=0 → fill window. Graphics: wipe CGA. Text: space + BH attribute. */

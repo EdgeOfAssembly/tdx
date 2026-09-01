@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <cstring>
 
-TEST_CASE("invalid FF /7 is a CPU fault, not terminated")
+TEST_CASE("invalid F1 ICEBP is a CPU fault, not terminated")
 {
     rex_session *s = rex_session_create();
     rex_regs_i8086 r{};
@@ -26,6 +26,6 @@ TEST_CASE("invalid FF /7 is a CPU fault, not terminated")
     REQUIRE(rex_session_disasm(s, UINT64_MAX, ins, 8, &n) == REX_OK);
     REQUIRE(n > 0);
     REQUIRE(ins[0].size >= 1);
-    REQUIRE(ins[0].bytes[0] == 0xFF);
+    REQUIRE(ins[0].bytes[0] == 0xF1);
     rex_session_destroy(s);
 }
