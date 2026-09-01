@@ -35,6 +35,10 @@ using json = nlohmann::json;
 namespace
 {
 const uint32_t k_cga[4] = {0xFF000000, 0xFF55FFFF, 0xFFFF55FF, 0xFFFFFFFF};
+const uint32_t k_vga[16] = {
+    0xFF000000, 0xFF0000AA, 0xFF00AA00, 0xFF00AAAA, 0xFFAA0000, 0xFFAA00AA, 0xFFAA5500, 0xFFAAAAAA,
+    0xFF555555, 0xFF5555FF, 0xFF55FF55, 0xFF55FFFF, 0xFFFF5555, 0xFFFF55FF, 0xFFFFFF55, 0xFFFFFFFF,
+};
 
 struct view_cli
 {
@@ -553,6 +557,8 @@ int main(int argc, char **argv)
     bool quit = false;
     int wait_ticks = 0;
     uint8_t last_mode = 0xFF;
+    std::vector<uint8_t> fb;
+    std::vector<uint8_t> b800;
     std::string sock_acc;
     tdx_agent_sock *agent = nullptr;
     view_state vst{};
@@ -610,9 +616,7 @@ int main(int argc, char **argv)
         int pitch = 0;
         int y = 0;
         int x = 0;
-        std::vector<uint8_t> fb;
         uint8_t mode = 0;
-        char status[80];
 
         while (SDL_PollEvent(&ev))
         {
@@ -667,6 +671,10 @@ int main(int argc, char **argv)
                     const json j = json::parse(reply);
                     mode = (uint8_t)j.value("mode", 0);
                     last_mode = mode;
+                    if (j.contains("b800_b64"))
+                    {
+                        b64_decode(j["b800_b64"].get<std::string>(), &b800);
+                    }
                     if (j.contains("pixels_b64"))
                     {
                         b64_decode(j["pixels_b64"].get<std::string>(), &fb);
@@ -683,31 +691,66 @@ int main(int argc, char **argv)
         if (SDL_LockTexture(tex, nullptr, (void **)&pix, &pitch) == 0)
         {
             const int pitch_px = pitch / 4;
-            for (y = 0; y < DOS_CGA_HEIGHT; y++)
+            const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || (last_mode == 0x06) ||
+                             (last_mode == 0x13);
+            if (gfx)
             {
-                uint32_t *dst = pix + y * pitch_px;
-                for (x = 0; x < DOS_CGA_WIDTH; x++)
+                for (y = 0; y < DOS_CGA_HEIGHT; y++)
                 {
-                    uint8_t c = 0;
-                    if ((size_t)y * (size_t)DOS_CGA_WIDTH + (size_t)x < fb.size())
+                    uint32_t *dst = pix + y * pitch_px;
+                    for (x = 0; x < DOS_CGA_WIDTH; x++)
                     {
-                        c = fb[(size_t)y * (size_t)DOS_CGA_WIDTH + (size_t)x] & 3u;
+                        uint8_t c = 0;
+                        if ((size_t)y * (size_t)DOS_CGA_WIDTH + (size_t)x < fb.size())
+                        {
+                            c = fb[(size_t)y * (size_t)DOS_CGA_WIDTH + (size_t)x] & 3u;
+                        }
+                        dst[x] = k_cga[c];
                     }
-                    dst[x] = k_cga[c];
                 }
             }
-            if ((fd < 0) || ((last_mode != 0x04) && (last_mode != 0x05) && (last_mode != 0x06) &&
-                             (last_mode != 0x13)))
+            else if (b800.size() >= 4000u)
             {
+                /* 80x25 text → 320x200 (4x8 px/cell from 8x16 font). */
+                int row = 0;
+                int col = 0;
+                for (row = 0; row < 25; row++)
+                {
+                    for (col = 0; col < 80; col++)
+                    {
+                        const uint8_t ch = b800[(size_t)(row * 80 + col) * 2u];
+                        const uint8_t at = b800[(size_t)(row * 80 + col) * 2u + 1u];
+                        const uint32_t fg = k_vga[at & 15u];
+                        const uint32_t bg = k_vga[(at >> 4) & 7u];
+                        const uint8_t *g = tdx_font_glyph(ch);
+                        int gy = 0;
+                        int gx = 0;
+                        for (gy = 0; gy < 8; gy++)
+                        {
+                            const uint8_t bits = (uint8_t)(g[gy * 2] | g[gy * 2 + 1]);
+                            uint32_t *dst = pix + (row * 8 + gy) * pitch_px + col * 4;
+                            for (gx = 0; gx < 4; gx++)
+                            {
+                                dst[gx] = (bits & (uint8_t)(0xC0 >> (gx * 2))) ? fg : bg;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (y = 0; y < DOS_CGA_HEIGHT; y++)
+                {
+                    uint32_t *dst = pix + y * pitch_px;
+                    for (x = 0; x < DOS_CGA_WIDTH; x++)
+                    {
+                        dst[x] = 0xFF000000;
+                    }
+                }
                 if (fd < 0)
                 {
-                    std::snprintf(status, sizeof(status), " waiting for tdx ");
+                    blit_str(pix, pitch_px, 8, 8, " waiting for tdx ", 0xFF000000, 0xFF55FFFF);
                 }
-                else
-                {
-                    std::snprintf(status, sizeof(status), " mode %02X  no CGA yet ", last_mode);
-                }
-                blit_str(pix, pitch_px, 8, 8, status, 0xFF000000, 0xFF55FFFF);
             }
             SDL_UnlockTexture(tex);
         }

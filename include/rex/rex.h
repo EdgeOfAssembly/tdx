@@ -173,6 +173,10 @@ struct rex_bp
  */
 REX_API size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap);
 
+/** Break on software interrupt @p intno (TD BPINT). Stops before the handler. */
+REX_API rex_status rex_bp_int(rex_session *s, uint8_t intno);
+REX_API rex_status rex_bp_int_del(rex_session *s, uint8_t intno);
+
 /** Load a TSV/MAP symbol file (`seg:off\\tname` or `linear\\tname`). */
 REX_API rex_status rex_symbols_load(rex_session *s, const char *path);
 REX_API const char *rex_symbols_lookup(const rex_session *s, uint64_t linear);

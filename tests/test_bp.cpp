@@ -52,7 +52,7 @@ TEST_CASE("bp segoff is preserved in rex_bp_list")
     rex_session_destroy(s);
 }
 
-TEST_CASE("rex_version is 0.5")
+TEST_CASE("rex_version is 0.6")
 {
-    REQUIRE(std::string(rex_version()) == "0.5");
+    REQUIRE(std::string(rex_version()) == "0.6");
 }

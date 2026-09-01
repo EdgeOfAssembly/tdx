@@ -753,6 +753,54 @@ static void handle_int21(dos_machine *m)
     }
 }
 
+/** PCBIOS: alpha modes are 0–3 and 7 (MDA). 4–6 are CGA graphics. */
+static bool video_is_alpha(uint8_t mode)
+{
+    return (mode < 0x04u) || (mode == 0x07u);
+}
+
+static void tty_putc(dos_machine *m, uint8_t ch)
+{
+    uint32_t o = 0;
+    if (ch == 0x0Du)
+    {
+        m->cursor_x = 0;
+        return;
+    }
+    if (ch == 0x0Au)
+    {
+        if (m->cursor_y < 24u)
+        {
+            m->cursor_y++;
+        }
+        return;
+    }
+    if (ch == 0x08u)
+    {
+        if (m->cursor_x > 0u)
+        {
+            m->cursor_x--;
+        }
+        return;
+    }
+    o = 0xB8000u + ((uint32_t)m->cursor_y * 80u + (uint32_t)m->cursor_x) * 2u;
+    if (o + 1u < m->ram_size)
+    {
+        m->ram[o] = ch;
+        m->ram[o + 1u] = 0x07;
+    }
+    m->cursor_x++;
+    if (m->cursor_x >= 80u)
+    {
+        m->cursor_x = 0;
+        if (m->cursor_y < 24u)
+        {
+            m->cursor_y++;
+        }
+    }
+    m->video_dirty = true;
+}
+
 static void handle_int10(dos_machine *m)
 {
     const uint16_t ax = m->reg16(UC_X86_REG_AX);
@@ -765,11 +813,9 @@ static void handle_int10(dos_machine *m)
     case 0x00:
         m->video_mode = al;
         m->ram[0x449] = al;
-        if ((al == 0x04) || (al == 0x05) || (al == 0x06) || (al == 0x0D) || (al == 0x13))
-        {
-            std::memset(m->ram + 0xB8000, 0, 0x8000);
-            m->video_dirty = true;
-        }
+        m->cursor_x = 0;
+        m->cursor_y = 0;
+        m->blank_regen();
         rex_logf(REX_LOG_INFO, "INT10 set mode %02X", al);
         break;
     case 0x02:
@@ -780,10 +826,73 @@ static void handle_int10(dos_machine *m)
         m->set_reg16(UC_X86_REG_DX, (uint16_t)((m->cursor_y << 8) | (m->cursor_x & 0xFFu)));
         m->set_reg16(UC_X86_REG_CX, 0x0607);
         break;
+    case 0x05:
+        /* Select page. CGA graphics is page 0 only; text pages later. */
+        break;
+    case 0x08:
+    {
+        const uint32_t o = 0xB8000u + ((uint32_t)m->cursor_y * 80u + (uint32_t)m->cursor_x) * 2u;
+        uint8_t ch = 0;
+        uint8_t at = 0x07;
+        if (o + 1u < m->ram_size)
+        {
+            ch = m->ram[o];
+            at = m->ram[o + 1u];
+        }
+        m->set_reg16(UC_X86_REG_AX, (uint16_t)(((uint16_t)at << 8) | ch));
+        break;
+    }
+    case 0x09:
+    case 0x0A:
+    {
+        const uint16_t cx = m->reg16(UC_X86_REG_CX);
+        const uint8_t attr = (uint8_t)(m->reg16(UC_X86_REG_BX) & 0xFFu);
+        uint16_t n = (cx == 0) ? 1u : cx;
+        uint16_t x = m->cursor_x;
+        uint16_t y = m->cursor_y;
+        if (!video_is_alpha(m->video_mode))
+        {
+            /* PCBIOS GRAPHICS_WRITE: ROM 8×8 into the CGA bitmap. Do not
+             * store text cells on top of mode 4/5/6 VRAM. */
+            break;
+        }
+        if (n > 2000u)
+        {
+            n = 2000u;
+        }
+        while (n-- > 0)
+        {
+            const uint32_t o = 0xB8000u + ((uint32_t)y * 80u + (uint32_t)x) * 2u;
+            if (o + 1u < m->ram_size)
+            {
+                m->ram[o] = al;
+                if (ah == 0x09)
+                {
+                    m->ram[o + 1u] = attr;
+                }
+            }
+            x++;
+            if (x >= 80u)
+            {
+                x = 0;
+                y++;
+                if (y >= 25u)
+                {
+                    break;
+                }
+            }
+        }
+        m->video_dirty = true;
+        break;
+    }
     case 0x0E:
     {
         char ch[2] = {(char)al, 0};
         m->write_dos_string(ch);
+        if (video_is_alpha(m->video_mode))
+        {
+            tty_putc(m, al);
+        }
         break;
     }
     case 0x0F:
@@ -792,14 +901,24 @@ static void handle_int10(dos_machine *m)
         break;
     case 0x06:
     case 0x07:
-        /* Scroll/clear window. AL=0 → fill. Graphics: wipe CGA RAM (title leftovers). */
-        if ((m->video_mode == 0x04) || (m->video_mode == 0x05) || (m->video_mode == 0x06))
+        /* AL=0 → fill window. Graphics: wipe CGA. Text: space + BH attribute. */
+        if (al == 0)
         {
-            if (al == 0)
+            if (!video_is_alpha(m->video_mode))
             {
                 std::memset(m->ram + 0xB8000, 0, 0x8000);
-                m->video_dirty = true;
             }
+            else
+            {
+                const uint8_t attr = (uint8_t)(m->reg16(UC_X86_REG_BX) >> 8);
+                uint32_t i = 0;
+                for (i = 0; i < 80u * 25u; i++)
+                {
+                    m->ram[0xB8000u + i * 2u] = (uint8_t)' ';
+                    m->ram[0xB8000u + i * 2u + 1u] = attr;
+                }
+            }
+            m->video_dirty = true;
         }
         break;
     default:
@@ -849,6 +968,22 @@ static void handle_int16(dos_machine *m)
 
 void dos_machine::handle_intr(uint32_t intno)
 {
+    if (int_bps.find((uint8_t)intno) != int_bps.end())
+    {
+        if (!skip_int_bp)
+        {
+            const uint16_t ip = reg16(UC_X86_REG_IP);
+            set_reg16(UC_X86_REG_IP, (uint16_t)(ip - 2u));
+            at_break = true;
+            skip_int_bp = true;
+            last_stop = REX_STOP_BREAK;
+            uc_emu_stop(uc);
+            rex_logf(REX_LOG_INFO, "BPINT %02X AX=%04X @ %04X:%04X", (unsigned)intno,
+                     reg16(UC_X86_REG_AX), reg16(UC_X86_REG_CS), (uint16_t)(ip - 2u));
+            return;
+        }
+        skip_int_bp = false;
+    }
     switch (intno)
     {
     case 0x03:

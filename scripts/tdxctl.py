@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.5"
+VERSION = "0.6"
 
 
 def usage() -> None:
@@ -23,6 +23,7 @@ Commands:
   step | over | run | stop | reset | regs | disasm | status | cga | ping | quit | help
   mem <seg:off> [len]
   bp <seg:off>
+  bpint <n>          break on INT n (hex), e.g. bpint 10
   bpdel <id>
   bplist
   shot [path]        screenshot; stdout = versioned path (Xmux-style timestamp)
@@ -50,6 +51,8 @@ def build_line(cmd: str, rest: list[str]) -> str:
         return json.dumps(obj)
     if cmd in {"bp", "bp_set"} and rest:
         return json.dumps({"cmd": "bp", "addr": rest[0]})
+    if cmd in {"bpint", "bp_int"} and rest:
+        return json.dumps({"cmd": "bpint", "int": int(rest[0], 16)})
     if cmd in {"bpdel", "bp_del"} and rest:
         return json.dumps({"cmd": "bpdel", "id": int(rest[0], 0)})
     if cmd == "key" and rest:

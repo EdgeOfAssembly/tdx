@@ -13,6 +13,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <ctime>
 #include <deque>
@@ -135,8 +136,10 @@ bool on_unmapped(uc_engine *uc, uc_mem_type type, uint64_t address, int size, in
     rex_logf(REX_LOG_ERROR, "unmapped mem access @ 0x%llx", (unsigned long long)address);
     if (m != nullptr)
     {
-        m->halted = true;
+        /* Fault, not program exit — keep last_stop as FAULT so the UI does
+         * not paint "terminated" (that string is INT 20 / AH=4C only). */
         m->last_stop = REX_STOP_FAULT;
+        uc_emu_stop(uc);
     }
     return false;
 }
@@ -371,6 +374,8 @@ rex_status dos_machine::init_cpu()
     ram[0x449] = 0x03; /* text 80x25 */
     ram[0x44A] = 80;
     ram[0x44B] = 0;
+    video_mode = 0x03;
+    blank_regen();
 
     /* Plant a minimal BIOS default INT 08h (timer tick) + INT 1Ch (user tick)
      * handler, as a real BIOS ROM would. tdx skips POST, so without this the
@@ -604,12 +609,38 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     wait_key = false;
     at_break = false;
     skip_bp = false;
+    skip_int_bp = false;
     last_stop = REX_STOP_NONE;
     video_mode = 0x03;
+    blank_regen();
     sync_ip_from_eip();
     rebuild_decode();
     vcr_seed();
     return REX_OK;
+}
+
+void dos_machine::blank_regen(void)
+{
+    uint32_t i = 0;
+    if (ram == nullptr)
+    {
+        return;
+    }
+    /* PCBIOS SET_MODE: graphics regen is zeros; alpha is ' ' + attribute 07. */
+    if ((video_mode == 0x04) || (video_mode == 0x05) || (video_mode == 0x06) ||
+        (video_mode == 0x0D) || (video_mode == 0x13))
+    {
+        std::memset(ram + 0xB8000, 0, 0x8000);
+    }
+    else
+    {
+        for (i = 0; i < 80u * 25u; i++)
+        {
+            ram[0xB8000u + i * 2u] = (uint8_t)' ';
+            ram[0xB8000u + i * 2u + 1u] = 0x07;
+        }
+    }
+    video_dirty = true;
 }
 
 uint64_t dos_machine::linear_ip() const
@@ -823,7 +854,12 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         }
         if ((e != UC_ERR_OK) && (!halted) && (!at_break) && (!wait_key))
         {
-            rex_logf(REX_LOG_ERROR, "run: %s", uc_strerror(e));
+            const uint16_t fcs = reg16(UC_X86_REG_CS);
+            const uint16_t fip = reg16(UC_X86_REG_IP);
+            uint8_t b[4] = {0, 0, 0, 0};
+            (void)read_mem(linear_ip(), b, sizeof(b));
+            rex_logf(REX_LOG_ERROR, "run: %s @ %04X:%04X  %02X %02X %02X %02X", uc_strerror(e), fcs,
+                     fip, b[0], b[1], b[2], b[3]);
             last_stop = REX_STOP_FAULT;
             return REX_ERR_CPU;
         }
@@ -1280,7 +1316,15 @@ rex_status dos_machine_disasm(const dos_machine *m, uint64_t linear, rex_insn *o
                     REX_OK ||
                 (w == 0) || (one.size == 0))
             {
-                break;
+                /* Capstone hole (e.g. FF /7). Keep a one-byte db so the CPU
+                 * pane never goes blank at a fault IP. */
+                std::memset(&one, 0, sizeof(one));
+                one.linear = lin;
+                one.seg = seg;
+                one.off = off;
+                one.size = 1;
+                one.bytes[0] = buf[0];
+                std::snprintf(one.text, sizeof(one.text), "db %02X", buf[0]);
             }
             const_cast<dos_machine *>(m)->decode[lin] = one;
             it = m->decode.find(lin);

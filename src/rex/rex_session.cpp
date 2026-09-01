@@ -398,6 +398,28 @@ bool rex_bp_at(const rex_session *s, uint64_t linear)
     return (m != nullptr) && (m->bps.find(linear) != m->bps.end());
 }
 
+rex_status rex_bp_int(rex_session *s, uint8_t intno)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    m->int_bps.insert(intno);
+    return REX_OK;
+}
+
+rex_status rex_bp_int_del(rex_session *s, uint8_t intno)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    m->int_bps.erase(intno);
+    return REX_OK;
+}
+
 size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap)
 {
     const dos_machine *m = need_dos_c(s);

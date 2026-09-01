@@ -7,11 +7,11 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     "  tdx listens on /tmp/tdx.sock" \
     "  tdxview listens on /tmp/tdxview.sock" \
     "  Agent: tdxctl shot | tdxctl --view shot | tdxctl --ctl" \
-    "tdx-start.sh 0.5"
+    "tdx-start.sh 0.6"
   exit 0
 fi
 if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--version" ]; then
-  echo "tdx-start.sh 0.5"
+  echo "tdx-start.sh 0.6"
   exit 0
 fi
 if [ $# -lt 1 ]; then

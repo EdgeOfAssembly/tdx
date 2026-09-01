@@ -151,7 +151,8 @@ int main(int argc, char **argv)
         print_headless(s);
         if (sk != nullptr)
         {
-            while ((!rex_sock_quit_requested(sk)) && (!rex_session_halted(s)))
+            while ((!rex_sock_quit_requested(sk)) && (!rex_session_halted(s)) &&
+                   (rex_session_stop_reason(s) != REX_STOP_FAULT))
             {
                 rex_sock_poll(sk, s);
                 if (cli.run)

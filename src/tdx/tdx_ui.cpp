@@ -842,13 +842,13 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         {
             /* Small slices so SDL/F9/tdxctl are polled; 250k starved input. */
             rex_session_run(session, 8000);
-            if (rex_session_stop_reason(session) == REX_STOP_BREAK)
             {
-                ui.running = false;
-            }
-            if (rex_session_halted(session))
-            {
-                ui.running = false;
+                const rex_stop st = rex_session_stop_reason(session);
+                if ((st == REX_STOP_BREAK) || (st == REX_STOP_FAULT) || (st == REX_STOP_HALTED) ||
+                    rex_session_halted(session))
+                {
+                    ui.running = false;
+                }
             }
         }
         if (sock != nullptr)

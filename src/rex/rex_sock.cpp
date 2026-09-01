@@ -330,6 +330,24 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     {
         resp["count"] = rex_bp_count(s);
     }
+    else if ((cmd == "bpint") || (cmd == "bp_int"))
+    {
+        unsigned n = req.value("int", 0);
+        if ((n == 0) && req.contains("_rest"))
+        {
+            n = (unsigned)std::strtoul(req["_rest"].get<std::string>().c_str(), nullptr, 0);
+        }
+        if (n > 255u)
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad int";
+        }
+        else
+        {
+            rex_bp_int(s, (uint8_t)n);
+            resp["bpint"] = n;
+        }
+    }
     else if ((cmd == "cga") || (cmd == "video") || (cmd == "frame"))
     {
         uint8_t px[DOS_CGA_PIXELS];
@@ -338,6 +356,13 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["w"] = DOS_CGA_WIDTH;
         resp["h"] = DOS_CGA_HEIGHT;
         resp["con"] = rex_session_con_out(s);
+        {
+            uint8_t b800[4000];
+            if (rex_session_read_mem(s, 0xB8000ull, b800, sizeof(b800)) == REX_OK)
+            {
+                resp["b800_b64"] = b64_encode(b800, sizeof(b800));
+            }
+        }
         if (rex_session_cga_decode(s, px, sizeof(px)) == REX_OK)
         {
             resp["pixels_b64"] = b64_encode(px, sizeof(px));

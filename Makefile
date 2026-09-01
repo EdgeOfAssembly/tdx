@@ -43,7 +43,7 @@ TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/t
 	src/tdx/tdx_shot.cpp
 VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_agent_sock.cpp
 TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
-	tests/test_shot.cpp
+	tests/test_shot.cpp tests/test_int10.cpp tests/test_fault.cpp
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 
@@ -103,9 +103,16 @@ tests/fixtures/waitkey.com: tests/fixtures/waitkey.asm
 tests/fixtures/int16spin.com: tests/fixtures/int16spin.asm
 	nasm -f bin -o $@ $<
 
+tests/fixtures/int10.com: tests/fixtures/int10.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/ud.com: tests/fixtures/ud.asm
+	nasm -f bin -o $@ $<
+
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
 	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com \
-	tests/fixtures/waitkey.com tests/fixtures/int16spin.com
+	tests/fixtures/waitkey.com tests/fixtures/int16spin.com tests/fixtures/int10.com \
+	tests/fixtures/ud.com
 
 test: tdx tdxview tests/run_tests
 	./tests/run_tests
@@ -121,6 +128,7 @@ test: tdx tdxview tests/run_tests
 	  echo $$! > /tmp/tdx-test.pid; \
 	  sleep 0.3; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q pixels_b64; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q b800_b64; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock quit; \
 	  wait $$(cat /tmp/tdx-test.pid) 2>/dev/null || true
 tests: test
@@ -134,6 +142,7 @@ clean:
 		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
 		tests/fixtures/far.com tests/fixtures/setblock.com tests/fixtures/int3pad.com \
 		tests/fixtures/fcbopen.com tests/fixtures/waitkey.com tests/fixtures/int16spin.com \
+		tests/fixtures/int10.com tests/fixtures/ud.com \
 		*.d src/**/*.d tests/**/*.d
 
 release:

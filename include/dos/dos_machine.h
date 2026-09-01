@@ -20,6 +20,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 struct uc_struct;
@@ -105,6 +106,8 @@ struct dos_machine
     std::unordered_map<uint64_t, uint32_t> bps;
     std::unordered_map<uint32_t, uint64_t> bp_by_id;
     std::unordered_map<uint32_t, uint32_t> bp_segoff; /**< id -> (seg<<16)|off */
+    std::unordered_set<uint8_t> int_bps;
+    bool skip_int_bp = false;
 
     dos_file files[DOS_MAX_FILES]{};
     std::deque<dos_kbd_ev> kbd;
@@ -136,6 +139,8 @@ struct dos_machine
 
     void push_key(uint8_t ascii, uint8_t scan);
     void handle_intr(uint32_t intno);
+    /** IBM BIOS SET_MODE regen fill: spaces+07 in alpha, zeros in graphics. */
+    void blank_regen(void);
 
     uint16_t reg16(int uc_reg) const;
     void set_reg16(int uc_reg, uint16_t v);

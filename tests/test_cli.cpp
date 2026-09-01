@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.5");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.6");
 }
 
 TEST_CASE("in-process game window is opt-in")
