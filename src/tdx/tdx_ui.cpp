@@ -238,16 +238,22 @@ void render_game(tdx_ui *ui, rex_session *s)
     {
         return;
     }
-    if (SDL_LockTexture(ui->game_tex, nullptr, (void **)&pix, &pitch) != 0)
     {
-        return;
-    }
-    for (y = 0; y < 200; y++)
-    {
-        uint32_t *dst = pix + y * (pitch / 4);
-        for (x = 0; x < 320; x++)
+        uint8_t palreg = 0x30;
+        uint32_t pal[4] = {k_cga[0], k_cga[1], k_cga[2], k_cga[3]};
+        (void)rex_session_read_mem(s, 0x466ull, &palreg, 1);
+        dos_cga_palette_argb(palreg, pal);
+        if (SDL_LockTexture(ui->game_tex, nullptr, (void **)&pix, &pitch) != 0)
         {
-            dst[x] = k_cga[fb[y * 320 + x] & 3];
+            return;
+        }
+        for (y = 0; y < 200; y++)
+        {
+            uint32_t *dst = pix + y * (pitch / 4);
+            for (x = 0; x < 320; x++)
+            {
+                dst[x] = pal[fb[y * 320 + x] & 3];
+            }
         }
     }
     SDL_UnlockTexture(ui->game_tex);

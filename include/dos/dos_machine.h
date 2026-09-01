@@ -84,6 +84,7 @@ struct dos_machine
     int exit_code = 0;
     uint8_t video_mode = 0x03;
     uint8_t cga_3da = 0; /**< CGA status (port 3DAh); toggled on each IN. */
+    uint8_t cga_3d9 = 0x30; /**< CGA color-select (port 3D9h / BDA 0040:0066). */
     uint16_t cursor_x = 0;
     uint16_t cursor_y = 0;
     uint32_t dta = 0x10080; /**< Default DTA inside PSP. */

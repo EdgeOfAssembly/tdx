@@ -30,3 +30,22 @@ TEST_CASE("cga decode rejects null")
     uint8_t px[4]{};
     REQUIRE(dos_cga_decode(nullptr, px, sizeof(px)) == -1);
 }
+
+TEST_CASE("CGA 3D9h 30h is black/cyan/magenta/white")
+{
+    uint32_t pal[4] = {1, 1, 1, 1};
+    dos_cga_palette_argb(0x30, pal);
+    REQUIRE(pal[0] == 0xFF000000u);
+    REQUIRE(pal[1] == 0xFF55FFFFu);
+    REQUIRE(pal[2] == 0xFFFF55FFu);
+    REQUIRE(pal[3] == 0xFFFFFFFFu);
+}
+
+TEST_CASE("CGA 3D9h background nibble paints index 0")
+{
+    uint32_t pal[4] = {};
+    dos_cga_palette_argb(0x35, pal); /* intensity + pal1 + magenta bg */
+    REQUIRE(pal[0] == 0xFFA800A8u);
+    REQUIRE(pal[1] == 0xFF54FCFCu);
+    REQUIRE(pal[2] == 0xFFFC54FCu);
+}

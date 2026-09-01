@@ -190,7 +190,16 @@ void on_out(uc_engine *uc, uint32_t port, int size, uint32_t value, void *user)
         (void)value;
         return;
     }
-    if ((port == 0x3D8u) || (port == 0x3D9u) || (port == 0x3D4u))
+    if (port == 0x3D9u)
+    {
+        m->cga_3d9 = (uint8_t)value;
+        if (m->ram != nullptr)
+        {
+            m->ram[0x466] = (uint8_t)value;
+        }
+        m->video_dirty = true;
+    }
+    else if ((port == 0x3D8u) || (port == 0x3D4u))
     {
         m->video_dirty = true;
     }
@@ -387,6 +396,8 @@ rex_status dos_machine::init_cpu()
     ram[0x449] = 0x03; /* text 80x25 */
     ram[0x44A] = 80;
     ram[0x44B] = 0;
+    ram[0x466] = 0x30; /* CRT_PALETTE: CGA color-select default */
+    cga_3d9 = 0x30;
     video_mode = 0x03;
     blank_regen();
 

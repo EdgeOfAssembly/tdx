@@ -927,8 +927,34 @@ static void handle_int10(dos_machine *m)
         m->cursor_x = 0;
         m->cursor_y = 0;
         m->blank_regen();
+        if ((al == 0x04u) || (al == 0x05u))
+        {
+            /* BIOS mode 4/5: palette 1 + intensity, black background. */
+            m->cga_3d9 = 0x30;
+            m->ram[0x466] = 0x30;
+        }
         rex_logf(REX_LOG_INFO, "INT10 set mode %02X", al);
         break;
+    case 0x0B:
+    {
+        /* SET PALETTE / BACKGROUND — Bushido hit-flash uses this. */
+        const uint16_t bx = m->reg16(UC_X86_REG_BX);
+        const uint8_t bh = (uint8_t)(bx >> 8);
+        const uint8_t bl = (uint8_t)(bx & 0xFFu);
+        uint8_t r = m->cga_3d9;
+        if (bh == 0u)
+        {
+            r = (uint8_t)((r & 0xF0u) | (bl & 0x0Fu));
+        }
+        else
+        {
+            r = (uint8_t)((r & (uint8_t)~0x20u) | (uint8_t)((bl & 1u) << 5));
+        }
+        m->cga_3d9 = r;
+        m->ram[0x466] = r;
+        m->video_dirty = true;
+        break;
+    }
     case 0x02:
         m->cursor_x = (uint16_t)(dx & 0xFFu);
         m->cursor_y = (uint16_t)(dx >> 8);

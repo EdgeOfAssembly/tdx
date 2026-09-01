@@ -122,11 +122,18 @@ tests/fixtures/parsefcb.com: tests/fixtures/parsefcb.asm
 tests/fixtures/irq0.com: tests/fixtures/irq0.asm
 	nasm -f bin -o $@ $<
 
+tests/fixtures/int10pal.com: tests/fixtures/int10pal.asm
+	nasm -f bin -o $@ $<
+
+tests/fixtures/out3d9.com: tests/fixtures/out3d9.asm
+	nasm -f bin -o $@ $<
+
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
 	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com \
 	tests/fixtures/waitkey.com tests/fixtures/int16spin.com tests/fixtures/int10.com \
 	tests/fixtures/ud.com tests/fixtures/cga3da.com tests/fixtures/int10m4.com \
-	tests/fixtures/parsefcb.com tests/fixtures/irq0.com
+	tests/fixtures/parsefcb.com tests/fixtures/irq0.com tests/fixtures/int10pal.com \
+	tests/fixtures/out3d9.com
 
 test: tdx tdxview tests/run_tests
 	./tests/run_tests
@@ -144,6 +151,7 @@ test: tdx tdxview tests/run_tests
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q pixels_b64; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q b800_b64; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q '"mode"'; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q cga3d9; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock quit; \
 	  wait $$(cat /tmp/tdx-test.pid) 2>/dev/null || true
 tests: test
@@ -159,7 +167,7 @@ clean:
 		tests/fixtures/fcbopen.com tests/fixtures/waitkey.com tests/fixtures/int16spin.com \
 		tests/fixtures/int10.com tests/fixtures/ud.com \
 		tests/fixtures/cga3da.com tests/fixtures/int10m4.com tests/fixtures/parsefcb.com \
-		tests/fixtures/irq0.com \
+		tests/fixtures/irq0.com tests/fixtures/int10pal.com tests/fixtures/out3d9.com \
 		*.d src/**/*.d tests/**/*.d
 
 release:

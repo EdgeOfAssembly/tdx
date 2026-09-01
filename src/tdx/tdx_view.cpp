@@ -617,6 +617,7 @@ int main(int argc, char **argv)
         int y = 0;
         int x = 0;
         uint8_t mode = 0;
+        uint8_t palreg = 0x30;
 
         while (SDL_PollEvent(&ev))
         {
@@ -679,6 +680,7 @@ int main(int argc, char **argv)
                     {
                         b64_decode(j["pixels_b64"].get<std::string>(), &fb);
                     }
+                    palreg = (uint8_t)j.value("cga3d9", 0x30);
                 }
                 catch (const std::exception &)
                 {
@@ -695,6 +697,8 @@ int main(int argc, char **argv)
                              (last_mode == 0x13);
             if (gfx)
             {
+                uint32_t pal[4] = {k_cga[0], k_cga[1], k_cga[2], k_cga[3]};
+                dos_cga_palette_argb(palreg, pal);
                 for (y = 0; y < DOS_CGA_HEIGHT; y++)
                 {
                     uint32_t *dst = pix + y * pitch_px;
@@ -705,7 +709,7 @@ int main(int argc, char **argv)
                         {
                             c = fb[(size_t)y * (size_t)DOS_CGA_WIDTH + (size_t)x] & 3u;
                         }
-                        dst[x] = k_cga[c];
+                        dst[x] = pal[c];
                     }
                 }
             }

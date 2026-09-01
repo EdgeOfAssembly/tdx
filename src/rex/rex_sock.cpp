@@ -357,6 +357,13 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["h"] = DOS_CGA_HEIGHT;
         resp["con"] = rex_session_con_out(s);
         {
+            uint8_t pal = 0x30;
+            if (rex_session_read_mem(s, 0x466ull, &pal, 1) == REX_OK)
+            {
+                resp["cga3d9"] = pal;
+            }
+        }
+        {
             uint8_t b800[4000];
             if (rex_session_read_mem(s, 0xB8000ull, b800, sizeof(b800)) == REX_OK)
             {

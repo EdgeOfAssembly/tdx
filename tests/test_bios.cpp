@@ -19,6 +19,18 @@ TEST_CASE("CGA port 3DAh toggles so wait-retrace loops can exit")
     rex_session_destroy(s);
 }
 
+TEST_CASE("OUT 3D9h writes CGA color-select to BDA 0040:0066")
+{
+    rex_session *s = rex_session_create();
+    uint8_t pal = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/out3d9.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_read_mem(s, 0x466ull, &pal, 1) == REX_OK);
+    REQUIRE(pal == 0x35);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("INT 21 AH=29 fills FCB name FOO.BAR")
 {
     rex_session *s = rex_session_create();

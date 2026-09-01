@@ -47,6 +47,51 @@ int dos_cga_decode(const uint8_t *vram, uint8_t *px, size_t px_size);
  */
 int dos_cga_encode(const uint8_t *px, size_t px_size, uint8_t *vram, size_t vram_size);
 
+/**
+ * @brief Map CGA color-select (port 3D9h / BDA 0040:0066) to four ARGB colors.
+ *
+ * Index 0 is the background (bits 0–3). Bit 4 is palette intensity, bit 5
+ * selects cyan/magenta/white vs green/red/brown. Default BIOS mode-4 value
+ * 30h matches the historical tdx cyan/magenta/white table.
+ *
+ * Header-inline so tdxview (no dos_cga.c) and tdx share one mapping.
+ *
+ * @param[in]  color_select  3D9h register.
+ * @param[out] out           Four ARGB8888 colors; must not be NULL.
+ */
+static inline void dos_cga_palette_argb(uint8_t color_select, uint32_t out[4])
+{
+    static const uint32_t irgb[16] = {
+        0xFF000000u, 0xFF0000A8u, 0xFF00A800u, 0xFF00A8A8u, 0xFFA80000u, 0xFFA800A8u,
+        0xFFA85400u, 0xFFA8A8A8u, 0xFF545454u, 0xFF5454FCu, 0xFF54FC54u, 0xFF54FCFCu,
+        0xFFFC5454u, 0xFFFC54FCu, 0xFFFCFC54u, 0xFFFCFCFCu};
+    const unsigned hi = (color_select & 0x10u) ? 8u : 0u;
+
+    if (out == NULL)
+    {
+        return;
+    }
+    out[0] = irgb[color_select & 0x0Fu];
+    if ((color_select & 0x20u) != 0u)
+    {
+        out[1] = irgb[3u + hi];
+        out[2] = irgb[5u + hi];
+        out[3] = irgb[7u + hi];
+    }
+    else
+    {
+        out[1] = irgb[2u + hi];
+        out[2] = irgb[4u + hi];
+        out[3] = irgb[6u + hi];
+    }
+    if ((color_select & 0x3Fu) == 0x30u)
+    {
+        out[1] = 0xFF55FFFFu;
+        out[2] = 0xFFFF55FFu;
+        out[3] = 0xFFFFFFFFu;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -55,6 +55,19 @@ TEST_CASE("blank regen is spaces+07 and CGA decode succeeds")
     rex_session_destroy(s);
 }
 
+TEST_CASE("INT 10 AH=0B sets BDA CRT_PALETTE 0040:0066")
+{
+    rex_session *s = rex_session_create();
+    uint8_t pal = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/int10pal.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_read_mem(s, 0x466ull, &pal, 1) == REX_OK);
+    /* Mode 4 default 30h, AH=0B BL=0Dh → 3Dh. */
+    REQUIRE(pal == 0x3D);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("BPINT 10 stops on the CD 10 before the handler")
 {
     rex_session *s = rex_session_create();
