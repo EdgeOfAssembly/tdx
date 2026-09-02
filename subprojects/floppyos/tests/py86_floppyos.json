@@ -1,0 +1,20 @@
+{
+  "comment": "FloppyOS-only config for local subprojects/py86 copy. Paths relative to that copy's CWD.",
+  "bios": {
+    "path": "ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN"
+  },
+  "logging": {
+    "log_file": "/tmp/floppyos-py86.log",
+    "level": "WARNING",
+    "log_missing_opcodes": false,
+    "log_mda_access": false
+  },
+  "video": {
+    "default_adapter": "MDA",
+    "render_on_halt": true
+  },
+  "floppy": {
+    "path": "../../build/floppyos.img",
+    "description": "FloppyOS 360K 5.25\" (40/2/9) for Py86/5150"
+  }
+}

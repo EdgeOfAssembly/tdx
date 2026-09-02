@@ -28,6 +28,10 @@ compile_commands.json
 /docs/golden-demo/dosbox-pass1/
 /docs/golden-demo/keyframes/
 
+# FloppyOS snapshot: ignore build + vendored Py86 (symlink at test time)
+/subprojects/floppyos/build/
+/subprojects/floppyos/subprojects/py86/
+
 # Local Borland C++ 3.1 reference tree (copyrighted; not shipped)
 /BORLANDC/
 
@@ -36,3 +40,4 @@ compile_commands.json
 *~
 .idea/
 .vscode/
+/subprojects/floppyos/tests/images/*.img

@@ -1,0 +1,23 @@
+/build/
+*.o
+*.bin
+*.img
+!tests/images/
+!tests/images/**
+!tests/images/**/*.img
+!tests/golden/**
+/config-temp/
+config.log
+**/upstream/
+programs/hello.exe
+
+/tmp/
+
+# Local Py86 runtime junk only (tree is tracked; git LFS OK)
+subprojects/py86/**/__pycache__/
+subprojects/py86/**/*.pyc
+subprojects/py86/py86.log
+subprojects/py86/py86_trace.log
+subprojects/py86/py86_profile.stats
+subprojects/py86/capture/
+subprojects/py86/vram_port*

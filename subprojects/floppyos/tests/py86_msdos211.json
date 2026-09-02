@@ -1,0 +1,21 @@
+{
+  "comment": "Reference boot: official MS-DOS 2.11 360K on local Py86. Two Enter keys for date/time then A>.",
+  "bios": {
+    "path": "ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN"
+  },
+  "logging": {
+    "log_file": "/tmp/py86-msdos211.log",
+    "level": "WARNING",
+    "log_missing_opcodes": false,
+    "log_mda_access": false
+  },
+  "video": {
+    "default_adapter": "MDA",
+    "render_on_halt": true
+  },
+  "floppy": {
+    "path": "disks/MS-DOS-2.11-Columbia-Data-Products-OEM-5.25-360K/disk01.img",
+    "description": "MS-DOS 2.11 CDP OEM 5.25 360K (also tests/images/msdos211-cdp-360k-disk01.img)"
+  }
+}
+
