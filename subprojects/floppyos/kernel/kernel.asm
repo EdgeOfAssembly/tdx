@@ -302,13 +302,6 @@ run_init_com:
         push    bp
         push    si
         push    di
-        push    ax
-        push    cx
-        push    dx
-        push    bx
-        push    bp
-        push    si
-        push    di
         push    ds
         push    es
         push    cs
@@ -359,12 +352,7 @@ run_init_com:
         mov     ah, 0x09
         int     0x21
         call    load_com_fallback
-.out:   mov     ax, cs
-        mov     ds, ax
-        mov     es, ax
-        mov     ss, ax
-        mov     sp, 0xFFFE
-        pop     es
+.out:   pop     es
         pop     ds
         pop     di
         pop     si
@@ -376,13 +364,6 @@ run_init_com:
         ret
 
 clear_psp:
-        push    ax
-        push    cx
-        push    dx
-        push    bx
-        push    bp
-        push    si
-        push    di
         push    ax
         push    cx
         push    dx
@@ -437,13 +418,6 @@ enter_com:
         retf
 
 load_com_fallback:
-        push    ax
-        push    cx
-        push    dx
-        push    bx
-        push    bp
-        push    si
-        push    di
         push    ax
         push    cx
         push    dx
