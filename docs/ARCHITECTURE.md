@@ -39,6 +39,9 @@ or INT 1Eh diskette table in this tree yet.
 breakpoints). Never `xmux run` of the SDL GUI — it blocks until the window
 exits.
 
+**iron86:** C++23 8086+PC machine (`subprojects/iron86`), ported from Py86.
+Hardware only. Replaces Unicorn later. Guest OS is FloppyOS / MS-DOS.
+
 **Layers (CPU is not DOS):** `tdx`/`tdxview` are the debugger and CGA viewer
 (session + UNIX sockets). The machine backend is CPU + platform hardware
 (today Unicorn 8086 + IBM PC chipset). `rex.h` stays arch-agnostic so a later
