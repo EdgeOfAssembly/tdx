@@ -300,7 +300,21 @@ FAT remains for **interchange** and **foreign disks**.
 
 ---
 
-# Track 5 — FAT12 / FAT16 / FAT32 / exFAT (P1→P2)
+# Track 4b — FlopFS integrity + dedup (P1, after current shell)
+
+Primary FS stays **FlopFS** (not FAT). Spec: `docs/flopfs-spec.md` § Integrity + dedup.
+
+- [ ] XXH3-64 per **file** payload (`size > 0`); dirs not hashed
+- [ ] Size-0 files: **skip hash** (`xxh3=0`, no blob)
+- [ ] Pack-time dedup in `mkflopfs` (same hash+size → shared LBA)
+- [ ] Runtime refcount before freeing a shared blob
+- [ ] Host tests: two identical HELLO copies → one data extent
+
+---
+
+# Track 5 — FAT12 / FAT16 / FAT32 / exFAT (P3 — bottom of queue)
+
+**Deferred.** Guest MS-DOS on Py86 already does FAT12; we do not need a host `fat12.py`. FloppyOS foreign volumes come **after** FlopFS integrity/dedup and iron86 FDC write/format.
 
 **Success:** mount and R/W (as appropriate) foreign volumes; format tools later.
 
@@ -612,3 +626,12 @@ Recorded 2026-07-26. **Do not block** boot/kernel/FlopFS work on these.
 ---
 
 *Team: Grok (orchestrator) + explore subagents · Updated 2026-07-26*
+
+---
+
+# Bottom of queue (do not start until FlopFS integrity + iron86 gates 1/2/4/5)
+
+These wait on purpose (2026-09-03 milestone `bios-flopfs-dir`):
+
+- [ ] **FAT12 / FAT16 / FAT32 / exFAT** foreign volumes (Track 5) — Py86 never shipped `fat12.py`; MS-DOS DIR is guest FAT. FloppyOS primary FS is FlopFS.
+- [ ] **iron86 FDC Format / Write Data / Scan / drive B:** — INT 19 boot and DIR only need Read. COPY/FCB write/format/second floppy later. See `subprojects/iron86/TODO.md`.

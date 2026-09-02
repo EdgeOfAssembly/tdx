@@ -58,6 +58,26 @@ Empty entry: `name[0] == 0`. End of dir: `name[0] == 0xE5` optional; M7 uses zer
 
 Max entries per root sector: **16**.
 
+## Integrity + dedup (planned v0.5 — not on-disk yet)
+
+**Hash:** **XXH3-64** (8 bytes). Fastest widely used non-crypto hash; 8 bytes fit in the existing dirent `pad[10]` with 2 bytes left for flags. Collision chance is negligible on a 360K–1.44M floppy (and still tiny on HDD-sized FlopFS). XXH3-128 (16 bytes) is reserved if we ever grow the dirent; do not use SHA/BLAKE for this.
+
+**Not hashed:** directory entries (dirs have no payload hash). **Size-0 files:** skip hashing. They occupy no data sectors anyway. All empty files would share one XXH3 of the empty buffer, which does not save space and only complicates unique names. Store `xxh3=0`, `lba=0`, `sectors=0`, flag `HASHED=0`. Each empty name stays its own dirent.
+
+**Hashed files (`size > 0`):** `xxh3` over the stored codec bytes. Flag `HASHED=1`.
+
+**Dedup (transparent, pack-time then runtime writes):** dirents with the same XXH3 and size share one data blob (`lba`/`sectors` identical), like a hard link to content. Names stay unique. `mkflopfs` must not write a second copy. Future delete/truncate needs a **refcount** on the blob (superblock table or first-sector header) before freeing LBA.
+
+Planned dirent `pad[10]` layout (still 32-byte entry):
+
+| Off | Size | Field |
+|----:|-----:|-------|
+| 22 | 8 | `xxh3` (0 if not hashed) |
+| 30 | 1 | `flags` bit0=`HASHED`, bit1=`SHARED` |
+| 31 | 1 | reserved |
+
+Do not bump `FLOPFS01` / version_minor until mkflopfs + kernel actually write these fields.
+
 ## INT 21h file API (M7)
 
 | AH | Meaning |
