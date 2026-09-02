@@ -16,6 +16,11 @@
   through UNIX sockets (`/tmp/tdx.sock`, `/tmp/tdxview.sock`) and `tdxctl shot`.
   Do **not** put tdx/tdxview under Xmux. Golden Bushido demo:
   `docs/GOAL_BUSHIDO_DEMO.md` (DOSBox+Xmux reference loop is already recorded).
+- **One pair only.** Before starting tdx or tdxview, always close leftovers:
+  `scripts/tdx-kill.sh` (pkill -x tdx/tdxview, wait, rm `/tmp/tdx.sock`
+  `/tmp/tdxview.sock`). Never attach tdxview to a stale socket or run a second
+  tdx. Extra PIDs mix Unicorn EXE sessions with `--bios` FloppyOS and look like
+  “terminated” / black tdxview.
 - Do not commit `BORLANDC/` (copyrighted Borland C++ 3.1).
 - Single file LOC: soft 5k, hard 10k (`cloc`).
 - Future arches (Z80/6502/M68K) implement the same session/target ideas; do not
