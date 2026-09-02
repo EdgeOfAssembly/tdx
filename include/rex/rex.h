@@ -235,8 +235,34 @@ struct rex_insn_bp
 
 REX_API size_t rex_insn_bp_list(const rex_session *s, rex_insn_bp *out, size_t cap);
 
-/** Set remaining hits on an exec or insn BP id (0 = every). */
+/** Set remaining hits on an exec, insn, or range BP id (0 = every). */
 REX_API rex_status rex_bp_set_hits(rex_session *s, uint32_t id, uint32_t hits);
+
+/**
+ * @brief Break when CS:IP's linear address is in [@p lo, @p hi] inclusive.
+ *
+ * For a procedure/overlay window without planting a BP on every insn.
+ * @param hits 0 = every entry, 1 = first only.
+ */
+REX_API rex_status rex_bp_add_range(rex_session *s, uint64_t lo, uint64_t hi, uint32_t hits,
+                                    uint32_t *id);
+REX_API rex_status rex_bp_add_segoff_range(rex_session *s, uint16_t seg0, uint16_t off0,
+                                           uint16_t seg1, uint16_t off1, uint32_t hits,
+                                           uint32_t *id);
+
+struct rex_range_bp
+{
+    uint32_t id;
+    uint32_t remain;
+    uint16_t seg0;
+    uint16_t off0;
+    uint16_t seg1;
+    uint16_t off1;
+    uint64_t lo;
+    uint64_t hi;
+};
+
+REX_API size_t rex_range_bp_list(const rex_session *s, rex_range_bp *out, size_t cap);
 
 /** Load a TSV/MAP symbol file (`seg:off\\tname` or `linear\\tname`). */
 REX_API rex_status rex_symbols_load(rex_session *s, const char *path);

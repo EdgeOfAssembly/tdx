@@ -339,19 +339,63 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "bp") || (cmd == "bp_set"))
     {
         std::string addr = req.value("addr", "");
+        std::string addr_end = req.value("end", "");
         uint64_t lin = 0;
+        uint64_t lin1 = 0;
         uint32_t id = 0;
         uint16_t seg = 0;
         uint16_t off = 0;
+        uint16_t seg1 = 0;
+        uint16_t off1 = 0;
         if (addr.empty() && req.contains("_rest"))
         {
             std::istringstream is(req["_rest"].get<std::string>());
-            is >> addr;
+            std::string a;
+            std::string b;
+            is >> a >> b;
+            addr = a;
+            if ((b.find(':') != std::string::npos) || (b.find('-') != std::string::npos))
+            {
+                addr_end = b;
+            }
+        }
+        {
+            const auto dash = addr.find('-');
+            if ((dash != std::string::npos) && (dash > 0) && addr_end.empty())
+            {
+                addr_end = addr.substr(dash + 1);
+                addr = addr.substr(0, dash);
+            }
         }
         if (!parse_addr(addr, &lin, &seg, &off))
         {
             resp["ok"] = false;
             resp["error"] = "bad addr";
+        }
+        else if (!addr_end.empty())
+        {
+            if (addr_end.find(':') == std::string::npos)
+            {
+                addr_end = addr.substr(0, addr.find(':') + 1) + addr_end;
+            }
+            if (!parse_addr(addr_end, &lin1, &seg1, &off1))
+            {
+                resp["ok"] = false;
+                resp["error"] = "bad end";
+            }
+            else if (rex_bp_add_segoff_range(s, seg, off, seg1, off1, 0, &id) != REX_OK)
+            {
+                resp["ok"] = false;
+                resp["error"] = "bad range";
+            }
+            else
+            {
+                resp["id"] = id;
+                resp["cs"] = seg;
+                resp["ip"] = off;
+                resp["end_cs"] = seg1;
+                resp["end_ip"] = off1;
+            }
         }
         else if ((seg != 0) || (off != 0))
         {
@@ -413,12 +457,15 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         rex_bp bps[64];
         rex_int_bp ib[32];
         rex_insn_bp inb[32];
+        rex_range_bp rb[32];
         size_t nb = rex_bp_list(s, bps, 64);
         size_t ni = rex_int_bp_list(s, ib, 32);
         size_t nn = rex_insn_bp_list(s, inb, 32);
+        size_t nr = rex_range_bp_list(s, rb, 32);
         json arr = json::array();
         json iarr = json::array();
         json narr = json::array();
+        json rarr = json::array();
         size_t i = 0;
         for (i = 0; i < nb; i++)
         {
@@ -444,10 +491,24 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             e["pat"] = inb[i].text;
             narr.push_back(e);
         }
+        for (i = 0; i < nr; i++)
+        {
+            json e;
+            e["id"] = rb[i].id;
+            e["remain"] = rb[i].remain;
+            e["seg0"] = rb[i].seg0;
+            e["off0"] = rb[i].off0;
+            e["seg1"] = rb[i].seg1;
+            e["off1"] = rb[i].off1;
+            e["lo"] = rb[i].lo;
+            e["hi"] = rb[i].hi;
+            rarr.push_back(e);
+        }
         resp["count"] = rex_bp_count(s);
         resp["bps"] = arr;
         resp["int_bps"] = iarr;
         resp["insn_bps"] = narr;
+        resp["range_bps"] = rarr;
     }
     else if ((cmd == "bpint") || (cmd == "bp_int"))
     {

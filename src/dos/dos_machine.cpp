@@ -151,7 +151,7 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
     }
     {
         const bool exec_hit = (m->bps.find(address) != m->bps.end());
-        if ((!exec_hit) && m->insn_bps.empty())
+        if ((!exec_hit) && m->insn_bps.empty() && m->range_bps.empty())
         {
             return;
         }
@@ -164,7 +164,7 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
             m->skip_bp = false;
             return;
         }
-        if ((!exec_hit) && (!m->hit_insn_bp(address)))
+        if ((!exec_hit) && (!m->hit_insn_bp(address)) && (!m->hit_range_bp(address)))
         {
             return;
         }
@@ -1063,6 +1063,14 @@ rex_status dos_machine::bp_del(uint32_t id)
             return REX_OK;
         }
     }
+    for (i = 0; i < range_bps.size(); i++)
+    {
+        if (range_bps[i].id == id)
+        {
+            range_bps.erase(range_bps.begin() + static_cast<std::ptrdiff_t>(i));
+            return REX_OK;
+        }
+    }
     return REX_ERR_ARG;
 }
 
@@ -1074,7 +1082,54 @@ void dos_machine::bp_clear(void)
     bp_remain.clear();
     int_bps.clear();
     insn_bps.clear();
+    range_bps.clear();
     skip_int_bp = false;
+}
+
+rex_status dos_machine::bp_range_add(uint64_t lo, uint64_t hi, uint16_t seg0, uint16_t off0,
+                                     uint16_t seg1, uint16_t off1, uint32_t hits, uint32_t *id)
+{
+    range_bp_ent e{};
+    if (hi < lo)
+    {
+        return REX_ERR_ARG;
+    }
+    e.id = next_bp_id++;
+    e.remain = hits;
+    e.lo = lo;
+    e.hi = hi;
+    e.seg0 = seg0;
+    e.off0 = off0;
+    e.seg1 = seg1;
+    e.off1 = off1;
+    range_bps.push_back(e);
+    if (id != nullptr)
+    {
+        *id = e.id;
+    }
+    return REX_OK;
+}
+
+bool dos_machine::hit_range_bp(uint64_t lin)
+{
+    size_t i = 0;
+    for (i = 0; i < range_bps.size(); i++)
+    {
+        if ((lin < range_bps[i].lo) || (lin > range_bps[i].hi))
+        {
+            continue;
+        }
+        if (range_bps[i].remain == 1u)
+        {
+            range_bps.erase(range_bps.begin() + static_cast<std::ptrdiff_t>(i));
+        }
+        else if (range_bps[i].remain > 1u)
+        {
+            range_bps[i].remain--;
+        }
+        return true;
+    }
+    return false;
 }
 
 rex_status dos_machine::bp_insn_add(const char *pat, uint32_t hits, uint32_t *id)

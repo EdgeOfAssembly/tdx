@@ -52,6 +52,55 @@ TEST_CASE("bp segoff is preserved in rex_bp_list")
     rex_session_destroy(s);
 }
 
+TEST_CASE("range BP stops on first insn in [lo,hi] inclusive")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    rex_insn ins[4];
+    rex_range_bp rb[4]{};
+    size_t n = 0;
+    uint32_t id = 0;
+    uint64_t lo = 0;
+    uint64_t hi = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    rex_session_disasm(s, UINT64_MAX, ins, 4, &n);
+    REQUIRE(n >= 3);
+    lo = ins[1].linear;
+    hi = ins[2].linear;
+    REQUIRE(rex_bp_add_segoff_range(s, ins[1].seg, ins[1].off, ins[2].seg, ins[2].off, 0, &id) ==
+            REX_OK);
+    REQUIRE(rex_range_bp_list(s, rb, 4) == 1);
+    REQUIRE(rb[0].id == id);
+    REQUIRE(rb[0].lo == lo);
+    REQUIRE(rb[0].hi == hi);
+    REQUIRE(rex_bp_at(s, lo));
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_BREAK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(rex_segoff_to_linear(r.cs, r.ip) == lo);
+    REQUIRE(r.ax == 1); /* MOV AX,1 done; INC in range not executed */
+    rex_session_destroy(s);
+}
+
+TEST_CASE("range BP once auto-clears after first hit")
+{
+    rex_session *s = rex_session_create();
+    rex_insn ins[4];
+    rex_range_bp rb[4]{};
+    size_t n = 0;
+    uint32_t id = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    rex_session_disasm(s, UINT64_MAX, ins, 4, &n);
+    REQUIRE(n >= 2);
+    REQUIRE(rex_bp_add_range(s, ins[1].linear, ins[1].linear, 1, &id) == REX_OK);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_BREAK);
+    REQUIRE(rex_range_bp_list(s, rb, 4) == 0);
+    REQUIRE(rex_session_run(s, 1000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    rex_session_destroy(s);
+}
+
 TEST_CASE("rex_version is 0.8")
 {
     REQUIRE(std::string(rex_version()) == "0.8");

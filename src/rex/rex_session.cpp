@@ -454,7 +454,23 @@ size_t rex_bp_count(const rex_session *s)
 bool rex_bp_at(const rex_session *s, uint64_t linear)
 {
     const dos_machine *m = need_dos_c(s);
-    return (m != nullptr) && (m->bps.find(linear) != m->bps.end());
+    size_t i = 0;
+    if (m == nullptr)
+    {
+        return false;
+    }
+    if (m->bps.find(linear) != m->bps.end())
+    {
+        return true;
+    }
+    for (i = 0; i < m->range_bps.size(); i++)
+    {
+        if ((linear >= m->range_bps[i].lo) && (linear <= m->range_bps[i].hi))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 rex_status rex_bp_int(rex_session *s, uint8_t intno)
@@ -558,7 +574,65 @@ rex_status rex_bp_set_hits(rex_session *s, uint32_t id, uint32_t hits)
             return REX_OK;
         }
     }
+    for (i = 0; i < m->range_bps.size(); i++)
+    {
+        if (m->range_bps[i].id == id)
+        {
+            m->range_bps[i].remain = hits;
+            return REX_OK;
+        }
+    }
     return REX_ERR_ARG;
+}
+
+rex_status rex_bp_add_range(rex_session *s, uint64_t lo, uint64_t hi, uint32_t hits, uint32_t *id)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->bp_range_add(lo, hi, 0, 0, 0, 0, hits, id);
+}
+
+rex_status rex_bp_add_segoff_range(rex_session *s, uint16_t seg0, uint16_t off0, uint16_t seg1,
+                                   uint16_t off1, uint32_t hits, uint32_t *id)
+{
+    dos_machine *m = need_dos(s);
+    const uint64_t lo = rex_segoff_to_linear(seg0, off0);
+    const uint64_t hi = rex_segoff_to_linear(seg1, off1);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->bp_range_add(lo, hi, seg0, off0, seg1, off1, hits, id);
+}
+
+size_t rex_range_bp_list(const rex_session *s, rex_range_bp *out, size_t cap)
+{
+    const dos_machine *m = need_dos_c(s);
+    size_t n = 0;
+    if ((m == nullptr) || (out == nullptr) || (cap == 0))
+    {
+        return 0;
+    }
+    for (const auto &e : m->range_bps)
+    {
+        if (n >= cap)
+        {
+            break;
+        }
+        out[n].id = e.id;
+        out[n].remain = e.remain;
+        out[n].seg0 = e.seg0;
+        out[n].off0 = e.off0;
+        out[n].seg1 = e.seg1;
+        out[n].off1 = e.off1;
+        out[n].lo = e.lo;
+        out[n].hi = e.hi;
+        n++;
+    }
+    return n;
 }
 
 size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap)

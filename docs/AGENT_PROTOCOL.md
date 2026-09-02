@@ -21,6 +21,7 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"mem","addr":"B800:0000","len":64}
 {"cmd":"bp","addr":"1010:001A"}
 {"cmd":"bp","addr":"1970:4969","hits":1}
+{"cmd":"bp","addr":"1970:0100","end":"1970:0200"}
 {"cmd":"bpint","int":16}
 {"cmd":"bpint","int":16,"hits":1}
 {"cmd":"bpinsn","pat":"int 10","hits":0}
@@ -44,6 +45,7 @@ guest actually consumes it. `nav` is the CPU VCR (`Up`/`Down`/`Home`/`End`/
 Breakpoints pause F9 (`stop` = breakpoint). Agents may set:
 
 - `bp 1970:4969` — this CS:IP (optional `"hits":1` = first only)
+- `bp 1970:0100 1970:0200` — any insn whose linear address is in that window
 - `bpint 10` — every `INT 10h`; `bpint 10 once` / `"hits":1` = first only
 - `bpinsn int 10` / `bpinsn call` / `bpinsn out` — any instruction whose
   Capstone text matches (hex operands; `"int 10"` is INT 10h)

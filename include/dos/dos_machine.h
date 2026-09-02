@@ -123,6 +123,18 @@ struct dos_machine
         std::string needle;
     };
     std::vector<insn_bp_ent> insn_bps;
+    struct range_bp_ent
+    {
+        uint32_t id = 0;
+        uint32_t remain = 0; /**< 0 = every */
+        uint64_t lo = 0;     /**< inclusive linear */
+        uint64_t hi = 0;
+        uint16_t seg0 = 0;
+        uint16_t off0 = 0;
+        uint16_t seg1 = 0;
+        uint16_t off1 = 0;
+    };
+    std::vector<range_bp_ent> range_bps;
 
     dos_file files[DOS_MAX_FILES]{};
     std::deque<dos_kbd_ev> kbd;
@@ -173,7 +185,10 @@ struct dos_machine
     rex_status bp_del(uint32_t id);
     void bp_clear(void);
     rex_status bp_insn_add(const char *pat, uint32_t hits, uint32_t *id);
+    rex_status bp_range_add(uint64_t lo, uint64_t hi, uint16_t seg0, uint16_t off0, uint16_t seg1,
+                            uint16_t off1, uint32_t hits, uint32_t *id);
     bool hit_insn_bp(uint64_t lin);
+    bool hit_range_bp(uint64_t lin);
     void consume_exec_bp(uint64_t lin);
 
     void rebuild_decode(void);

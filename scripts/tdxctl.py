@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.9"
+VERSION = "0.10"
 
 
 def usage() -> None:
@@ -28,6 +28,8 @@ Commands:
   mem <seg:off> [len]
   bp <seg:off> [once|every|N]
                      exec BP at CS:IP; once = first hit only
+  bp <seg:off> <seg:off> [once|every]
+                     exec BP on a linear range (procedure/overlay window)
   bpint <n> [once|every|N]
                      INT n (hex); default every, once = first only
   bpinsn <pat> [once|every|N]
@@ -73,8 +75,16 @@ def build_line(cmd: str, rest: list[str]) -> str:
         return json.dumps(obj)
     if cmd in {"bp", "bp_set"} and rest:
         obj: dict[str, object] = {"cmd": "bp", "addr": rest[0]}
-        if len(rest) > 1:
-            obj["hits"] = _hits_token(rest[1])
+        for tok in rest[1:]:
+            if tok.lower() in {"once", "every"}:
+                obj["hits"] = _hits_token(tok)
+            elif ":" in tok:
+                obj["end"] = tok
+            else:
+                try:
+                    obj["hits"] = _hits_token(tok)
+                except ValueError:
+                    obj["end"] = tok
         return json.dumps(obj)
     if cmd in {"bpint", "bp_int"} and rest:
         obj = {"cmd": "bpint", "int": int(rest[0], 16)}
