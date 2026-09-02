@@ -1,7 +1,9 @@
 ; FloppyOS kernel M8 — FlopFS files + MCB (AH=48/49/4A)
+; Debug traces: nasm -DDEBUG / make DEBUG=1 (see debug.inc).
         cpu 8086
         bits 16
         org  0
+        %include "debug.inc"
 
 SPT             equ 9                  ; 360K 5.25"
 HEADS           equ 2
@@ -15,6 +17,7 @@ ARENA_TOP       equ 0xA000
 kernel_entry:
         mov     [cs:boot_drive], dl
         cli
+        cld
         mov     ax, cs
         mov     ds, ax
         mov     es, ax
@@ -490,19 +493,12 @@ load_com_fallback:
 fcb_to_path:
         push    ax
         push    cx
-        push    dx
-        push    bx
-        push    bp
-        push    si
-        push    di
-        push    ax
-        push    cx
-        push    dx
-        push    bx
-        push    bp
         push    si
         push    di
         push    es
+        push    ds
+        push    cs
+        pop     ds
         push    cs
         pop     es
         mov     di, path_buf
@@ -524,12 +520,10 @@ fcb_to_path:
 .d:     loop    .c
         xor     al, al
         stosb
+        pop     ds
         pop     es
         pop     di
         pop     si
-        pop     bp
-        pop     bx
-        pop     dx
         pop     cx
         pop     ax
         ret
@@ -762,7 +756,7 @@ i21:    mov     word [cs:fcb_nrec], 1
         mov     byte [cs:fcb_mode], 1        ; random, no RR bump
         call    fcb_read
         jmp     iret_cf
-i27:    mov     [cs:fcb_nrec], cx
+i27:    mov     word [cs:fcb_nrec], cx       ; MS-DOS 1.25 GETRRPOS: CX = records
         mov     byte [cs:fcb_mode], 2        ; block, RR = last+1
         call    fcb_read
         jmp     iret_cf
@@ -770,7 +764,19 @@ i1a:    mov     [cs:dta_seg], ds
         mov     [cs:dta_off], dx
         clc
         jmp     iret_cf
-i3d:    call    dos_open
+i3d:
+%ifdef DEBUG
+        push    dx
+%endif
+        call    dos_open
+%ifdef DEBUG
+        pop     si
+        push    ax
+        mov     ah, 0x3D
+        mov     bx, dbg_v_open
+        dlog_ds
+        pop     ax
+%endif
         jmp     iret_cf
 i3e:    call    dos_close
         jmp     iret_cf
@@ -788,6 +794,15 @@ i4a:    call    dos_realloc
         jmp     iret_cf
 i4b:    cmp     al, 0
         jne     .i4b_bad
+%ifdef DEBUG
+        push    ax
+        mov     ah, 0x4B
+        mov     bx, dbg_v_exec
+        mov     si, dx
+        xor     al, al
+        dlog_ds
+        pop     ax
+%endif
         ; save parent INT return frame (SP -> IP,CS,FLAGS of INT 21h)
         mov     ax, [cs:current_psp]
         mov     [cs:parent_psp], ax
@@ -1660,10 +1675,13 @@ fcb_open:
         inc     si                      ; skip drive
         mov     di, fcb_tmp
         mov     cx, 11
+        cld
         rep     movsb
-        call    fcb11_to_path
+        ; fcb_tmp/path_buf live in kernel CS (MS-DOS OPEN uses the FCB in
+        ; the caller's DS; we convert 8.3 then dos_open).
         push    cs
         pop     ds
+        call    fcb11_to_path
         mov     dx, path_buf
         call    dos_open
         jc      .fo_fail
@@ -1700,6 +1718,14 @@ fcb_open:
         mov     al, 0xFF
         clc
 .fo_out:
+%ifdef DEBUG
+        push    ax
+        mov     ah, 0x0F
+        mov     bx, dbg_v_openfcb
+        mov     si, path_buf
+        dlog_cs
+        pop     ax
+%endif
         pop     ds
         pop     es
         pop     di
@@ -1710,6 +1736,7 @@ fcb_open:
 
 fcb_close:
         push    bx
+        mov     bx, dx                  ; DS:DX = FCB (INT 21 AH=10)
         cmp     byte [bx+0x19], 0xFC
         jne     .fc_fail
         mov     al, [bx+0x18]
@@ -1736,6 +1763,9 @@ fcb11_to_path:
         push    si
         push    di
         push    es
+        push    ds
+        push    cs
+        pop     ds
         push    cs
         pop     es
         mov     di, path_buf
@@ -1763,6 +1793,7 @@ fcb11_to_path:
         loop    .ed
 .z:     xor     al, al
         stosb
+        pop     ds
         pop     es
         pop     di
         pop     si
@@ -1874,8 +1905,10 @@ fcb_read:
         mov     [bx+0x20], cl
         jmp     .fr_ok
 .fr_rr:
-        ; mode 1: RR = last record (rec + gotrec - 1)
-        ; mode 2: RR = last+1 (rec + gotrec)
+        ; MS-DOS 1.25 FINRND then SETNREX: AL is DSKERR, not the record.
+        mov     cl, al
+        ; mode 1 (AH=21): RR = last record (rec + gotrec - 1)
+        ; mode 2 (AH=27): RR = last+1 (rec + gotrec)
         mov     ax, [cs:fcb_rec]
         add     ax, [cs:fcb_gotrec]
         cmp     byte [cs:fcb_mode], 2
@@ -1884,6 +1917,7 @@ fcb_read:
 .fr_setrr:
         mov     [bx+0x21], ax
         mov     word [bx+0x23], 0
+        mov     al, cl
 .fr_ok: clc
 .fr_done:
         pop     ds
@@ -2040,6 +2074,144 @@ putc:
         pop     ax
         ret
 
+%ifdef DEBUG
+; FloppyOS:<INT1A CX:DX>:<verb> (<AH>) <name> AL=<hex>
+dbg_line_cs:
+        push    ax
+        push    bx
+        push    cx
+        push    dx
+        push    si
+        push    di
+        mov     di, bx
+        mov     [cs:dbg_fn], ah
+        mov     [cs:dbg_al], al
+        mov     [cs:dbg_name], si
+        mov     byte [cs:dbg_ns], 0      ; 0 = CS:name
+        jmp     dbg_line_go
+
+dbg_line_ds:
+        push    ax
+        push    bx
+        push    cx
+        push    dx
+        push    si
+        push    di
+        mov     di, bx
+        mov     [cs:dbg_fn], ah
+        mov     [cs:dbg_al], al
+        mov     [cs:dbg_name], si
+        mov     byte [cs:dbg_ns], 1      ; 1 = DS:name
+
+dbg_line_go:
+        mov     si, dbg_pfx
+        call    dbg_puts_cs
+        mov     ah, 0xFF                 ; iron86: ms since boot, AL=86h
+        int     0x1A
+        cmp     al, 0x86
+        je      .stamp
+        xor     ah, ah                   ; BIOS/tdx: 18.2 Hz CX:DX
+        int     0x1A
+.stamp: mov     ax, cx
+        call    dbg_hex16
+        mov     ax, dx
+        call    dbg_hex16
+        mov     al, ':'
+        call    putc
+        mov     si, di
+        call    dbg_puts_cs
+        mov     al, ' '
+        call    putc
+        mov     al, '('
+        call    putc
+        mov     al, [cs:dbg_fn]
+        call    dbg_hex8
+        mov     al, ')'
+        call    putc
+        mov     al, ' '
+        call    putc
+        mov     si, [cs:dbg_name]
+        cmp     byte [cs:dbg_ns], 0
+        je      .nmcs
+        call    dbg_puts_ds
+        jmp     .al
+.nmcs:  call    dbg_puts_cs
+.al:    mov     al, ' '
+        call    putc
+        mov     al, 'A'
+        call    putc
+        mov     al, 'L'
+        call    putc
+        mov     al, '='
+        call    putc
+        mov     al, [cs:dbg_al]
+        call    dbg_hex8
+        mov     al, 13
+        call    putc
+        mov     al, 10
+        call    putc
+        pop     di
+        pop     si
+        pop     dx
+        pop     cx
+        pop     bx
+        pop     ax
+        ret
+
+dbg_puts_cs:
+        push    ax
+        push    si
+.n:     mov     al, [cs:si]
+        inc     si
+        test    al, al
+        jz      .d
+        call    putc
+        jmp     .n
+.d:     pop     si
+        pop     ax
+        ret
+
+dbg_puts_ds:
+        push    ax
+        push    si
+.n:     lodsb
+        test    al, al
+        jz      .d
+        call    putc
+        jmp     .n
+.d:     pop     si
+        pop     ax
+        ret
+
+dbg_hex16:
+        push    ax
+        mov     al, ah
+        call    dbg_hex8
+        pop     ax
+        call    dbg_hex8
+        ret
+
+dbg_hex8:
+        push    ax
+        push    cx
+        mov     ah, al
+        mov     cl, 4
+        shr     al, cl
+        call    .nib
+        mov     al, ah
+        and     al, 0x0F
+        call    .nib
+        pop     cx
+        pop     ax
+        ret
+.nib:   add     al, '0'
+        cmp     al, '9'
+        jbe     .p
+        add     al, 7
+.p:     call    putc
+        ret
+%endif
+
 serial_init:
         push    ax
         push    dx
@@ -2092,6 +2264,16 @@ msg_fsinit:   db "fs_init...", 13, 10, "$"
 msg_fsdone:   db "fs_done", 13, 10, "$"
 msg_precom:   db "starting COMMAND...", 13, 10, "$"
 msg_banner:   db "FloppyOS kernel", 13, 10, "$"
+%ifdef DEBUG
+dbg_pfx:        db "FloppyOS:", 0
+dbg_v_openfcb:  db "OPEN FCB", 0
+dbg_v_open:     db "OPEN", 0
+dbg_v_exec:     db "EXEC", 0
+dbg_fn:         db 0
+dbg_al:         db 0
+dbg_ns:         db 0
+dbg_name:       dw 0
+%endif
 msg_int21:    db "INT21 OK", 13, 10, "$"
 msg_com:      db "loading COM...", 13, 10, "$"
 msg_byname:   db "COM by name OK", 13, 10, "$"
