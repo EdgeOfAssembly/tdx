@@ -39,5 +39,14 @@ or INT 1Eh diskette table in this tree yet.
 breakpoints). Never `xmux run` of the SDL GUI — it blocks until the window
 exits.
 
+**Layers (CPU is not DOS):** `tdx`/`tdxview` are the debugger and CGA viewer
+(session + UNIX sockets). The machine backend is CPU + platform hardware
+(today Unicorn 8086 + IBM PC chipset). `rex.h` stays arch-agnostic so a later
+C++23 8086, ZX Spectrum, etc. can replace Unicorn without rewriting the TUI.
+FCB / INT 21 is an **OS personality** (`dos_int.cpp`), not a Unicorn feature.
+Long term the hardware emulator should boot IBM DOS, MS-DOS, or FloppyOS;
+an optional thin host DOS shim can still load a lone EXE. Do not put FCB
+inside the CPU core.
+
 **Other platforms:** `rex_arch` already has Z80 / 6502 / M68K slots. A future
 backend replaces `dos_machine` and keeps `rex_session_*`.
