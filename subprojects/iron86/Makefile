@@ -27,7 +27,7 @@ tests/run_tests: $(SRC) tests/test_cpu.cpp $(HDR)
 test: tests/run_tests iron86
 	./tests/run_tests
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.5'
+	./iron86 -v | grep -q 'iron86 0.6'
 	./iron86 >/tmp/iron86-usage.txt
 	grep -q Usage /tmp/iron86-usage.txt
 

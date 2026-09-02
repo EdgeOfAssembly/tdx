@@ -12,25 +12,28 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.5";
+static const char *k_version = "0.6";
 
 static void usage(FILE *out)
 {
     std::fputs(
         "Usage: iron86 [options] [file.com]\n"
-        "       iron86 --floppy image.img [--keys STRING]\n"
+        "       iron86 --bios BIOS.BIN [--floppy IMAGE] [--keys STRING]\n"
+        "       iron86 --floppy IMAGE [--keys STRING]\n"
         "\n"
         "  Chip-level 8086 (C++23, Py86 port). Hardware only — no DOS.\n"
-        "  .COM loads at 1000:0100. --floppy boots sector 0 at 0000:7C00.\n"
+        "  .COM loads at 1000:0100. --floppy without --bios: 0000:7C00.\n"
+        "  --bios: IBM 5150 8K at FE000, reset FFFF:0000 (Py86 load_bios_5150_8k).\n"
         "  Options and operands may be interleaved.\n"
         "\n"
         "Options:\n"
         "  -h, --help       Show this help and exit\n"
         "  -v, --version    Show version and exit\n"
-        "  --floppy IMAGE   Boot a 360K (or larger) floppy image\n"
+        "  --bios FILE      Load 5150 8K BIOS (default: none)\n"
+        "  --floppy IMAGE   360K (or larger) floppy image\n"
         "  --keys STRING    Type STRING as INT 16h keys (default: none)\n"
         "\n"
-        "iron86 0.5\n",
+        "iron86 0.6\n",
         out);
 }
 
@@ -50,6 +53,7 @@ int main(int argc, char **argv)
     const char *path = nullptr;
     const char *floppy = nullptr;
     const char *keys = nullptr;
+    const char *bios = nullptr;
     int i = 1;
     for (i = 1; i < argc; i++)
     {
@@ -74,6 +78,16 @@ int main(int argc, char **argv)
             floppy = argv[++i];
             continue;
         }
+        if (std::strcmp(a, "--bios") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                std::fputs("iron86: --bios needs FILE\n", stderr);
+                return 2;
+            }
+            bios = argv[++i];
+            continue;
+        }
         if (std::strcmp(a, "--keys") == 0)
         {
             if (i + 1 >= argc)
@@ -92,10 +106,60 @@ int main(int argc, char **argv)
         }
         path = a;
     }
-    if ((path == nullptr) && (floppy == nullptr))
+    if ((path == nullptr) && (floppy == nullptr) && (bios == nullptr))
     {
         usage(stdout);
         return 0;
+    }
+
+    if (bios != nullptr)
+    {
+        const std::vector<uint8_t> rom = slurp(bios);
+        if (rom.empty())
+        {
+            std::fprintf(stderr, "iron86: cannot read BIOS %s\n", bios);
+            return 1;
+        }
+        iron86::pc p;
+        if (floppy != nullptr)
+        {
+            const std::vector<uint8_t> img = slurp(floppy);
+            if (img.size() < 512u)
+            {
+                std::fprintf(stderr, "iron86: cannot read floppy %s\n", floppy);
+                return 1;
+            }
+            if (!p.load_floppy(img.data(), img.size()))
+            {
+                return 1;
+            }
+            if (keys != nullptr)
+            {
+                p.type_keys(keys);
+            }
+        }
+        if (!p.c.load_bios_5150_8k(rom.data(), rom.size()))
+        {
+            return 1;
+        }
+        std::fprintf(stderr, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000\n", rom.size());
+        uint64_t n = 0;
+        while ((!p.c.halted()) && (n < 20000000ull))
+        {
+            if (!p.c.step())
+            {
+                break;
+            }
+            n++;
+        }
+        std::fputs(p.tty().c_str(), stdout);
+        if (!p.tty().empty() && (p.tty().back() != '\n'))
+        {
+            std::fputc('\n', stdout);
+        }
+        std::fprintf(stderr, "halted AX=%04X CS:IP=%04X:%04X last=%02X steps=%llu\n", p.c.ax(),
+                     p.c.cs(), p.c.ip(), p.c.last_op(), static_cast<unsigned long long>(n));
+        return p.c.cs() == 0xF000 ? 0 : 1;
     }
 
     if (floppy != nullptr)

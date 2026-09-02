@@ -22,10 +22,14 @@ Opcode dispatch is a **256-entry handler table** (same idea as Py86
 (LOCK/REP/seg) are table entries that request another fetch.
 
 Boot FloppyOS with `./iron86 --floppy ../floppyos/build/floppyos.img`.
-Confirm with `make test` plus that image run to `A>` (once, not every commit).
+Genuine IBM 5150 8K BIOS (Py86 `load_bios_5150_8k`): image at `FE000`,
+reset vector at `FFFF0`, CPU `FFFF:0000`. Do not commit the ROM.
 
-Version **0.5** — dispatch table; JMP FAR fetch-before-assign; INT 10/13/16;
-enough integer 8086 to reach FloppyOS `A>`.
+```text
+./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
+```
+
+Version **0.6** — 5150 BIOS load matching Py86.
 
 ```text
 make -s -j$(nproc)

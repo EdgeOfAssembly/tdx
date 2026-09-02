@@ -78,6 +78,10 @@ public:
     void set_ip(uint16_t v) { ip_ = v; }
     void set_sp(uint16_t v) { sp_ = v; }
     void set_bx(uint16_t v) { bx_ = v; }
+    void set_si(uint16_t v) { si_ = v; }
+    void set_di(uint16_t v) { di_ = v; }
+    void set_bp(uint16_t v) { bp_ = v; }
+    void set_flags(uint16_t v) { flags_ = v; }
     void set_cf(bool v) { set_flag(k_flag_cf, v); }
     void set_zf(bool v) { set_flag(k_flag_zf, v); }
     uint8_t last_op() const { return last_op_; }
@@ -87,6 +91,17 @@ public:
      * @return false if still halted with no wake-up.
      */
     bool step();
+
+    /**
+     * @brief Load IBM 5150 8K BIOS the way Py86 `load_bios_5150_8k` does.
+     *
+     * Image at FE000h (high 8K of the F000 block). Five-byte reset vector
+     * from file offset -16 copied to FFFF0h (JMP F000:E05B on 5700051).
+     * Does not touch the IVT. Leaves CS=FFFF IP=0000 (8086 reset).
+     *
+     * @return false if @p data is null or empty.
+     */
+    bool load_bios_5150_8k(const uint8_t *data, size_t n);
 
     /**
      * @brief Load a .COM image at CS:0100 (PSP-style). Does not build a PSP.

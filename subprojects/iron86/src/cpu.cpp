@@ -168,6 +168,41 @@ void cpu::set_ivt(uint8_t vector, uint16_t handler_seg, uint16_t handler_off)
     mem_write16(ivt + 2u, handler_seg);
 }
 
+bool cpu::load_bios_5150_8k(const uint8_t *data, size_t n)
+{
+    if ((data == nullptr) || (n == 0))
+    {
+        return false;
+    }
+    if (!mem_)
+    {
+        mem_ = std::make_unique<uint8_t[]>(k_mem_size);
+        std::memset(mem_.get(), 0, k_mem_size);
+    }
+    const size_t copy = std::min(n, static_cast<size_t>(8192));
+    std::memcpy(mem_.get() + 0xFE000u, data, copy);
+    /* Py86: file[-16:-11] → FFFF0 (EA 5B E0 00 F0 on 5700051). */
+    if (n >= 16u)
+    {
+        std::memcpy(mem_.get() + 0xFFFF0u, data + (n - 16u), 5u);
+    }
+    else if (n >= 5u)
+    {
+        std::memcpy(mem_.get() + 0xFFFF0u, data + (n - 5u), 5u);
+    }
+    cs_ = 0xFFFF;
+    ip_ = 0;
+    ds_ = 0;
+    es_ = 0;
+    ss_ = 0;
+    sp_ = 0xFFFE;
+    flags_ = k_flags_reset;
+    halted_ = false;
+    last_op_ = 0;
+    bios_ = {}; /* real BIOS owns INT 10/13/16 */
+    return true;
+}
+
 void cpu::load_com(const uint8_t *bytes, size_t n, uint16_t cs)
 {
     const size_t cap = 0x10000u - 0x100u;

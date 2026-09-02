@@ -403,6 +403,25 @@ int main()
         expect_eq(c.ax(), 0xBEEF, "cs:a1 moffs");
         expect(c.halted(), "cs:a1 hlt");
     }
+    {
+        /* Py86 load_bios_5150_8k: 8K at FE000, vector at FFFF0. */
+        uint8_t rom[8192];
+        std::memset(rom, 0, sizeof(rom));
+        rom[8192 - 16] = 0xEA;
+        rom[8192 - 15] = 0x5B;
+        rom[8192 - 14] = 0xE0;
+        rom[8192 - 13] = 0x00;
+        rom[8192 - 12] = 0xF0;
+        iron86::cpu c;
+        expect(c.load_bios_5150_8k(rom, sizeof(rom)), "bios load");
+        expect_eq(c.cs(), 0xFFFF, "bios cs");
+        expect_eq(c.ip(), 0, "bios ip");
+        expect_eq(c.mem_read8(0xFFFF0), 0xEA, "ffff0 ea");
+        expect_eq(c.mem_read8(0xFE000u + 8192u - 16u), 0xEA, "fe000 vector");
+        expect(c.step(), "bios jmp far");
+        expect_eq(c.cs(), 0xF000, "bios target cs");
+        expect_eq(c.ip(), 0xE05B, "bios target ip");
+    }
 
     if (g_fail != 0)
     {
