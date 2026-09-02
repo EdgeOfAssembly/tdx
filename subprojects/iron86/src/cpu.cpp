@@ -1080,6 +1080,99 @@ void cpu::op_pre_es() { seg_ov_ = es_; prefix_more_ = true; }
 void cpu::op_pre_cs() { seg_ov_ = cs_; prefix_more_ = true; }
 void cpu::op_pre_ss() { seg_ov_ = ss_; prefix_more_ = true; }
 void cpu::op_pre_ds() { seg_ov_ = ds_; prefix_more_ = true; }
+void cpu::op_daa()
+{
+    /* 8086/Py86: low-nibble +6 sets AF; CF from old AL>99h or old CF; then Z/S/P. */
+    const uint8_t old_al = static_cast<uint8_t>(ax_);
+    uint8_t al = old_al;
+    const bool old_af = (flags_ & k_flag_af) != 0;
+    const bool old_cf = (flags_ & k_flag_cf) != 0;
+    if (((al & 0x0Fu) > 9u) || old_af)
+    {
+        al = static_cast<uint8_t>(al + 6u);
+        set_flag(k_flag_af, true);
+    }
+    else
+    {
+        set_flag(k_flag_af, false);
+    }
+    if ((old_al > 0x99u) || old_cf)
+    {
+        al = static_cast<uint8_t>(al + 0x60u);
+        set_flag(k_flag_cf, true);
+    }
+    else
+    {
+        set_flag(k_flag_cf, false);
+    }
+    ax_ = static_cast<uint16_t>((ax_ & 0xFF00u) | al);
+    update_zsp(al, 8u);
+}
+void cpu::op_das()
+{
+    const uint8_t old_al = static_cast<uint8_t>(ax_);
+    uint8_t al = old_al;
+    const bool old_af = (flags_ & k_flag_af) != 0;
+    const bool old_cf = (flags_ & k_flag_cf) != 0;
+    if (((al & 0x0Fu) > 9u) || old_af)
+    {
+        al = static_cast<uint8_t>(al - 6u);
+        set_flag(k_flag_af, true);
+    }
+    else
+    {
+        set_flag(k_flag_af, false);
+    }
+    if ((old_al > 0x99u) || old_cf)
+    {
+        al = static_cast<uint8_t>(al - 0x60u);
+        set_flag(k_flag_cf, true);
+    }
+    else
+    {
+        set_flag(k_flag_cf, false);
+    }
+    ax_ = static_cast<uint16_t>((ax_ & 0xFF00u) | al);
+    update_zsp(al, 8u);
+}
+void cpu::op_aaa()
+{
+    uint8_t al = static_cast<uint8_t>(ax_);
+    uint8_t ah = static_cast<uint8_t>(ax_ >> 8);
+    if (((al & 0x0Fu) > 9u) || ((flags_ & k_flag_af) != 0))
+    {
+        al = static_cast<uint8_t>(al + 6u);
+        ah = static_cast<uint8_t>(ah + 1u);
+        set_flag(k_flag_af, true);
+        set_flag(k_flag_cf, true);
+    }
+    else
+    {
+        set_flag(k_flag_af, false);
+        set_flag(k_flag_cf, false);
+    }
+    al = static_cast<uint8_t>(al & 0x0Fu);
+    ax_ = static_cast<uint16_t>((static_cast<uint16_t>(ah) << 8) | al);
+}
+void cpu::op_aas()
+{
+    uint8_t al = static_cast<uint8_t>(ax_);
+    uint8_t ah = static_cast<uint8_t>(ax_ >> 8);
+    if (((al & 0x0Fu) > 9u) || ((flags_ & k_flag_af) != 0))
+    {
+        al = static_cast<uint8_t>(al - 6u);
+        ah = static_cast<uint8_t>(ah - 1u);
+        set_flag(k_flag_af, true);
+        set_flag(k_flag_cf, true);
+    }
+    else
+    {
+        set_flag(k_flag_af, false);
+        set_flag(k_flag_cf, false);
+    }
+    al = static_cast<uint8_t>(al & 0x0Fu);
+    ax_ = static_cast<uint16_t>((static_cast<uint16_t>(ah) << 8) | al);
+}
 void cpu::op_lock() { prefix_more_ = true; }
 void cpu::op_repne() { rep_ = 0xF2; prefix_more_ = true; }
 void cpu::op_repe() { rep_ = 0xF3; prefix_more_ = true; }
@@ -1180,6 +1273,7 @@ void cpu::op_call_far()
     ip_ = off;
     cs_ = seg;
 }
+void cpu::op_wait() {} /* no 8087: WAIT is NOP */
 void cpu::op_pushf() { push16(flags_); }
 void cpu::op_popf() { flags_ = pop16(); }
 void cpu::op_sahf()
@@ -1267,12 +1361,40 @@ void cpu::op_shift_d0() { op_shift(false, false); }
 void cpu::op_shift_d1() { op_shift(true, false); }
 void cpu::op_shift_d2() { op_shift(false, true); }
 void cpu::op_shift_d3() { op_shift(true, true); }
+void cpu::op_aam()
+{
+    const uint8_t base = fetch8();
+    if (base == 0)
+    {
+        do_int(0);
+        return;
+    }
+    const uint8_t al = static_cast<uint8_t>(ax_);
+    const uint8_t ah = static_cast<uint8_t>(al / base);
+    const uint8_t r = static_cast<uint8_t>(al % base);
+    ax_ = static_cast<uint16_t>((static_cast<uint16_t>(ah) << 8) | r);
+    update_zsp(r, 8u);
+    set_flag(k_flag_cf, false);
+    set_flag(k_flag_of, false);
+}
+void cpu::op_aad()
+{
+    const uint8_t base = fetch8();
+    const uint8_t al = static_cast<uint8_t>(ax_);
+    const uint8_t ah = static_cast<uint8_t>(ax_ >> 8);
+    const uint8_t res = static_cast<uint8_t>(al + (ah * base));
+    ax_ = res;
+    update_zsp(res, 8u);
+    set_flag(k_flag_cf, false);
+    set_flag(k_flag_of, false);
+}
 void cpu::op_xlat()
 {
     ax_ = static_cast<uint16_t>(
         (ax_ & 0xFF00u) |
         mem_read8(phys(data_seg(), static_cast<uint16_t>(bx_ + static_cast<uint8_t>(ax_)))));
 }
+void cpu::op_esc() { decode_modrm(); } /* no 8087: consume ModR/M (+disp), NOP */
 void cpu::op_loop_op() { op_loop(static_cast<uint8_t>(last_op_ - 0xE0)); }
 void cpu::op_in_i8() { ax_ = static_cast<uint16_t>((ax_ & 0xFF00u) | in8(fetch8())); }
 void cpu::op_in_i16()
@@ -1359,9 +1481,13 @@ void cpu::fill_dispatch()
     dispatch_[0x1E] = &cpu::op_push_sr;
     dispatch_[0x1F] = &cpu::op_pop_sr;
     dispatch_[0x26] = &cpu::op_pre_es;
+    dispatch_[0x27] = &cpu::op_daa;
     dispatch_[0x2E] = &cpu::op_pre_cs;
+    dispatch_[0x2F] = &cpu::op_das;
     dispatch_[0x36] = &cpu::op_pre_ss;
+    dispatch_[0x37] = &cpu::op_aaa;
     dispatch_[0x3E] = &cpu::op_pre_ds;
+    dispatch_[0x3F] = &cpu::op_aas;
     for (unsigned i = 0; i < 8u; i++)
     {
         dispatch_[0x40u + i] = &cpu::op_inc_r;
@@ -1394,6 +1520,7 @@ void cpu::fill_dispatch()
     dispatch_[0x98] = &cpu::op_cbw;
     dispatch_[0x99] = &cpu::op_cwd;
     dispatch_[0x9A] = &cpu::op_call_far;
+    dispatch_[0x9B] = &cpu::op_wait;
     dispatch_[0x9C] = &cpu::op_pushf;
     dispatch_[0x9D] = &cpu::op_popf;
     dispatch_[0x9E] = &cpu::op_sahf;
@@ -1430,7 +1557,13 @@ void cpu::fill_dispatch()
     dispatch_[0xD1] = &cpu::op_shift_d1;
     dispatch_[0xD2] = &cpu::op_shift_d2;
     dispatch_[0xD3] = &cpu::op_shift_d3;
+    dispatch_[0xD4] = &cpu::op_aam;
+    dispatch_[0xD5] = &cpu::op_aad;
     dispatch_[0xD7] = &cpu::op_xlat;
+    for (unsigned op = 0xD8u; op < 0xE0u; op++)
+    {
+        dispatch_[op] = &cpu::op_esc;
+    }
     dispatch_[0xE0] = &cpu::op_loop_op;
     dispatch_[0xE1] = &cpu::op_loop_op;
     dispatch_[0xE2] = &cpu::op_loop_op;

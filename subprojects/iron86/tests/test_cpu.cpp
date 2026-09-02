@@ -394,6 +394,83 @@ int main()
         expect(!flag(c, iron86::k_flag_cf), "clc");
     }
     {
+        /* DAA after 0x0A in AL → 0x10; AF=1 CF=0 (8086) */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB0, 0x0A, 0x27, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect(c.halted(), "daa hlt");
+        expect_eq(c.ax(), 0x10, "daa 0x0A -> 0x10");
+        expect(flag(c, iron86::k_flag_af), "daa af");
+        expect(!flag(c, iron86::k_flag_cf), "daa cf");
+        expect(!flag(c, iron86::k_flag_zf), "daa zf");
+        expect(!flag(c, iron86::k_flag_sf), "daa sf");
+        expect(!flag(c, iron86::k_flag_pf), "daa pf");
+    }
+    {
+        /* DAA after ADD AL,0x0A with AL=0x0A (AL=0x14 AF=1) → 0x1A */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB0, 0x0A, 0x04, 0x0A, 0x27, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 0x1A, "daa after 0x0A+0x0A");
+        expect(flag(c, iron86::k_flag_af), "daa add af");
+        expect(!flag(c, iron86::k_flag_cf), "daa add cf");
+        expect(c.halted(), "daa add hlt");
+    }
+    {
+        /* WAIT then HLT does not halt on WAIT */
+        iron86::cpu c;
+        const uint8_t prog[] = {0x9B, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        expect(c.step(), "wait step");
+        expect(!c.halted(), "wait no halt");
+        expect_eq(c.last_op(), 0x9B, "wait opcode");
+        expect(c.step(), "hlt after wait");
+        expect(c.halted(), "hlt after wait");
+        expect_eq(c.last_op(), 0xF4, "last hlt");
+    }
+    {
+        /* ESC D8 /r mod=3 (D8 C0) does not halt */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xD8, 0xC0, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        expect(c.step(), "esc mod3 step");
+        expect(!c.halted(), "esc mod3 no halt");
+        expect_eq(c.ip(), 0x0102, "esc mod3 ip");
+        run(c);
+        expect(c.halted(), "esc then hlt");
+        expect_eq(c.last_op(), 0xF4, "esc last hlt");
+    }
+    {
+        /* ESC D8 /0 [disp16] consumes displacement like other r/m ops */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xD8, 0x06, 0x00, 0x02, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        expect(c.step(), "esc mem step");
+        expect(!c.halted(), "esc mem no halt");
+        expect_eq(c.ip(), 0x0104, "esc consumed disp16");
+    }
+    {
+        /* AAM imm8=10: 15 → AH=1 AL=5 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB0, 0x0F, 0xD4, 0x0A, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 0x0105, "aam 15");
+        expect(c.halted(), "aam hlt");
+    }
+    {
+        /* AAA: AL=0x0A → AX=0100h, AF=CF=1 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB0, 0x0A, 0x37, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 0x0100, "aaa 0x0A");
+        expect(flag(c, iron86::k_flag_af), "aaa af");
+        expect(flag(c, iron86::k_flag_cf), "aaa cf");
+    }
+    {
         /* CS: MOV AX, moffs16 */
         iron86::cpu c;
         const uint8_t prog[] = {0x2E, 0xA1, 0x00, 0x02, 0xF4};

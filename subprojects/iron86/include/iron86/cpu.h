@@ -195,6 +195,10 @@ private:
     void op_pre_cs();
     void op_pre_ss();
     void op_pre_ds();
+    void op_daa();
+    void op_das();
+    void op_aaa();
+    void op_aas();
     void op_lock();
     void op_repne();
     void op_repe();
@@ -227,6 +231,7 @@ private:
     void op_cbw();
     void op_cwd();
     void op_call_far();
+    void op_wait();
     void op_pushf();
     void op_popf();
     void op_sahf();
@@ -254,7 +259,10 @@ private:
     void op_shift_d1();
     void op_shift_d2();
     void op_shift_d3();
+    void op_aam();
+    void op_aad();
     void op_xlat();
+    void op_esc();
     void op_loop_op();
     void op_in_i8();
     void op_in_i16();
