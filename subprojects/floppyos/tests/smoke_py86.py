@@ -106,10 +106,20 @@ def main() -> int:
                 return 1
 
         print(ctl(sock, "mda", 15), flush=True)
-        print(">>> type FCBTEST (FCB open/read)", flush=True)
+        # until() sets paused=True. Do not cont: the CPU loop then never
+        # polls the control socket, so type/key time out. Inject while
+        # paused; until steps the CPU itself.
+        print(">>> type FCBTEST.COM (paused; FCB open/read)", flush=True)
         try:
-            ctl(sock, "type FCBTEST\r", 30)
-            r = ctl(sock, "until FCB OK 8000000", 180)
+            r = ctl(sock, "type FCBTEST.COM", 15)
+            print(r.strip()[:180], flush=True)
+            if "OK typed" not in r:
+                print(ctl(sock, "mda", 15), flush=True)
+                return 1
+            r = ctl(sock, "key enter", 15)
+            print(r.strip()[:180], flush=True)
+            print(">>> until FCB OK", flush=True)
+            r = ctl(sock, "until FCB OK 20000000", 400)
             print(r.strip()[:180], flush=True)
             if "FOUND" not in r:
                 print(ctl(sock, "mda", 15), flush=True)
@@ -118,7 +128,7 @@ def main() -> int:
             print(f"FCBTEST TIMEOUT/ERR {e}", flush=True)
             try:
                 print(ctl(sock, "mda", 15), flush=True)
-            except OSError:
+            except (socket.timeout, TimeoutError, OSError):
                 pass
             return 1
         try:
