@@ -3,10 +3,14 @@
  * @brief CGA 3DAh retrace toggle and INT 21 AH=29 FCB parse.
  */
 
+#include "dos/dos_fcb.h"
+#include "dos/ibm_bda.h"
+#include "dos/mz_parse.h"
 #include "rex/rex.h"
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <cstdint>
 
 TEST_CASE("CGA port 3DAh toggles so wait-retrace loops can exit")
@@ -63,4 +67,17 @@ TEST_CASE("INT 21 AH=29 fills FCB name FOO.BAR")
     REQUIRE(fcb[10] == (uint8_t)'A');
     REQUIRE(fcb[11] == (uint8_t)'R');
     rex_session_destroy(s);
+}
+
+TEST_CASE("packed DOS FCB / IBM BDA / MZ on-disk sizes")
+{
+    REQUIRE(sizeof(dos_fcb) == 37u);
+    REQUIRE(offsetof(dos_fcb, recsiz) == 0x0Eu);
+    REQUIRE(offsetof(dos_fcb, nr) == 0x20u);
+    REQUIRE(offsetof(ibm_bda, mem_kb) == 0x13u);
+    REQUIRE(offsetof(ibm_bda, video_mode) == 0x49u);
+    REQUIRE(offsetof(ibm_bda, crt_palette) == 0x66u);
+    REQUIRE(offsetof(ibm_bda, timer_ticks) == 0x6Cu);
+    REQUIRE(sizeof(mz_exe_hdr) == 28u);
+    REQUIRE(sizeof(mz_reloc) == 4u);
 }

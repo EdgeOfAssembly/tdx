@@ -7,11 +7,6 @@
 
 #include <string.h>
 
-static uint16_t mz_u16(const uint8_t *p)
-{
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
-}
-
 REX_C_DEF int mz_parse_header(const uint8_t *buf, size_t buf_len, uint32_t file_size, mz_info *out)
 {
     uint16_t magic = 0;
@@ -30,25 +25,29 @@ REX_C_DEF int mz_parse_header(const uint8_t *buf, size_t buf_len, uint32_t file_
         return 1;
     }
 
-    magic = mz_u16(buf);
+    {
+        mz_exe_hdr eh;
+        memcpy(&eh, buf, sizeof(eh));
+        magic = eh.magic;
+        last = eh.last_page_bytes;
+        pages = eh.pages;
+        out->reloc_count = eh.reloc_count;
+        out->header_paras = eh.header_paras;
+        out->min_alloc = eh.min_alloc;
+        out->max_alloc = eh.max_alloc;
+        out->ss = eh.ss;
+        out->sp = eh.sp;
+        out->ip = eh.ip;
+        out->cs = eh.cs;
+        out->reloc_offset = eh.reloc_offset;
+        out->overlay = eh.overlay;
+    }
     if ((magic != 0x5A4Du) && (magic != 0x4D5Au))
     {
         return 1;
     }
 
-    last = mz_u16(buf + 2);
-    pages = mz_u16(buf + 4);
     out->is_mz = 1;
-    out->reloc_count = mz_u16(buf + 6);
-    out->header_paras = mz_u16(buf + 8);
-    out->min_alloc = mz_u16(buf + 10);
-    out->max_alloc = mz_u16(buf + 12);
-    out->ss = mz_u16(buf + 14);
-    out->sp = mz_u16(buf + 16);
-    out->ip = mz_u16(buf + 20);
-    out->cs = mz_u16(buf + 22);
-    out->reloc_offset = mz_u16(buf + 24);
-    out->overlay = mz_u16(buf + 26);
     hdr = (uint32_t)out->header_paras * 16u;
     out->header_bytes = hdr;
 
@@ -108,9 +107,9 @@ REX_C_DEF int mz_parse_relocs(const uint8_t *file, size_t file_len, const mz_inf
     }
     for (i = 0; i < n; i++)
     {
-        const uint8_t *p = file + off + (uint32_t)i * 4u;
-        out[i].off = mz_u16(p);
-        out[i].seg = mz_u16(p + 2);
+        mz_reloc rel;
+        memcpy(&rel, file + off + (uint32_t)i * 4u, sizeof(rel));
+        out[i] = rel;
     }
     if (wrote != NULL)
     {

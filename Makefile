@@ -104,6 +104,9 @@ tests/fixtures/fcbread.com: tests/fixtures/fcbread.asm
 tests/fixtures/fcbrecsz.com: tests/fixtures/fcbrecsz.asm
 	nasm -f bin -o $@ $<
 
+tests/fixtures/fcbah21.com: tests/fixtures/fcbah21.asm
+	nasm -f bin -o $@ $<
+
 tests/fixtures/memw.com: tests/fixtures/memw.asm
 	nasm -f bin -o $@ $<
 
@@ -142,7 +145,7 @@ tests/fixtures/int1a.com: tests/fixtures/int1a.asm
 
 fixtures: tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com tests/fixtures/far.com \
 	tests/fixtures/setblock.com tests/fixtures/int3pad.com tests/fixtures/fcbopen.com \
-	tests/fixtures/fcbread.com tests/fixtures/fcbrecsz.com \
+	tests/fixtures/fcbread.com tests/fixtures/fcbrecsz.com tests/fixtures/fcbah21.com \
 	tests/fixtures/waitkey.com tests/fixtures/int16spin.com tests/fixtures/int10.com \
 	tests/fixtures/ud.com tests/fixtures/cga3da.com tests/fixtures/int10m4.com \
 	tests/fixtures/parsefcb.com tests/fixtures/irq0.com tests/fixtures/int10pal.com \
@@ -161,6 +164,7 @@ test: tdx tdxview tests/run_tests fixtures
 	$(PY) scripts/tdxctl.py -h | grep -q bpinsn
 	$(PY) scripts/tdxctl.py -h | grep -q overlay
 	$(PY) scripts/tdxctl.py -h | grep -q bpm
+	$(PY) scripts/tdxctl.py -h | grep -q step-over
 	$(PY) scripts/tdxctl.py -v
 	@rm -f /tmp/tdx-test.sock
 	./tdx --no-ui tests/fixtures/tiny.com --sock /tmp/tdx-test.sock >/tmp/tdx-test.log 2>&1 & \
@@ -185,6 +189,7 @@ clean:
 		tests/fixtures/tiny.com tests/fixtures/over.com tests/fixtures/loop.com \
 		tests/fixtures/far.com tests/fixtures/setblock.com tests/fixtures/int3pad.com \
 		tests/fixtures/fcbopen.com tests/fixtures/fcbread.com tests/fixtures/fcbrecsz.com \
+		tests/fixtures/fcbah21.com \
 		tests/fixtures/waitkey.com \
 		tests/fixtures/int16spin.com \
 		tests/fixtures/int10.com tests/fixtures/ud.com \

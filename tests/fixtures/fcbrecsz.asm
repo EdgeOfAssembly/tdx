@@ -1,6 +1,5 @@
-; fcbrecsz.com — FCB open must keep a guest recsize set before AH=0Fh.
-; Bushido writes 25 into FCB+0Eh then opens BUSHIDO.SCR; clobbering that
-; to 128 makes AH=21 return 128-byte slabs instead of 25-byte names.
+; fcbrecsz.com — MS-DOS 1.25 OPEN always sets recsize to 128.
+; Guest recsize 25 before AH=0Fh must be overwritten (set recsize after open).
         org     0x100
         mov     word [fcb + 0x0E], 25
         mov     ah, 0x0F
@@ -8,7 +7,7 @@
         int     0x21
         cmp     al, 0
         jne     fail
-        cmp     word [fcb + 0x0E], 25
+        cmp     word [fcb + 0x0E], 128
         jne     fail
         int     0x20
 fail:

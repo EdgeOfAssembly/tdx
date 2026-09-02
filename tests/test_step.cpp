@@ -154,10 +154,20 @@ TEST_CASE("INT21 FCB open zeros leftover seq pointers then AH=14 reads byte 0")
     rex_session_destroy(s);
 }
 
-TEST_CASE("INT21 FCB open keeps guest recsize 25")
+TEST_CASE("INT21 FCB open always sets recsize 128 (MS-DOS 1.25)")
 {
     rex_session *s = rex_session_create();
     REQUIRE(rex_session_load(s, "tests/fixtures/fcbrecsz.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(rex_session_exit_code(s) == 0);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("INT21 AH=21 does not bump RR; AH=27 does")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_load(s, "tests/fixtures/fcbah21.com", nullptr) == REX_OK);
     REQUIRE(rex_session_run(s, 10000) == REX_OK);
     REQUIRE(rex_session_halted(s));
     REQUIRE(rex_session_exit_code(s) == 0);

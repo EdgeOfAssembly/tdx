@@ -4,6 +4,8 @@
  */
 
 #include "dos/dos_machine.h"
+#include "dos/dos_fcb.h"
+#include "dos/ibm_bda.h"
 
 #include "rex/rex_log.h"
 
@@ -184,34 +186,73 @@ static FILE *fopen_ci(const std::string &cwd, const char *name, const char *mode
     return fp;
 }
 
+static dos_fcb *as_fcb(uint8_t *p)
+{
+    return (dos_fcb *)p;
+}
+
+static const dos_fcb *as_fcb_c(const uint8_t *p)
+{
+    return (const dos_fcb *)p;
+}
+
 static uint16_t fcb_recsize(const uint8_t *fcb)
 {
-    const uint16_t sz = (uint16_t)(fcb[0x0E] | ((uint16_t)fcb[0x0F] << 8));
+    const uint16_t sz = as_fcb_c(fcb)->recsiz;
     return (sz == 0) ? 128u : sz;
 }
 
 static uint32_t fcb_random_rec(const uint8_t *fcb)
 {
-    return (uint32_t)fcb[0x21] | ((uint32_t)fcb[0x22] << 8) | ((uint32_t)fcb[0x23] << 16) |
-           ((uint32_t)fcb[0x24] << 24);
+    /* MS-DOS 1.25 SETUP: if recsize >= 64, ignore RR MSB (3-byte field). */
+    const dos_fcb *f = as_fcb_c(fcb);
+    uint32_t rec = (uint32_t)f->rr[0] | ((uint32_t)f->rr[1] << 8) | ((uint32_t)f->rr[2] << 16);
+    if (fcb_recsize(fcb) < 64u)
+    {
+        rec |= ((uint32_t)f->rr_hi << 24);
+    }
+    return rec;
+}
+
+static void fcb_set_rr(uint8_t *fcb, uint32_t rec)
+{
+    dos_fcb *f = as_fcb(fcb);
+    f->rr[0] = (uint8_t)(rec & 0xFFu);
+    f->rr[1] = (uint8_t)((rec >> 8) & 0xFFu);
+    f->rr[2] = (uint8_t)((rec >> 16) & 0xFFu);
+    if (fcb_recsize(fcb) < 64u)
+    {
+        f->rr_hi = (uint8_t)((rec >> 24) & 0xFFu);
+    }
+}
+
+static void fcb_setnrex(uint8_t *fcb, uint32_t rec)
+{
+    /* MS-DOS 1.25 SETNREX: NR = rec % 128, EXTENT = rec / 128. */
+    dos_fcb *f = as_fcb(fcb);
+    f->nr = (uint8_t)(rec % 128u);
+    f->extent = (uint16_t)(rec / 128u);
 }
 
 static int fcb_handle(const uint8_t *fcb)
 {
-    if (fcb[0x19] != 0xFC)
+    const dos_fcb *f = as_fcb_c(fcb);
+    if ((uint8_t)(f->firclus & 0xFFu) != 0xFCu)
     {
         return -1;
     }
-    return (int)fcb[0x18];
+    return (int)f->devid;
 }
 
 static void fcb_set_handle(uint8_t *fcb, int fd)
 {
-    fcb[0x18] = (uint8_t)fd;
-    fcb[0x19] = 0xFC;
+    dos_fcb *f = as_fcb(fcb);
+    f->devid = (uint8_t)fd;
+    f->firclus = (uint16_t)((f->firclus & 0xFF00u) | 0x00FCu);
 }
 
-static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, bool sequential)
+static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, bool sequential,
+                                bool advance_rr)
 {
     const int fd = fcb_handle(fcb);
     const uint16_t recsize = fcb_recsize(fcb);
@@ -225,8 +266,8 @@ static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, boo
     }
     if (sequential)
     {
-        const uint16_t block = (uint16_t)(fcb[0x0C] | ((uint16_t)fcb[0x0D] << 8));
-        rec = ((uint32_t)block * 128u) + (uint32_t)fcb[0x20];
+        const dos_fcb *f = as_fcb_c(fcb);
+        rec = ((uint32_t)f->extent * 128u) + (uint32_t)f->nr;
     }
     else
     {
@@ -264,14 +305,19 @@ static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, boo
                  (got > 0) ? tmp[0] : 0, (got > 1) ? tmp[1] : 0, (got > 2) ? tmp[2] : 0,
                  (got > 3) ? tmp[3] : 0);
         got_recs = (uint16_t)(got / recsize);
-        if (sequential && (got_recs > 0))
+        if (got_recs > 0)
         {
-            uint32_t next = rec + got_recs;
-            fcb[0x20] = (uint8_t)(next % 128u);
+            if (sequential)
             {
-                const uint16_t block = (uint16_t)(next / 128u);
-                fcb[0x0C] = (uint8_t)(block & 0xFFu);
-                fcb[0x0D] = (uint8_t)(block >> 8);
+                fcb_setnrex(fcb, rec + got_recs);
+            }
+            else
+            {
+                /* AH=21: RR = last record read (no increment). AH=27: RR = last+1. */
+                const uint32_t last = rec + (uint32_t)got_recs - 1u;
+                const uint32_t store = advance_rr ? (last + 1u) : last;
+                fcb_set_rr(fcb, store);
+                fcb_setnrex(fcb, store);
             }
         }
         if (got == 0)
@@ -406,30 +452,22 @@ static void handle_int21(dos_machine *m)
         }
         m->files[fd].fp = fp;
         fcb_set_handle(fcb, fd);
-        /* DOS FCB open: current block / current record / random rec = 0.
-         * Record size is 128 only when the guest left it 0 — Bushido sets
-         * recsize 25 *before* AH=0Fh for BUSHIDO.SCR (10×25-byte names) and
-         * then AH=21 random-reads. Forcing 128 here made every AH=21 return
-         * the same 128-byte slab so Great Warriors stayed empty. */
-        fcb[0x0C] = 0;
-        fcb[0x0D] = 0;
-        if ((fcb[0x0E] | fcb[0x0F]) == 0)
         {
-            fcb[0x0E] = 128;
-            fcb[0x0F] = 0;
-        }
-        fcb[0x20] = 0;
-        fcb[0x21] = 0;
-        fcb[0x22] = 0;
-        fcb[0x23] = 0;
-        fcb[0x24] = 0;
-        if (fstat(fileno(fp), &st) == 0)
-        {
-            const uint32_t sz = (uint32_t)st.st_size;
-            fcb[0x10] = (uint8_t)(sz & 0xFFu);
-            fcb[0x11] = (uint8_t)((sz >> 8) & 0xFFu);
-            fcb[0x12] = (uint8_t)((sz >> 16) & 0xFFu);
-            fcb[0x13] = (uint8_t)((sz >> 24) & 0xFFu);
+            dos_fcb *f = as_fcb(fcb);
+            /* MS-DOS 1.25 OPEN (IBM ZEROEXT): zero EXTENT, recsize always 128.
+             * Programs set recsize after open (HEX2BIN: MOV [FCB+14], BUFSIZ).
+             * We also zero NR/RR so leftover BSS does not seek past EOF. */
+            f->extent = 0;
+            f->recsiz = 128;
+            f->nr = 0;
+            f->rr[0] = 0;
+            f->rr[1] = 0;
+            f->rr[2] = 0;
+            f->rr_hi = 0;
+            if (fstat(fileno(fp), &st) == 0)
+            {
+                f->filsiz = (uint32_t)st.st_size;
+            }
         }
         rex_logf(REX_LOG_INFO, "INT21 FCB %s %s -> %d", (ah == 0x16) ? "create" : "open", nbuf, fd);
         m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u));
@@ -442,7 +480,7 @@ static void handle_int21(dos_machine *m)
         if (fd >= 0)
         {
             m->close_handle(fd);
-            fcb[0x19] = 0;
+            as_fcb(fcb)->firclus = (uint16_t)(as_fcb(fcb)->firclus & 0xFF00u);
         }
         m->set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0xFF00u));
         break;
@@ -453,7 +491,7 @@ static void handle_int21(dos_machine *m)
     {
         uint8_t *fcb = m->ptr_segoff(ds, dx);
         const uint16_t nrec = (ah == 0x27) ? ((cx == 0) ? 1u : cx) : 1u;
-        const uint8_t alv = fcb_read_records(m, fcb, nrec, (ah == 0x14));
+        const uint8_t alv = fcb_read_records(m, fcb, nrec, (ah == 0x14), (ah == 0x27));
         m->set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | alv));
         if (ah == 0x27)
         {
@@ -934,12 +972,15 @@ static void handle_int10(dos_machine *m)
     {
     case 0x00:
         m->video_mode = al;
-        m->ram[0x449] = al;
         {
+            ibm_bda *bda = ibm_bda_at(m->ram);
             const uint8_t cols =
                 ((al == 0x00) || (al == 0x01) || (al == 0x04) || (al == 0x05)) ? 40u : 80u;
-            m->ram[0x44A] = cols;
-            m->ram[0x44B] = 0;
+            if (bda != nullptr)
+            {
+                bda->video_mode = al;
+                bda->video_cols = cols;
+            }
         }
         m->cursor_x = 0;
         m->cursor_y = 0;
@@ -948,7 +989,13 @@ static void handle_int10(dos_machine *m)
         {
             /* BIOS mode 4/5: palette 1 + intensity, black background. */
             m->cga_3d9 = 0x30;
-            m->ram[0x466] = 0x30;
+            {
+                ibm_bda *bda = ibm_bda_at(m->ram);
+                if (bda != nullptr)
+                {
+                    bda->crt_palette = 0x30;
+                }
+            }
         }
         rex_logf(REX_LOG_INFO, "INT10 set mode %02X", al);
         break;
@@ -968,7 +1015,13 @@ static void handle_int10(dos_machine *m)
             r = (uint8_t)((r & (uint8_t)~0x20u) | (uint8_t)((bl & 1u) << 5));
         }
         m->cga_3d9 = r;
-        m->ram[0x466] = r;
+        {
+            ibm_bda *bda = ibm_bda_at(m->ram);
+            if (bda != nullptr)
+            {
+                bda->crt_palette = r;
+            }
+        }
         m->video_dirty = true;
         break;
     }
@@ -1186,10 +1239,13 @@ void dos_machine::handle_intr(uint32_t intno)
         const uint8_t ah = (uint8_t)(ax >> 8);
         if (ah == 0x00u)
         {
-            const uint32_t ticks = (uint32_t)ram[0x46C] | ((uint32_t)ram[0x46D] << 8) |
-                                   ((uint32_t)ram[0x46E] << 16) | ((uint32_t)ram[0x46F] << 24);
-            const uint8_t midnight = ram[0x470];
-            ram[0x470] = 0;
+            ibm_bda *bda = ibm_bda_at(ram);
+            const uint32_t ticks = (bda != nullptr) ? bda->timer_ticks : 0;
+            const uint8_t midnight = (bda != nullptr) ? bda->timer_overflow : 0;
+            if (bda != nullptr)
+            {
+                bda->timer_overflow = 0;
+            }
             set_reg16(UC_X86_REG_CX, (uint16_t)(ticks >> 16));
             set_reg16(UC_X86_REG_DX, (uint16_t)ticks);
             set_reg16(UC_X86_REG_AX, (uint16_t)((ax & 0xFF00u) | midnight));
@@ -1197,13 +1253,14 @@ void dos_machine::handle_intr(uint32_t intno)
         }
         else if (ah == 0x01u)
         {
+            ibm_bda *bda = ibm_bda_at(ram);
             const uint16_t cx = reg16(UC_X86_REG_CX);
             const uint16_t dx = reg16(UC_X86_REG_DX);
-            ram[0x46C] = (uint8_t)dx;
-            ram[0x46D] = (uint8_t)(dx >> 8);
-            ram[0x46E] = (uint8_t)cx;
-            ram[0x46F] = (uint8_t)(cx >> 8);
-            ram[0x470] = 0;
+            if (bda != nullptr)
+            {
+                bda->timer_ticks = ((uint32_t)cx << 16) | (uint32_t)dx;
+                bda->timer_overflow = 0;
+            }
             set_cf(false);
         }
         else

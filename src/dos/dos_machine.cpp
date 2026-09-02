@@ -4,6 +4,7 @@
  */
 
 #include "dos/dos_machine.h"
+#include "dos/ibm_bda.h"
 
 #include "rex/rex_disasm.h"
 #include "rex/rex_log.h"
@@ -278,7 +279,13 @@ void on_out(uc_engine *uc, uint32_t port, int size, uint32_t value, void *user)
         m->cga_3d9 = (uint8_t)value;
         if (m->ram != nullptr)
         {
-            m->ram[0x466] = (uint8_t)value;
+            {
+                ibm_bda *bda = ibm_bda_at(m->ram);
+                if (bda != nullptr)
+                {
+                    bda->crt_palette = (uint8_t)value;
+                }
+            }
         }
         m->video_dirty = true;
     }
@@ -474,12 +481,16 @@ rex_status dos_machine::init_cpu()
         return REX_ERR_MEM;
     }
 
-    ram[0x413] = 0x80; /* 640 KiB in BDA */
-    ram[0x414] = 0x02;
-    ram[0x449] = 0x03; /* text 80x25 */
-    ram[0x44A] = 80;
-    ram[0x44B] = 0;
-    ram[0x466] = 0x30; /* CRT_PALETTE: CGA color-select default */
+    {
+        ibm_bda *bda = ibm_bda_at(ram);
+        if (bda != nullptr)
+        {
+            bda->mem_kb = 640;
+            bda->video_mode = 0x03;
+            bda->video_cols = 80;
+            bda->crt_palette = 0x30;
+        }
+    }
     cga_3d9 = 0x30;
     video_mode = 0x03;
     blank_regen();
@@ -1467,7 +1478,6 @@ void dos_machine::pit_poll(void)
      * read it directly. */
     struct timespec now{};
     uint64_t ns = 0;
-    uint32_t t = 0;
     if (ram == nullptr)
     {
         return;
@@ -1484,13 +1494,13 @@ void dos_machine::pit_poll(void)
         return;
     }
     pit_last_ns = ns;
-    t = (uint32_t)ram[0x46C] | ((uint32_t)ram[0x46D] << 8) | ((uint32_t)ram[0x46E] << 16) |
-        ((uint32_t)ram[0x46F] << 24);
-    t += 1u;
-    ram[0x46C] = (uint8_t)(t);
-    ram[0x46D] = (uint8_t)(t >> 8);
-    ram[0x46E] = (uint8_t)(t >> 16);
-    ram[0x46F] = (uint8_t)(t >> 24);
+    {
+        ibm_bda *bda = ibm_bda_at(ram);
+        if (bda != nullptr)
+        {
+            bda->timer_ticks += 1u;
+        }
+    }
     /* Also pulse IRQ0 on the wall 18.2 Hz so attract delays still expire when
      * debug F9 parks between short Unicorn slices (insn-only PIT would stall). */
     pic.deassert_irq(0);
@@ -1579,15 +1589,14 @@ void dos_machine::deliver_pending_irq(void)
      * IRET after a hooked INT 1Ch left CS stuck executing 00 00. */
     if ((v == 0x08u) && (seg == 0xF000u) && (off == 0u))
     {
-        uint32_t t = 0;
         (void)pic.ack_vector();
-        t = (uint32_t)ram[0x46C] | ((uint32_t)ram[0x46D] << 8) | ((uint32_t)ram[0x46E] << 16) |
-            ((uint32_t)ram[0x46F] << 24);
-        t += 1u;
-        ram[0x46C] = (uint8_t)(t);
-        ram[0x46D] = (uint8_t)(t >> 8);
-        ram[0x46E] = (uint8_t)(t >> 16);
-        ram[0x46F] = (uint8_t)(t >> 24);
+        {
+            ibm_bda *bda = ibm_bda_at(ram);
+            if (bda != nullptr)
+            {
+                bda->timer_ticks += 1u;
+            }
+        }
         pic.write_command(0x20); /* EOI */
         return;
     }

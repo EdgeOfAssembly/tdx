@@ -23,7 +23,32 @@ extern "C" {
 #  endif
 #endif
 
-/** Parsed MZ fields needed to load a real-mode image. */
+#pragma pack(push, 1)
+/** On-disk MZ EXE header (first 28 bytes). */
+typedef struct mz_exe_hdr
+{
+    uint16_t magic;
+    uint16_t last_page_bytes;
+    uint16_t pages;
+    uint16_t reloc_count;
+    uint16_t header_paras;
+    uint16_t min_alloc;
+    uint16_t max_alloc;
+    uint16_t ss;
+    uint16_t sp;
+    uint16_t checksum;
+    uint16_t ip;
+    uint16_t cs;
+    uint16_t reloc_offset;
+    uint16_t overlay;
+} mz_exe_hdr;
+#pragma pack(pop)
+
+#ifndef __CPROVER__
+static_assert(sizeof(mz_exe_hdr) == 28, "MZ header is 28 bytes");
+#endif
+
+/** Parsed MZ fields needed to load a real-mode image (host-side, not packed). */
 typedef struct mz_info
 {
     int is_mz;              /**< 1 if MZ/ZM magic. */
@@ -57,11 +82,17 @@ int mz_parse_header(const uint8_t *buf, size_t buf_len, uint32_t file_size, mz_i
 /**
  * @brief One relocation entry: @c (seg:off) within the load image.
  */
+#pragma pack(push, 1)
 typedef struct mz_reloc
 {
     uint16_t off;
     uint16_t seg;
 } mz_reloc;
+#pragma pack(pop)
+
+#ifndef __CPROVER__
+static_assert(sizeof(mz_reloc) == 4, "MZ reloc is 4 bytes");
+#endif
 
 /**
  * @brief Read relocation table from the file image.
