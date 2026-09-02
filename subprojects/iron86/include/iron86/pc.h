@@ -77,22 +77,42 @@ public:
     unsigned beep_count() const { return beep_count_; }
 
     /**
-     * @brief Mount a raw sector image as drive A: (PyFloppy attach). No reset.
+     * @brief Mount a raw sector image as drive A: (unit 0). No reset.
      */
     bool attach_floppy(const uint8_t *img, size_t n);
+
+    /**
+     * @brief Mount a raw sector image on FDC unit 0 (A:) or 1 (B:).
+     * @param[in] unit 0 or 1.
+     * @param[in] img Image bytes.
+     * @param[in] n Byte length (minimum 512).
+     * @return false if unit>1, img is NULL, or n<512.
+     */
+    bool attach_floppy(uint8_t unit, const uint8_t *img, size_t n);
+
+    /**
+     * @brief Mount PATH as unit 0/1: directory packs 360K FlopFS, file is raw.
+     * @param[in] unit 0 or 1.
+     * @param[in] path Host file or directory (non-recursive 8.3 pack).
+     * @return false on missing path, pack failure, or short image.
+     */
+    bool attach_floppy_path(uint8_t unit, const char *path);
+
+    /** @brief Mount a raw sector image as drive B: (unit 1). */
+    bool attach_floppy_b(const uint8_t *img, size_t n);
 
 private:
     bool int10();
     bool int13();
     bool int16();
     bool int1a();
-    uint32_t chs_lba(uint8_t cyl, uint8_t head, uint8_t sec) const;
+    uint32_t chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit = 0) const;
     uint32_t ticks_18hz() const;
 
     void tty_cell(uint8_t ch);
     void tty_scroll();
 
-    std::vector<uint8_t> floppy_;
+    std::vector<uint8_t> floppy_[2];
     std::string tty_;
     std::deque<uint8_t> kbd_;
     std::deque<uint8_t> scanq_;
@@ -128,7 +148,8 @@ private:
     uint8_t fdc_read_res();
     void fdc_exec();
     void fdc_dma_to_mem(const uint8_t *data, size_t n);
-    bool fdc_drive() const;
+    const std::vector<uint8_t> *floppy_media(uint8_t drv) const;
+    void sync_fdd_dip();
     void queue_scan(uint8_t sc);
     static uint8_t ascii_make(uint8_t ch);
 };

@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @brief iron86 CLI — .COM until HLT, or --floppy IMAGE boot at 0000:7C00.
+ * @brief iron86 CLI — .COM until HLT, or --floppy-a PATH boot at 0000:7C00.
  */
 #include "iron86/cpu.h"
 #include "iron86/pc.h"
@@ -13,33 +13,65 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.9";
+static const char *k_version = "0.10";
 
 static void usage(FILE *out)
 {
     std::fputs(
         "Usage: iron86 [options] [file.com]\n"
-        "       iron86 --bios BIOS.BIN [--floppy IMAGE] [--keys STRING]\n"
-        "       iron86 --floppy IMAGE [--keys STRING]\n"
+        "       iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]\n"
+        "       iron86 --floppy-a PATH [--floppy-b PATH] [--keys STRING]\n"
         "\n"
         "  Chip-level 8086 (C++23, Py86 port). Hardware only — no DOS.\n"
-        "  .COM loads at 1000:0100. --floppy without --bios: 0000:7C00.\n"
+        "  .COM loads at 1000:0100. --floppy-a without --bios: 0000:7C00.\n"
         "  --bios: IBM 5150 8K at FE000, reset FFFF:0000 (Py86 load_bios_5150_8k).\n"
         "  PPI/PIT/PIC/DMA/FDC (PyFloppy uPD765) for 1981 POST + INT 19h.\n"
         "  Fast-post (BDA 1234h) is default. PC speaker BEL is default.\n"
+        "  Floppy PATH is a 360K image file or a directory packed as 360K FlopFS.\n"
         "  Options and operands may be interleaved.\n"
         "\n"
         "Options:\n"
-        "  -h, --help         Show this help and exit\n"
-        "  -v, --version      Show version and exit\n"
-        "  --bios FILE        Load 5150 8K BIOS (default: none)\n"
-        "  --no-fast-post     Cold POST (do not set RESET_FLAG=1234h)\n"
-        "  --no-audio         Disable PC speaker BEL (default: on)\n"
-        "  --floppy IMAGE     360K (or larger) floppy image\n"
-        "  --keys STRING      Type STRING as INT 16h keys (default: none)\n"
+        "  -h, --help           Show this help and exit\n"
+        "  -v, --version        Show version and exit\n"
+        "  --bios FILE          Load 5150 8K BIOS (default: none)\n"
+        "  --no-fast-post       Cold POST (do not set RESET_FLAG=1234h)\n"
+        "  --no-audio           Disable PC speaker BEL (default: on)\n"
+        "  --floppy-a PATH      Drive 0: image or directory (pack FlopFS)\n"
+        "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
+        "  --floppy PATH        Alias for --floppy-a\n"
+        "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
         "\n",
         out);
     std::fprintf(out, "iron86 %s\n", k_version);
+}
+
+/**
+ * @brief Match --name or --name=VAL. On bare --name, consume the next argv.
+ * @return 1 matched, 0 no match, -1 missing/empty value.
+ */
+static int take_path_opt(const char *a, const char *name, const char **val, int *i, int argc,
+                         char **argv)
+{
+    const size_t n = std::strlen(name);
+    if (std::strncmp(a, name, n) != 0)
+    {
+        return 0;
+    }
+    if (a[n] == '=')
+    {
+        *val = a + n + 1;
+        return ((*val)[0] == '\0') ? -1 : 1;
+    }
+    if (a[n] != '\0')
+    {
+        return 0;
+    }
+    if (*i + 1 >= argc)
+    {
+        return -1;
+    }
+    *val = argv[++(*i)];
+    return 1;
 }
 
 static std::vector<uint8_t> slurp(const char *path)
@@ -53,10 +85,26 @@ static std::vector<uint8_t> slurp(const char *path)
                                 std::istreambuf_iterator<char>());
 }
 
+static bool mount_floppy(iron86::pc *p, uint8_t unit, const char *path)
+{
+    if ((p == nullptr) || (path == nullptr))
+    {
+        return false;
+    }
+    if (!p->attach_floppy_path(unit, path))
+    {
+        std::fprintf(stderr, "iron86: cannot attach floppy %c: %s\n",
+                     (unit == 0) ? 'A' : 'B', path);
+        return false;
+    }
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     const char *path = nullptr;
-    const char *floppy = nullptr;
+    const char *floppy_a = nullptr;
+    const char *floppy_b = nullptr;
     const char *keys = nullptr;
     const char *bios = nullptr;
     bool no_fast_post = false;
@@ -65,6 +113,7 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++)
     {
         const char *a = argv[i];
+        int t = 0;
         if ((std::strcmp(a, "-h") == 0) || (std::strcmp(a, "--help") == 0))
         {
             usage(stdout);
@@ -75,24 +124,44 @@ int main(int argc, char **argv)
             std::printf("iron86 %s\n", k_version);
             return 0;
         }
-        if (std::strcmp(a, "--floppy") == 0)
+        t = take_path_opt(a, "--floppy-a", &floppy_a, &i, argc, argv);
+        if (t != 0)
         {
-            if (i + 1 >= argc)
+            if (t < 0)
             {
-                std::fputs("iron86: --floppy needs IMAGE\n", stderr);
+                std::fputs("iron86: --floppy-a needs PATH\n", stderr);
                 return 2;
             }
-            floppy = argv[++i];
             continue;
         }
-        if (std::strcmp(a, "--bios") == 0)
+        t = take_path_opt(a, "--floppy-b", &floppy_b, &i, argc, argv);
+        if (t != 0)
         {
-            if (i + 1 >= argc)
+            if (t < 0)
+            {
+                std::fputs("iron86: --floppy-b needs PATH\n", stderr);
+                return 2;
+            }
+            continue;
+        }
+        t = take_path_opt(a, "--floppy", &floppy_a, &i, argc, argv);
+        if (t != 0)
+        {
+            if (t < 0)
+            {
+                std::fputs("iron86: --floppy needs PATH\n", stderr);
+                return 2;
+            }
+            continue;
+        }
+        t = take_path_opt(a, "--bios", &bios, &i, argc, argv);
+        if (t != 0)
+        {
+            if (t < 0)
             {
                 std::fputs("iron86: --bios needs FILE\n", stderr);
                 return 2;
             }
-            bios = argv[++i];
             continue;
         }
         if (std::strcmp(a, "--no-fast-post") == 0)
@@ -105,14 +174,14 @@ int main(int argc, char **argv)
             no_audio = true;
             continue;
         }
-        if (std::strcmp(a, "--keys") == 0)
+        t = take_path_opt(a, "--keys", &keys, &i, argc, argv);
+        if (t != 0)
         {
-            if (i + 1 >= argc)
+            if (t < 0)
             {
                 std::fputs("iron86: --keys needs STRING\n", stderr);
                 return 2;
             }
-            keys = argv[++i];
             continue;
         }
         if (a[0] == '-')
@@ -123,7 +192,7 @@ int main(int argc, char **argv)
         }
         path = a;
     }
-    if ((path == nullptr) && (floppy == nullptr) && (bios == nullptr))
+    if ((path == nullptr) && (floppy_a == nullptr) && (floppy_b == nullptr) && (bios == nullptr))
     {
         usage(stdout);
         return 0;
@@ -142,22 +211,17 @@ int main(int argc, char **argv)
         {
             p.enable_audio(false);
         }
-        if (floppy != nullptr)
+        if ((floppy_a != nullptr) && !mount_floppy(&p, 0, floppy_a))
         {
-            const std::vector<uint8_t> img = slurp(floppy);
-            if (img.size() < 512u)
-            {
-                std::fprintf(stderr, "iron86: cannot read floppy %s\n", floppy);
-                return 1;
-            }
-            if (!p.load_floppy(img.data(), img.size()))
-            {
-                return 1;
-            }
-            if (keys != nullptr)
-            {
-                p.type_keys(keys);
-            }
+            return 1;
+        }
+        if ((floppy_b != nullptr) && !mount_floppy(&p, 1, floppy_b))
+        {
+            return 1;
+        }
+        if (keys != nullptr)
+        {
+            p.type_keys(keys);
         }
         if (!p.c.load_bios_5150_8k(rom.data(), rom.size()))
         {
@@ -207,20 +271,23 @@ int main(int argc, char **argv)
         return ((p.c.cs() == 0xF000) || (p.c.cs() < 0x2000)) ? 0 : 1;
     }
 
-    if (floppy != nullptr)
+    if ((floppy_a != nullptr) || (floppy_b != nullptr))
     {
-        const std::vector<uint8_t> img = slurp(floppy);
-        if (img.size() < 512u)
-        {
-            std::fprintf(stderr, "iron86: cannot read floppy %s\n", floppy);
-            return 1;
-        }
         iron86::pc p;
         if (no_audio)
         {
             p.enable_audio(false);
         }
-        if (!p.load_floppy(img.data(), img.size()))
+        if (floppy_a == nullptr)
+        {
+            std::fputs("iron86: --floppy-b needs --floppy-a or --bios to boot\n", stderr);
+            return 2;
+        }
+        if (!mount_floppy(&p, 0, floppy_a))
+        {
+            return 1;
+        }
+        if ((floppy_b != nullptr) && !mount_floppy(&p, 1, floppy_b))
         {
             return 1;
         }

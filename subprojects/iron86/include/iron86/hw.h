@@ -31,7 +31,7 @@ struct ppi8255
     uint8_t port_b;
     uint8_t port_c;
     uint8_t control;
-    uint8_t dip;          /**< SW1; 0x2D = CGA 80×25, 64K, 1 FDD, IPL. */
+    uint8_t dip;          /**< SW1; 0x2D = CGA 80×25, 64K, 1 FDD, IPL; 0x6D = 2 FDD. */
     uint8_t io_nibble;    /**< Port C low nibble: I/O RAM ×32K; 0x06 → 256K. */
     uint8_t kbd_data;
     uint8_t last_b;

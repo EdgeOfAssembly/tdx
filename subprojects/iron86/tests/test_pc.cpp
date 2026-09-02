@@ -3,6 +3,7 @@
  * @brief Packed 5150 chipset: PIC IMR, PIT, DMA, PPI DIP/256K nibble, speaker.
  */
 #include "iron86/crtc.h"
+#include "iron86/flopfs_pack.h"
 #include "iron86/hw.h"
 #include "iron86/pc.h"
 
@@ -12,6 +13,8 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <string>
+#include <sys/stat.h>
 #include <vector>
 
 static int g_fail = 0;
@@ -281,6 +284,117 @@ int main()
         {
             std::fputs("skip BIOS POST (ROM not mounted)\n", stderr);
         }
+    }
+    {
+        uint8_t a[512];
+        uint8_t bimg[512];
+        std::memset(a, 0, sizeof(a));
+        std::memset(bimg, 0, sizeof(bimg));
+        a[0] = 0xAA;
+        a[510] = 0x55;
+        a[511] = 0xAA;
+        bimg[0] = 0xBB;
+        bimg[510] = 0x55;
+        bimg[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(0, a, sizeof(a)), "attach A");
+        expect(p.attach_floppy(1, bimg, sizeof(bimg)), "attach B");
+        p.boot();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0,                   /* MOV AX,CS; MOV ES,AX */
+            0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,       /* AX=0201 BX=0200 */
+            0xB9, 0x01, 0x00, 0xBA, 0x01, 0x00,       /* CX=0001 DX=0001 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "int13 B AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0xBB, "int13 DL=1");
+    }
+    {
+        uint8_t bimg[512];
+        std::memset(bimg, 0x11, sizeof(bimg));
+        bimg[510] = 0x55;
+        bimg[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(1, bimg, sizeof(bimg)), "dip B");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {0xB0, 0xFC, 0xE6, 0x61, 0xE4, 0x60, 0xF4};
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6D, "ppi dip 2 fdd");
+    }
+    {
+        /* DOR select drive 1: post-reset Sense Int still returns ST0=C0. */
+        uint8_t bimg[512];
+        std::memset(bimg, 0, sizeof(bimg));
+        bimg[510] = 0x55;
+        bimg[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(1, bimg, sizeof(bimg)), "fdc B attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xBA, 0xF2, 0x03, 0xB0, 0x08, 0xEE, 0xB0, 0x0D, 0xEE, /* OUT 3F2 sel=1 */
+            0xBA, 0xF5, 0x03, 0xB0, 0x08, 0xEE,                   /* Sense Int */
+            0xEC, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x00C0, "fdc B sense C0");
+    }
+    {
+        /* Read Data command drive 1 DMA-fills from B:, not A:. */
+        uint8_t a[512];
+        uint8_t bimg[512];
+        std::memset(a, 0xAA, sizeof(a));
+        std::memset(bimg, 0xBB, sizeof(bimg));
+        a[510] = 0x55;
+        a[511] = 0xAA;
+        bimg[510] = 0x55;
+        bimg[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(0, a, sizeof(a)), "rd A");
+        expect(p.attach_floppy(1, bimg, sizeof(bimg)), "rd B");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x46, 0xE6, 0x0B,             /* mode ch2 write */
+            0xB0, 0x00, 0xE6, 0x04, 0xE6, 0x04, /* addr 0000 */
+            0xB0, 0x01, 0xE6, 0x81,             /* page 01h → 10000h (XT 4-bit) */
+            0xB0, 0xFF, 0xE6, 0x05,             /* count lo */
+            0xB0, 0x01, 0xE6, 0x05,             /* count hi 01FFh */
+            0xB0, 0x02, 0xE6, 0x0A,             /* unmask ch2 */
+            0xBA, 0xF2, 0x03, 0xB0, 0x08, 0xEE, 0xB0, 0x2D, 0xEE,
+            0xBA, 0xF5, 0x03, 0xB0, 0x08, 0xEE, 0xEC, 0xEC, /* Sense Int */
+            0xB0, 0x03, 0xEE, 0xB0, 0xDF, 0xEE, 0xB0, 0x02, 0xEE, /* Specify */
+            0xB0, 0x06, 0xEE, 0xB0, 0x01, 0xEE,             /* Read Data, drv 1 */
+            0xB0, 0x00, 0xEE, 0xB0, 0x00, 0xEE, 0xB0, 0x01, 0xEE, 0xB0, 0x02, 0xEE,
+            0xB0, 0x09, 0xEE, 0xB0, 0x2A, 0xEE, 0xB0, 0xFF, 0xEE,
+            0xEC, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 128);
+        expect_eq(p.c.mem_read8(0x10000u), 0xBB, "fdc read B");
+    }
+    {
+        const char *dir = "/tmp/iron86-flopfs-pack-test";
+        std::vector<uint8_t> img;
+        (void)mkdir(dir, 0755);
+        {
+            std::ofstream f(std::string(dir) + "/HELLO.TXT", std::ios::binary);
+            f << "hi";
+        }
+        expect(iron86::flopfs_pack_dir(dir, &img), "pack dir");
+        expect(img.size() == 368640u, "pack 360k");
+        expect(std::memcmp(img.data() + 512, "FLOPFS01", 8) == 0, "pack magic");
+        expect(img[3 * 512] == static_cast<uint8_t>('H'), "pack dirent");
+        expect(img[5 * 512] == static_cast<uint8_t>('h'), "pack payload");
+        iron86::pc p;
+        expect(p.attach_floppy_path(1, dir), "attach path B dir");
+        p.wire_pc_hw();
+        const uint8_t dip[] = {0xB0, 0xFC, 0xE6, 0x61, 0xE4, 0x60, 0xF4};
+        p.c.load_com(dip, sizeof(dip), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6D, "path B dip 6d");
     }
 
     if (g_fail != 0)

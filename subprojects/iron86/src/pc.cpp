@@ -4,32 +4,111 @@
  */
 #include "iron86/pc.h"
 #include "iron86/crtc.h"
+#include "iron86/flopfs_pack.h"
 
 #include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <sys/stat.h>
 
 namespace iron86
 {
 
+const std::vector<uint8_t> *pc::floppy_media(uint8_t drv) const
+{
+    const uint8_t unit = static_cast<uint8_t>(drv & 3u);
+    if (unit > 1u)
+    {
+        return nullptr;
+    }
+    if (floppy_[unit].size() < 512u)
+    {
+        return nullptr;
+    }
+    return &floppy_[unit];
+}
+
+void pc::sync_fdd_dip()
+{
+    uint8_t dip = hw_.ppi.dip;
+    if (dip == 0)
+    {
+        dip = 0x2D;
+    }
+    dip = static_cast<uint8_t>(dip & static_cast<uint8_t>(~0xC0u));
+    if (floppy_[1].size() >= 512u)
+    {
+        /* SW1 bits 6–7: 01 = 2 floppy drives (0x2D | 0x40 = 0x6D). */
+        dip = static_cast<uint8_t>(dip | 0x40u);
+    }
+    hw_.ppi.dip = dip;
+}
+
 bool pc::attach_floppy(const uint8_t *img, size_t n)
 {
-    if ((img == nullptr) || (n < 512u))
+    return attach_floppy(0, img, n);
+}
+
+bool pc::attach_floppy(uint8_t unit, const uint8_t *img, size_t n)
+{
+    if ((unit > 1u) || (img == nullptr) || (n < 512u))
     {
         return false;
     }
-    floppy_.assign(img, img + n);
+    floppy_[unit].assign(img, img + n);
+    sync_fdd_dip();
     return true;
+}
+
+bool pc::attach_floppy_path(uint8_t unit, const char *path)
+{
+    struct stat st{};
+    if ((unit > 1u) || (path == nullptr) || (path[0] == '\0'))
+    {
+        return false;
+    }
+    if (stat(path, &st) != 0)
+    {
+        return false;
+    }
+    if (S_ISDIR(st.st_mode))
+    {
+        std::vector<uint8_t> img;
+        if (!flopfs_pack_dir(path, &img))
+        {
+            return false;
+        }
+        return attach_floppy(unit, img.data(), img.size());
+    }
+    if (!S_ISREG(st.st_mode))
+    {
+        return false;
+    }
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
+    {
+        return false;
+    }
+    const std::vector<uint8_t> img((std::istreambuf_iterator<char>(in)),
+                                   std::istreambuf_iterator<char>());
+    return attach_floppy(unit, img.data(), img.size());
+}
+
+bool pc::attach_floppy_b(const uint8_t *img, size_t n)
+{
+    return attach_floppy(1, img, n);
 }
 
 bool pc::load_floppy(const uint8_t *img, size_t n)
 {
-    if (!attach_floppy(img, n))
+    if (!attach_floppy(0, img, n))
     {
         return false;
     }
     c.reset();
     for (size_t i = 0; i < 512u; i++)
     {
-        c.mem_write8(0x7C00u + static_cast<uint32_t>(i), floppy_[i]);
+        c.mem_write8(0x7C00u + static_cast<uint32_t>(i), floppy_[0][i]);
     }
     return true;
 }
@@ -37,6 +116,14 @@ bool pc::load_floppy(const uint8_t *img, size_t n)
 void pc::boot()
 {
     t0_ = std::chrono::steady_clock::now();
+    if (floppy_[0].size() >= 512u)
+    {
+        size_t i = 0;
+        for (i = 0; i < 512u; i++)
+        {
+            c.mem_write8(0x7C00u + static_cast<uint32_t>(i), floppy_[0][i]);
+        }
+    }
     c.set_bios([this](cpu &, uint8_t v) { return bios_int(v); });
     c.set_cs(0);
     c.set_ds(0);
@@ -96,7 +183,60 @@ uint8_t pc::ascii_make(uint8_t ch)
     {
         return 0x0B;
     }
+    if ((ch == ';') || (ch == ':'))
+    {
+        return 0x27;
+    }
+    if ((ch == '.') || (ch == '>'))
+    {
+        return 0x34;
+    }
+    if ((ch == ',') || (ch == '<'))
+    {
+        return 0x33;
+    }
+    if ((ch == '/') || (ch == '?'))
+    {
+        return 0x35;
+    }
+    if ((ch == '-') || (ch == '_'))
+    {
+        return 0x0C;
+    }
+    if ((ch == '=') || (ch == '+'))
+    {
+        return 0x0D;
+    }
+    if ((ch == '\\') || (ch == '|'))
+    {
+        return 0x2B;
+    }
     return 0;
+}
+
+static bool ascii_needs_shift(uint8_t ch)
+{
+    if ((ch >= 'A') && (ch <= 'Z'))
+    {
+        return true;
+    }
+    switch (ch)
+    {
+    case ':':
+    case '"':
+    case '_':
+    case '+':
+    case '<':
+    case '>':
+    case '?':
+    case '{':
+    case '}':
+    case '|':
+    case '~':
+        return true;
+    default:
+        return false;
+    }
 }
 
 void pc::queue_scan(uint8_t sc)
@@ -127,11 +267,21 @@ void pc::type_keys(const char *s)
     }
     for (const char *p = s; *p != '\0'; p++)
     {
-        kbd_.push_back(static_cast<uint8_t>(*p));
-        const uint8_t mk = ascii_make(static_cast<uint8_t>(*p));
+        const uint8_t ch = static_cast<uint8_t>(*p);
+        const uint8_t mk = ascii_make(ch);
+        const bool shift = ascii_needs_shift(ch);
+        kbd_.push_back(ch);
         if (mk != 0)
         {
+            if (shift)
+            {
+                queue_scan(0x2A);
+            }
             type_scan(mk);
+            if (shift)
+            {
+                queue_scan(0xAA);
+            }
         }
     }
     if (!kbd_.empty())
@@ -140,18 +290,23 @@ void pc::type_keys(const char *s)
     }
 }
 
-uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec) const
+uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
 {
-    /* 360K: 2 heads, 9 spt, 40 cyl. sec is 1-based. */
+    /* 360K: 2 heads, 9 spt, 40 cyl. sec is 1-based. Small images: 8/1. */
     if (sec == 0)
     {
         return UINT32_MAX;
     }
-    const uint32_t spt = (hw_.fdc.spt != 0) ? hw_.fdc.spt : 9u;
-    const uint32_t nh = (hw_.fdc.heads != 0) ? hw_.fdc.heads : 2u;
-    if (sec == 0)
+    uint32_t spt = 9;
+    uint32_t nh = 2;
+    if (unit < 2u)
     {
-        return 0xFFFFFFFFu;
+        const size_t n = floppy_[unit].size();
+        if ((n >= 512u) && (n < 300000u))
+        {
+            spt = 8;
+            nh = 1;
+        }
     }
     return (static_cast<uint32_t>(cyl) * nh + head) * spt + (static_cast<uint32_t>(sec) - 1u);
 }
@@ -306,7 +461,6 @@ bool pc::int13()
     const uint8_t cl = static_cast<uint8_t>(c.cx());
     const uint8_t dh = static_cast<uint8_t>(c.dx() >> 8);
     const uint8_t dl = static_cast<uint8_t>(c.dx());
-    (void)dl;
     if (ah == 0x00)
     {
         c.set_ax(static_cast<uint16_t>(c.ax() & 0x00FFu)); /* AH=0 */
@@ -317,10 +471,11 @@ bool pc::int13()
     {
         const uint8_t nsec = (al == 0) ? 1 : al;
         const uint8_t sec = static_cast<uint8_t>(cl & 0x3Fu);
-        const uint32_t lba = chs_lba(ch, dh, sec);
+        const std::vector<uint8_t> *media = floppy_media(dl);
+        const uint32_t lba = chs_lba(ch, dh, sec, dl);
         const uint32_t off = lba * 512u;
         const uint32_t bytes = static_cast<uint32_t>(nsec) * 512u;
-        if ((lba == UINT32_MAX) || (off + bytes > floppy_.size()))
+        if ((media == nullptr) || (lba == UINT32_MAX) || (off + bytes > media->size()))
         {
             c.set_ax(0x0400);
             c.set_cf(true);
@@ -329,7 +484,7 @@ bool pc::int13()
         uint32_t dst = cpu::phys(c.es(), c.bx());
         for (uint32_t i = 0; i < bytes; i++)
         {
-            c.mem_write8(dst + i, floppy_[off + i]);
+            c.mem_write8(dst + i, (*media)[off + i]);
         }
         c.set_ax(nsec); /* AH=0 AL=count */
         c.set_cf(false);
@@ -381,6 +536,7 @@ void pc::wire_pc_hw()
     crtc_reset(&cga_, 0);
     hw_.ppi.control = 0x99;
     hw_.ppi.dip = 0x2D; /* CGA 80×25, 64K planar, 1 FDD, IPL (not Py86 MDA 0x3D) */
+    sync_fdd_dip();
     hw_.ppi.io_nibble = 0x06; /* 64K + 6*32K = 256K (Py86 io_channel_size_nibble) */
     hw_.pic.imr = 0xFF;
     hw_.pic.vector_base = 8;
@@ -396,7 +552,7 @@ void pc::wire_pc_hw()
     hw_.fdc.msr = 0x80;
     hw_.fdc.spt = 9;
     hw_.fdc.heads = 2;
-    if ((floppy_.size() >= 512u) && (floppy_.size() < 300000u))
+    if ((floppy_[0].size() >= 512u) && (floppy_[0].size() < 300000u))
     {
         hw_.fdc.spt = 8;
         hw_.fdc.heads = 1;
@@ -919,10 +1075,7 @@ void pc::after_insn()
     c.raise_intr(static_cast<uint8_t>(hw_.pic.vector_base + irq));
 }
 
-bool pc::fdc_drive() const
-{
-    return floppy_.size() >= 512u;
-}
+
 
 void pc::fdc_dma_to_mem(const uint8_t *data, size_t n)
 {
@@ -963,7 +1116,8 @@ void pc::fdc_write_dor(uint8_t v)
 {
     const uint8_t prev = hw_.fdc.dor;
     hw_.fdc.dor = v;
-    hw_.fdc.sel = static_cast<uint8_t>(v & 3u);
+    hw_.fdc.sel = static_cast<uint8_t>(v & 3u); /* bits 0–1 drive select */
+    /* Py86: bits 4–7 motor enables (bit 4 = A, bit 5 = B). Kept in DOR. */
     if ((v & 0x04u) == 0)
     {
         hw_.fdc.cmd_n = 0;
@@ -1062,7 +1216,8 @@ void pc::fdc_exec()
 {
     const uint8_t cmd = static_cast<uint8_t>(hw_.fdc.cmd[0] & 0x1Fu);
     const uint8_t drv = (hw_.fdc.cmd_n > 1u) ? static_cast<uint8_t>(hw_.fdc.cmd[1] & 3u) : hw_.fdc.sel;
-    const bool have = fdc_drive();
+    const std::vector<uint8_t> *media = floppy_media(drv);
+    const bool have = media != nullptr;
     hw_.fdc.msr = 0x10;
     hw_.fdc.cmd_n = 0;
 
@@ -1142,9 +1297,14 @@ void pc::fdc_exec()
         uint8_t sec = hw_.fdc.cmd[4];
         const uint8_t n = hw_.fdc.cmd[5];
         uint8_t eot = hw_.fdc.cmd[6];
-        if (hw_.fdc.spt > eot)
+        uint8_t spt = 9;
+        if ((media != nullptr) && (media->size() >= 512u) && (media->size() < 300000u))
         {
-            eot = hw_.fdc.spt;
+            spt = 8;
+        }
+        if (spt > eot)
+        {
+            eot = spt;
         }
         const uint32_t sec_sz = (n < 8u) ? (128u << n) : 512u;
         hw_.fdc.st0 = static_cast<uint8_t>(drv);
@@ -1160,15 +1320,15 @@ void pc::fdc_exec()
             uint8_t k = 0;
             for (k = 0; k < 64u; k++)
             {
-                const uint32_t lba = chs_lba(cyl, head, sec);
+                const uint32_t lba = chs_lba(cyl, head, sec, drv);
                 const uint32_t off = lba * sec_sz;
-                if ((lba == 0xFFFFFFFFu) || ((off + sec_sz) > floppy_.size()))
+                if ((lba == 0xFFFFFFFFu) || ((off + sec_sz) > media->size()))
                 {
                     hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
                     hw_.fdc.st1 = static_cast<uint8_t>(hw_.fdc.st1 | 0x04u);
                     break;
                 }
-                fdc_dma_to_mem(floppy_.data() + off, sec_sz);
+                fdc_dma_to_mem(media->data() + off, sec_sz);
                 if (sec >= eot)
                 {
                     break;
