@@ -17,13 +17,15 @@ Guest OS is IBM DOS, MS-DOS, or FloppyOS. tdx/tdxview stay the debugger.
 FloppyOS testing uses **iron86 exclusively**. Py86 stays the golden reference
 for opcode/timing disputes, not the daily boot.
 
-**Not ready yet.** Need at least: full ALU + 80/81/83, FF-group, LES/LDS,
-REP MOVS/STOS, shifts D0–D3, MUL/DIV, prefixes, then PIC/PIT/PPI/FDC + MDA
-to boot FloppyOS to `A>`. Confirm with `make test` plus a FloppyOS image
-run that matches Py86’s `A>` (once, not every commit).
+Opcode dispatch is a **256-entry handler table** (same idea as Py86
+`handlers[op]`), not a per-instruction `if`/`switch` forest. Prefixes
+(LOCK/REP/seg) are table entries that request another fetch.
 
-Version **0.2** — ModR/M, PUSH/POP, INC/DEC r16, CALL/RET, ADD/CMP acc,
-Jcc rel8.
+Boot FloppyOS with `./iron86 --floppy ../floppyos/build/floppyos.img`.
+Confirm with `make test` plus that image run to `A>` (once, not every commit).
+
+Version **0.5** — dispatch table; JMP FAR fetch-before-assign; INT 10/13/16;
+enough integer 8086 to reach FloppyOS `A>`.
 
 ```text
 make -s -j$(nproc)

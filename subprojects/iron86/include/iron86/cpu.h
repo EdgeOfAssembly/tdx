@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 
 namespace iron86
@@ -68,12 +69,18 @@ public:
     bool halted() const { return halted_; }
 
     void set_ax(uint16_t v) { ax_ = v; }
+    void set_cx(uint16_t v) { cx_ = v; }
+    void set_dx(uint16_t v) { dx_ = v; }
     void set_cs(uint16_t v) { cs_ = v; }
     void set_ds(uint16_t v) { ds_ = v; }
     void set_ss(uint16_t v) { ss_ = v; }
     void set_es(uint16_t v) { es_ = v; }
     void set_ip(uint16_t v) { ip_ = v; }
     void set_sp(uint16_t v) { sp_ = v; }
+    void set_bx(uint16_t v) { bx_ = v; }
+    void set_cf(bool v) { set_flag(k_flag_cf, v); }
+    void set_zf(bool v) { set_flag(k_flag_zf, v); }
+    uint8_t last_op() const { return last_op_; }
 
     /**
      * @brief Execute one instruction (prefixes included).
@@ -93,6 +100,12 @@ public:
      * @brief Point IVT[vector] at @p handler_seg:@p handler_off.
      */
     void set_ivt(uint8_t vector, uint16_t handler_seg, uint16_t handler_off);
+
+    /**
+     * @brief Optional BIOS intercept. Return true if the INT was handled
+     *        (IP already past CD nn; set CF in FLAGS as the BIOS would).
+     */
+    void set_bios(std::function<bool(cpu &, uint8_t)> fn);
 
 private:
     uint8_t fetch8();
@@ -121,7 +134,129 @@ private:
     void dec_r16(uint8_t r);
     bool cond_cc(uint8_t cc) const;
     void jcc8(uint8_t cc);
+    void set_logic_flags(uint32_t res, unsigned size);
+    uint16_t sreg(uint8_t n) const;
+    void set_sreg(uint8_t n, uint16_t v);
 
+    uint16_t data_seg() const;
+    uint16_t fetch_imm(bool word, bool sign_ext);
+    uint16_t alu_arith(uint16_t dst, uint16_t src, unsigned size, uint8_t op, uint16_t cin,
+                       bool write);
+    void op_alu_rm(uint8_t opc);
+    void op_alu_imm(bool word, bool sign_ext);
+    void op_grp3(bool word);
+    void op_shift(bool word, bool via_cl);
+    void op_ff();
+    void op_incdec8();
+    void one_string(uint8_t op);
+    void op_string(uint8_t op);
+    void op_loop(uint8_t kind);
+    void op_les_lds(bool les);
+    uint8_t in8(uint16_t port) const;
+    void out8(uint16_t port, uint8_t v);
+
+    using handler = void (cpu::*)();
+    static void fill_dispatch();
+
+    void op_unimpl();
+    void op_nop();
+    void op_hlt();
+    void op_pre_es();
+    void op_pre_cs();
+    void op_pre_ss();
+    void op_pre_ds();
+    void op_lock();
+    void op_repne();
+    void op_repe();
+    void op_alu();
+    void op_push_sr();
+    void op_pop_sr();
+    void op_inc_r();
+    void op_dec_r();
+    void op_push_r();
+    void op_pop_r();
+    void op_jcc();
+    void op_mov_i8();
+    void op_mov_i16();
+    void op_xchg_ax();
+    void op_test8();
+    void op_test16();
+    void op_xchg8();
+    void op_xchg16();
+    void op_grp80();
+    void op_grp81();
+    void op_grp83();
+    void op_mov_rm8_r8();
+    void op_mov_rm16_r16();
+    void op_mov_r8_rm8();
+    void op_mov_r16_rm16();
+    void op_mov_rm_sr();
+    void op_lea();
+    void op_mov_sr_rm();
+    void op_pop_rm();
+    void op_cbw();
+    void op_cwd();
+    void op_call_far();
+    void op_pushf();
+    void op_popf();
+    void op_sahf();
+    void op_lahf();
+    void op_mov_al_m();
+    void op_mov_ax_m();
+    void op_mov_m_al();
+    void op_mov_m_ax();
+    void op_str();
+    void op_test_al();
+    void op_test_ax();
+    void op_retn_imm();
+    void op_retn();
+    void op_les();
+    void op_lds();
+    void op_mov_rm8_i();
+    void op_mov_rm16_i();
+    void op_retf_imm();
+    void op_retf();
+    void op_int3();
+    void op_int();
+    void op_into();
+    void op_iret();
+    void op_shift_d0();
+    void op_shift_d1();
+    void op_shift_d2();
+    void op_shift_d3();
+    void op_xlat();
+    void op_loop_op();
+    void op_in_i8();
+    void op_in_i16();
+    void op_out_i8();
+    void op_out_i16();
+    void op_call_rel();
+    void op_jmp_rel16();
+    void op_jmp_far();
+    void op_jmp_rel8();
+    void op_in_dx8();
+    void op_in_dx16();
+    void op_out_dx8();
+    void op_out_dx16();
+    void op_cmc();
+    void op_grp3_8();
+    void op_grp3_16();
+    void op_clc();
+    void op_stc();
+    void op_cli();
+    void op_sti();
+    void op_cld();
+    void op_std();
+    void op_fe();
+    void op_ff_op();
+
+    static handler dispatch_[256];
+    static bool dispatch_ready_;
+    bool prefix_more_ = false;
+
+    std::function<bool(cpu &, uint8_t)> bios_{};
+    uint16_t seg_ov_ = 0xFFFF; /**< 0xFFFF = none */
+    uint8_t rep_ = 0;
     std::unique_ptr<uint8_t[]> mem_;
     modrm mr_{};
     uint16_t ax_ = 0;
@@ -139,6 +274,7 @@ private:
     uint16_t ip_ = 0;
     uint16_t flags_ = k_flags_reset;
     bool halted_ = false;
+    uint8_t last_op_ = 0;
 };
 
 } // namespace iron86

@@ -15,23 +15,30 @@ LDFLAGS ?= $(LDFLAGS_DEBUG)
 
 all: iron86 tests/run_tests
 
-iron86: src/cpu.cpp src/ea.cpp src/main.cpp include/iron86/cpu.h include/iron86/ea.h
-	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp src/main.cpp -o $@ $(LDFLAGS)
+SRC := src/cpu.cpp src/ea.cpp src/pc.cpp
+HDR := include/iron86/cpu.h include/iron86/ea.h include/iron86/pc.h
 
-tests/run_tests: src/cpu.cpp src/ea.cpp tests/test_cpu.cpp include/iron86/cpu.h include/iron86/ea.h
+iron86: $(SRC) src/main.cpp $(HDR)
+	$(CXX) $(CXXFLAGS) $(SRC) src/main.cpp -o $@ $(LDFLAGS)
+
+tests/run_tests: $(SRC) tests/test_cpu.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
 
 test: tests/run_tests iron86
 	./tests/run_tests
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.1'
+	./iron86 -v | grep -q 'iron86 0.5'
 	./iron86 >/tmp/iron86-usage.txt
 	grep -q Usage /tmp/iron86-usage.txt
 
 tests: test
 
+.PHONY: floppy
+floppy: iron86
+	./iron86 --floppy ../floppyos/build/floppyos.img --keys $$'FCBTEST\r'
+
 verify: test
-	@echo "iron86: no CBMC model yet"
+	@echo "iron86: no CBMC model yet; opcode CPU is Catch-free snippet tests"
 
 clean:
 	rm -f iron86 tests/run_tests

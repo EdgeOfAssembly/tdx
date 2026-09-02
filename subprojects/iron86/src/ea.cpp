@@ -25,7 +25,7 @@ void cpu::decode_modrm()
     if ((mr_.mod == 0u) && (mr_.rm == 6u))
     {
         mr_.ea = fetch16();
-        mr_.seg = ds_;
+        mr_.seg = (seg_ov_ != 0xFFFFu) ? seg_ov_ : ds_;
         return;
     }
 
@@ -45,6 +45,10 @@ void cpu::decode_modrm()
     if ((mr_.rm == 2u) || (mr_.rm == 3u) || (mr_.rm == 6u))
     {
         mr_.seg = ss_;
+    }
+    if (seg_ov_ != 0xFFFFu)
+    {
+        mr_.seg = seg_ov_;
     }
 }
 

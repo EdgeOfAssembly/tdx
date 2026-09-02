@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 static int g_fail = 0;
 
@@ -262,6 +263,145 @@ int main()
         c.load_com(prog, sizeof(prog), 0x1000);
         run(c);
         expect(!flag(c, iron86::k_flag_if), "cli");
+    }
+    {
+        /* JMP FAR must fetch CS:IP from the instruction, not the target. */
+        iron86::cpu c;
+        uint8_t prog[0x110];
+        std::memset(prog, 0x90, sizeof(prog));
+        prog[0] = 0xEA;
+        prog[1] = 0x00;
+        prog[2] = 0x02; /* IP */
+        prog[3] = 0x00;
+        prog[4] = 0x10; /* CS = 1000h */
+        prog[0x100] = 0xB8;
+        prog[0x101] = 0x77;
+        prog[0x102] = 0x00;
+        prog[0x103] = 0xF4;
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c, 16);
+        expect(c.halted(), "jmp far hlt");
+        expect_eq(c.ax(), 0x0077, "jmp far ax");
+        expect_eq(c.cs(), 0x1000, "jmp far cs");
+        expect_eq(c.ip(), 0x0204, "jmp far ip after hlt");
+    }
+    {
+        /* RETF */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB8, 0x00, 0x10, 0x50, 0xB8, 0x0C, 0x01, 0x50, 0xCB,
+                                0xB8, 0xFF, 0xFF, 0xB8, 0x42, 0x00, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 0x0042, "retf ax");
+        expect_eq(c.cs(), 0x1000, "retf cs");
+    }
+    {
+        /* CLD / STD */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xFD, 0xFC, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect(!flag(c, iron86::k_flag_df), "cld");
+    }
+    {
+        /* LOOP */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB9, 0x03, 0x00, 0xB8, 0x00, 0x00, 0x40, 0xE2, 0xFD, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 3, "loop ax");
+        expect_eq(c.cx(), 0, "loop cx");
+    }
+    {
+        /* DIV r16 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB8, 0x2A, 0x00, 0x31, 0xD2, 0xB9, 0x09, 0x00, 0xF7, 0xF1, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 4, "div quot");
+        expect_eq(c.dx(), 6, "div rem");
+    }
+    {
+        /* ADD AX,imm8 via 83 /0 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB8, 0x00, 0x01, 0x83, 0xC0, 0x10, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 0x0110, "add ax,10h");
+    }
+    {
+        /* MOV AX, moffs16 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xA1, 0x00, 0x02, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        c.mem_write16(iron86::cpu::phys(0x1000, 0x0200), 0xCAFE);
+        run(c);
+        expect_eq(c.ax(), 0xCAFE, "a1 moffs");
+    }
+    {
+        /* MOV r/m16, imm16 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xC7, 0x06, 0x00, 0x02, 0x34, 0x12, 0xA1, 0x00, 0x02, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 0x1234, "c7 imm");
+    }
+    {
+        /* PUSH ES / POP DS */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB8, 0x78, 0x56, 0x8E, 0xC0, 0x06, 0x1F, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ds(), 0x5678, "push es / pop ds");
+    }
+    {
+        /* SHL BX,1 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xBB, 0x01, 0x00, 0xD1, 0xE3, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.bx(), 2, "shl bx,1");
+    }
+    {
+        /* LES BX, [BX] */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xBB, 0x00, 0x02, 0xC7, 0x07, 0x34, 0x12, 0xC7, 0x47, 0x02,
+                                0x00, 0x10, 0xC4, 0x1F, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.bx(), 0x1234, "les off");
+        expect_eq(c.es(), 0x1000, "les seg");
+    }
+    {
+        /* REP STOSW */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xB8, 0x00, 0x00, 0xBF, 0x00, 0x02, 0xB9, 0x04, 0x00, 0xFC,
+                                0xF3, 0xAB, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        c.mem_write16(iron86::cpu::phys(0x1000, 0x0200), 0xFFFF);
+        run(c);
+        expect_eq(c.mem_read16(iron86::cpu::phys(0x1000, 0x0200)), 0, "stosw0");
+        expect_eq(c.mem_read16(iron86::cpu::phys(0x1000, 0x0206)), 0, "stosw3");
+        expect_eq(c.di(), 0x0208, "stosw di");
+        expect_eq(c.cx(), 0, "stosw cx");
+    }
+    {
+        /* CLC / STC */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xF9, 0xF8, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect(!flag(c, iron86::k_flag_cf), "clc");
+    }
+    {
+        /* CS: MOV AX, moffs16 */
+        iron86::cpu c;
+        const uint8_t prog[] = {0x2E, 0xA1, 0x00, 0x02, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        c.mem_write16(iron86::cpu::phys(0x1000, 0x0200), 0xBEEF);
+        run(c);
+        expect_eq(c.ax(), 0xBEEF, "cs:a1 moffs");
+        expect(c.halted(), "cs:a1 hlt");
     }
 
     if (g_fail != 0)
