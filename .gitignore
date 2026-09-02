@@ -6,6 +6,7 @@
 /subprojects/iron86/iron86
 /subprojects/iron86/tests/run_tests
 /subprojects/iron86/tests/run_pc
+/subprojects/iron86/tests/run_crtc
 /tests/fixtures/*.com
 /tests/fixtures/*.exe
 *.o

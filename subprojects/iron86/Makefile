@@ -13,10 +13,11 @@ LDFLAGS ?= $(LDFLAGS_DEBUG)
 
 .PHONY: all test tests verify clean
 
-all: iron86 tests/run_tests tests/run_pc
+all: iron86 tests/run_tests tests/run_pc tests/run_crtc
 
-SRC := src/cpu.cpp src/ea.cpp src/pc.cpp
-HDR := include/iron86/cpu.h include/iron86/ea.h include/iron86/pc.h include/iron86/hw.h
+SRC := src/cpu.cpp src/ea.cpp src/pc.cpp src/crtc.cpp
+HDR := include/iron86/cpu.h include/iron86/ea.h include/iron86/pc.h include/iron86/hw.h \
+	include/iron86/crtc.h
 
 iron86: $(SRC) src/main.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) src/main.cpp -o $@ $(LDFLAGS)
@@ -27,9 +28,13 @@ tests/run_tests: $(SRC) tests/test_cpu.cpp $(HDR)
 tests/run_pc: $(SRC) tests/test_pc.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) tests/test_pc.cpp -o $@ $(LDFLAGS)
 
-test: tests/run_tests tests/run_pc iron86
+tests/run_crtc: src/crtc.cpp tests/test_crtc.cpp include/iron86/crtc.h
+	$(CXX) $(CXXFLAGS) src/crtc.cpp tests/test_crtc.cpp -o $@ $(LDFLAGS)
+
+test: tests/run_tests tests/run_pc tests/run_crtc iron86
 	./tests/run_tests
 	./tests/run_pc
+	./tests/run_crtc
 	./iron86 -h | grep -q Usage
 	./iron86 -v | grep -q 'iron86 0.9'
 	./iron86 --no-audio -v | grep -q 'iron86 0.9'
@@ -48,4 +53,4 @@ verify: test
 	@echo "iron86: no CBMC model yet; opcode CPU is Catch-free snippet tests"
 
 clean:
-	rm -f iron86 tests/run_tests tests/run_pc
+	rm -f iron86 tests/run_tests tests/run_pc tests/run_crtc
