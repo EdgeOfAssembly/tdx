@@ -809,7 +809,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         {
             rex_session_push_key(s, (uint8_t)k[0], 0);
         }
-        else if ((k == "Enter") || (k == "Return"))
+        else if ((k == "Enter") || (k == "Return") || (k == "enter") || (k == "return"))
         {
             rex_session_push_key(s, 13, 0x1C);
         }

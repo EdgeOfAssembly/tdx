@@ -31,7 +31,7 @@ test: tests/run_tests tests/run_pc iron86
 	./tests/run_tests
 	./tests/run_pc
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.7'
+	./iron86 -v | grep -q 'iron86 0.8'
 	./iron86 >/tmp/iron86-usage.txt
 	grep -q Usage /tmp/iron86-usage.txt
 	grep -q -- --no-fast-post /tmp/iron86-usage.txt

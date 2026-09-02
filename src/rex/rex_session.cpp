@@ -145,6 +145,15 @@ rex_status rex_session_load_bios(rex_session *s, const char *path)
     return s->dos->load_bios_5150(path);
 }
 
+rex_status rex_session_attach_floppy(rex_session *s, const char *image)
+{
+    if ((s == nullptr) || (image == nullptr) || (!s->dos))
+    {
+        return REX_ERR_ARG;
+    }
+    return s->dos->attach_floppy_image(image);
+}
+
 rex_status rex_session_reset(rex_session *s)
 {
     if ((s == nullptr) || s->load_path.empty() || (!s->dos))

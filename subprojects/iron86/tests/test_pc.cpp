@@ -48,7 +48,8 @@ static void run(iron86::cpu &c, int max_steps)
 int main()
 {
     expect(sizeof(iron86::ppi8255) == 10u, "sizeof ppi8255");
-    expect(sizeof(iron86::pc_hw) == 131u, "sizeof pc_hw");
+    expect(sizeof(iron86::fdc765) == 50u, "sizeof fdc765");
+    expect(sizeof(iron86::pc_hw) == 181u, "sizeof pc_hw");
 
     {
         /* PIC ICW then IMR 00 / FF readback (PCBIOS TST6). */
@@ -111,6 +112,34 @@ int main()
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 64);
         expect((p.c.ax() & 0xFFu) != 0, "pit ch1 counted");
+    }
+    {
+        /* PyFloppy: DOR nRESET rising edge, Sense Int ST0=C0. */
+        iron86::pc p;
+        uint8_t img[512];
+        std::memset(img, 0, sizeof(img));
+        img[510] = 0x55;
+        img[511] = 0xAA;
+        expect(p.attach_floppy(img, sizeof(img)), "fdc attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xBA, 0xF2, 0x03, 0xB0, 0x08, 0xEE, 0xB0, 0x0C, 0xEE, /* OUT 3F2 */
+            0xBA, 0xF5, 0x03, 0xB0, 0x08, 0xEE,                   /* OUT 3F5,08 Sense */
+            0xEC, 0xF4,                                           /* IN AL,DX */
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x00C0, "fdc sense C0");
+    }
+    {
+        /* XT make for 'a' appears on PPI 60h (Py86 type_scancodes). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        p.type_keys("a");
+        const uint8_t prog[] = {0xE4, 0x60, 0xF4};
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 8);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x001E, "xt scan a");
     }
     {
         const char *path =

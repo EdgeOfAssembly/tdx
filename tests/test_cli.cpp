@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.10");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.11");
 }
 
 TEST_CASE("bios is opt-in iron86 5150 POST")
@@ -60,6 +60,9 @@ TEST_CASE("bios is opt-in iron86 5150 POST")
     auto c = parse({"--bios=rom.bin", "--no-ui"});
     REQUIRE(c.bios == "rom.bin");
     REQUIRE(c.no_ui);
+    auto d = parse({"--bios", "rom.bin", "--floppy", "disk.img"});
+    REQUIRE(d.bios == "rom.bin");
+    REQUIRE(d.floppy == "disk.img");
 }
 
 TEST_CASE("floppy is opt-in iron86 boot")

@@ -100,6 +100,32 @@ struct crtc_video
 };
 
 /**
+ * @brief NEC uPD765 / Intel 8272A FDC (PyFloppy), ports 3F2/3F4/3F5.
+ *
+ * phase 0 = command, 1 = result. pending_ri = post-reset Sense Int count.
+ */
+struct fdc765
+{
+    uint8_t msr;
+    uint8_t dor;
+    uint8_t st0;
+    uint8_t st1;
+    uint8_t st2;
+    uint8_t phase;
+    uint8_t cmd_n;
+    uint8_t res_n;
+    uint8_t res_i;
+    uint8_t pending_ri;
+    uint8_t sel;
+    uint8_t spt;
+    uint8_t heads;
+    uint8_t dma_more;
+    uint8_t cmd[16];
+    uint8_t res[16];
+    uint8_t cyl[4];
+};
+
+/**
  * @brief All POST-visible motherboard chips in one packed blob.
  *
  * @note pit_div is the Py86 “tick PIT every other instruction” divider.
@@ -111,6 +137,7 @@ struct pc_hw
     pic8259 pic;
     dma8237 dma;
     crtc_video vid;
+    fdc765 fdc;
     uint8_t pit_div;
 };
 
@@ -122,9 +149,11 @@ static_assert(sizeof(pit8253) == 42, "pit8253 packed");
 static_assert(sizeof(pic8259) == 12, "pic8259 packed");
 static_assert(sizeof(dma8237) == 44, "dma8237 packed");
 static_assert(sizeof(crtc_video) == 22, "crtc_video packed");
-static_assert(sizeof(pc_hw) == 131, "pc_hw packed");
+static_assert(sizeof(fdc765) == 50, "fdc765 packed");
+static_assert(sizeof(pc_hw) == 181, "pc_hw packed");
 static_assert(offsetof(pc_hw, pic) == 52, "pc_hw.pic offset");
 static_assert(offsetof(pc_hw, dma) == 64, "pc_hw.dma offset");
+static_assert(offsetof(pc_hw, fdc) == 130, "pc_hw.fdc offset");
 
 } // namespace iron86
 

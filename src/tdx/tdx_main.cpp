@@ -110,6 +110,10 @@ int main(int argc, char **argv)
     if (!cli.bios.empty())
     {
         rc = (int)rex_session_load_bios(s, cli.bios.c_str());
+        if ((rc == (int)REX_OK) && (!cli.floppy.empty()))
+        {
+            rc = (int)rex_session_attach_floppy(s, cli.floppy.c_str());
+        }
     }
     else if (!cli.uc_floppy.empty())
     {

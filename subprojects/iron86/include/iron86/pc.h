@@ -30,9 +30,14 @@ public:
 
     /**
      * @brief Queue ASCII as INT 16h keys (AH=00/01). Used to type at A>.
+     * Also injects XT make/break into the 8255 (Py86 type_scancodes) so
+     * real 5150 BIOS INT 9 / INT 16h see the key.
      * @param[in] s Bytes to type (CR = 0x0D).
      */
     void type_keys(const char *s);
+
+    /** @brief Queue one XT set-1 make + break (IRQ1 / INT 9). */
+    void type_scan(uint8_t make);
 
     /** @brief True when the INT 16h type-ahead buffer is empty. */
     bool keys_empty() const { return kbd_.empty(); }
@@ -58,6 +63,11 @@ public:
      */
     void enable_fast_post();
 
+    /**
+     * @brief Mount a raw sector image as drive A: (PyFloppy attach). No reset.
+     */
+    bool attach_floppy(const uint8_t *img, size_t n);
+
 private:
     bool int10();
     bool int13();
@@ -72,6 +82,7 @@ private:
     std::vector<uint8_t> floppy_;
     std::string tty_;
     std::deque<uint8_t> kbd_;
+    std::deque<uint8_t> scanq_;
     std::chrono::steady_clock::time_point t0_{};
     uint8_t video_mode_ = 0x03;
     uint8_t cur_x_ = 0;
@@ -94,6 +105,14 @@ private:
     void dma_out(uint16_t port, uint8_t v);
     void pit_write(uint16_t port, uint8_t v);
     uint8_t pit_read(uint16_t port);
+    void fdc_write_dor(uint8_t v);
+    void fdc_write_cmd(uint8_t v);
+    uint8_t fdc_read_res();
+    void fdc_exec();
+    void fdc_dma_to_mem(const uint8_t *data, size_t n);
+    bool fdc_drive() const;
+    void queue_scan(uint8_t sc);
+    static uint8_t ascii_make(uint8_t ch);
 };
 
 } // namespace iron86

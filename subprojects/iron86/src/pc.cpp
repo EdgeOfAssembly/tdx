@@ -7,13 +7,22 @@
 namespace iron86
 {
 
-bool pc::load_floppy(const uint8_t *img, size_t n)
+bool pc::attach_floppy(const uint8_t *img, size_t n)
 {
     if ((img == nullptr) || (n < 512u))
     {
         return false;
     }
     floppy_.assign(img, img + n);
+    return true;
+}
+
+bool pc::load_floppy(const uint8_t *img, size_t n)
+{
+    if (!attach_floppy(img, n))
+    {
+        return false;
+    }
     c.reset();
     for (size_t i = 0; i < 512u; i++)
     {
@@ -43,6 +52,70 @@ void pc::boot()
     video_mode_ = 0x03;
 }
 
+uint8_t pc::ascii_make(uint8_t ch)
+{
+    static const uint8_t letters[26] = {0x1E, 0x30, 0x2E, 0x20, 0x12, 0x21, 0x22, 0x23, 0x17,
+                                        0x24, 0x25, 0x26, 0x32, 0x31, 0x18, 0x19, 0x10, 0x13,
+                                        0x1F, 0x14, 0x16, 0x2F, 0x11, 0x2D, 0x15, 0x2C};
+    if ((ch == '\n') || (ch == '\r'))
+    {
+        return 0x1C;
+    }
+    if ((ch == '\b') || (ch == 0x7F))
+    {
+        return 0x0E;
+    }
+    if (ch == '\t')
+    {
+        return 0x0F;
+    }
+    if (ch == 0x1B)
+    {
+        return 0x01;
+    }
+    if (ch == ' ')
+    {
+        return 0x39;
+    }
+    if ((ch >= 'A') && (ch <= 'Z'))
+    {
+        ch = static_cast<uint8_t>(ch - 'A' + 'a');
+    }
+    if ((ch >= 'a') && (ch <= 'z'))
+    {
+        return letters[ch - 'a'];
+    }
+    if ((ch >= '1') && (ch <= '9'))
+    {
+        return static_cast<uint8_t>(0x02u + (ch - '1'));
+    }
+    if (ch == '0')
+    {
+        return 0x0B;
+    }
+    return 0;
+}
+
+void pc::queue_scan(uint8_t sc)
+{
+    if (hw_.ppi.kbd_ready != 0)
+    {
+        scanq_.push_back(sc);
+        return;
+    }
+    hw_.ppi.kbd_data = sc;
+    hw_.ppi.kbd_ready = 1;
+    hw_.ppi.kbd_irq_pend = 1;
+    pic_deassert(1);
+}
+
+void pc::type_scan(uint8_t make)
+{
+    const uint8_t m = static_cast<uint8_t>(make & 0x7Fu);
+    queue_scan(m);
+    queue_scan(static_cast<uint8_t>(m | 0x80u));
+}
+
 void pc::type_keys(const char *s)
 {
     if (s == nullptr)
@@ -52,6 +125,11 @@ void pc::type_keys(const char *s)
     for (const char *p = s; *p != '\0'; p++)
     {
         kbd_.push_back(static_cast<uint8_t>(*p));
+        const uint8_t mk = ascii_make(static_cast<uint8_t>(*p));
+        if (mk != 0)
+        {
+            type_scan(mk);
+        }
     }
     if (!kbd_.empty())
     {
@@ -66,7 +144,13 @@ uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec) const
     {
         return UINT32_MAX;
     }
-    return (static_cast<uint32_t>(cyl) * 2u + head) * 9u + (static_cast<uint32_t>(sec) - 1u);
+    const uint32_t spt = (hw_.fdc.spt != 0) ? hw_.fdc.spt : 9u;
+    const uint32_t nh = (hw_.fdc.heads != 0) ? hw_.fdc.heads : 2u;
+    if (sec == 0)
+    {
+        return 0xFFFFFFFFu;
+    }
+    return (static_cast<uint32_t>(cyl) * nh + head) * spt + (static_cast<uint32_t>(sec) - 1u);
 }
 
 bool pc::bios_int(uint8_t vector)
@@ -304,6 +388,14 @@ void pc::wire_pc_hw()
         hw_.pit.ch[i].gate = 1;
     }
     hw_.dma.mask = 0x0F;
+    hw_.fdc.msr = 0x80;
+    hw_.fdc.spt = 9;
+    hw_.fdc.heads = 2;
+    if ((floppy_.size() >= 512u) && (floppy_.size() < 300000u))
+    {
+        hw_.fdc.spt = 8;
+        hw_.fdc.heads = 1;
+    }
     c.set_io([this](uint16_t p) { return in_port(p); },
              [this](uint16_t p, uint8_t v) { out_port(p, v); });
     c.set_after_step([this]() { after_insn(); });
@@ -471,7 +563,16 @@ void pc::ppi_on_port_b()
 void pc::ppi_tick()
 {
     ppi8255 &p = hw_.ppi;
-    if ((p.kbd_irq_pend == 0) || ((p.port_b & 0x80u) != 0) || ((p.port_b & 0x40u) == 0))
+    const bool kbd_sel = ((p.port_b & 0x80u) == 0) && ((p.port_b & 0x40u) != 0);
+    if ((p.kbd_ready == 0) && (!scanq_.empty()) && kbd_sel)
+    {
+        p.kbd_data = scanq_.front();
+        scanq_.pop_front();
+        p.kbd_ready = 1;
+        p.kbd_irq_pend = 1;
+        pic_deassert(1);
+    }
+    if ((p.kbd_irq_pend == 0) || (!kbd_sel))
     {
         return;
     }
@@ -786,6 +887,309 @@ void pc::after_insn()
     c.raise_intr(static_cast<uint8_t>(hw_.pic.vector_base + irq));
 }
 
+bool pc::fdc_drive() const
+{
+    return floppy_.size() >= 512u;
+}
+
+void pc::fdc_dma_to_mem(const uint8_t *data, size_t n)
+{
+    if ((data == nullptr) || (n == 0))
+    {
+        hw_.fdc.dma_more = 0;
+        return;
+    }
+    const uint32_t phys =
+        (static_cast<uint32_t>(hw_.dma.page[2] & 0x0Fu) << 16) | hw_.dma.curr_addr[2];
+    uint32_t remain = static_cast<uint32_t>(hw_.dma.curr_count[2]) + 1u;
+    if (remain == 0)
+    {
+        remain = 0x10000u;
+    }
+    const size_t ncopy = (n < remain) ? n : static_cast<size_t>(remain);
+    size_t i = 0;
+    for (i = 0; i < ncopy; i++)
+    {
+        c.mem_write8((phys + static_cast<uint32_t>(i)) & 0xFFFFFu, data[i]);
+    }
+    hw_.dma.curr_addr[2] =
+        static_cast<uint16_t>(hw_.dma.curr_addr[2] + static_cast<uint16_t>(ncopy));
+    const uint16_t nc = static_cast<uint16_t>(hw_.dma.curr_count[2] - static_cast<uint16_t>(ncopy));
+    hw_.dma.curr_count[2] = nc;
+    if ((ncopy > 0) && (nc == 0xFFFFu))
+    {
+        hw_.dma.status = static_cast<uint8_t>(hw_.dma.status | 0x04u);
+        hw_.fdc.dma_more = 0;
+    }
+    else
+    {
+        hw_.fdc.dma_more = (remain > ncopy) ? 1 : 0;
+    }
+}
+
+void pc::fdc_write_dor(uint8_t v)
+{
+    const uint8_t prev = hw_.fdc.dor;
+    hw_.fdc.dor = v;
+    hw_.fdc.sel = static_cast<uint8_t>(v & 3u);
+    if ((v & 0x04u) == 0)
+    {
+        hw_.fdc.cmd_n = 0;
+        hw_.fdc.res_n = 0;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 0;
+        hw_.fdc.msr = 0x80;
+        hw_.fdc.pending_ri = 0;
+        pic_deassert(6);
+        return;
+    }
+    if (((prev & 0x04u) == 0) && ((v & 0x04u) != 0))
+    {
+        hw_.fdc.cmd_n = 0;
+        hw_.fdc.res_n = 0;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 0;
+        hw_.fdc.msr = 0x80;
+        hw_.fdc.pending_ri = 4;
+        hw_.fdc.st0 = 0xC0;
+        pic_deassert(6);
+        pic_assert(6);
+    }
+}
+
+void pc::fdc_write_cmd(uint8_t v)
+{
+    if (hw_.fdc.phase != 0)
+    {
+        return;
+    }
+    if (hw_.fdc.cmd_n >= 16u)
+    {
+        return;
+    }
+    hw_.fdc.cmd[hw_.fdc.cmd_n] = v;
+    hw_.fdc.cmd_n = static_cast<uint8_t>(hw_.fdc.cmd_n + 1u);
+    const uint8_t cmd = static_cast<uint8_t>(hw_.fdc.cmd[0] & 0x1Fu);
+    uint8_t need = 1;
+    switch (cmd)
+    {
+    case 0x02:
+    case 0x05:
+    case 0x06:
+    case 0x09:
+    case 0x0C:
+    case 0x11:
+    case 0x19:
+    case 0x1D:
+        need = 9;
+        break;
+    case 0x03:
+    case 0x0F:
+        need = 3;
+        break;
+    case 0x04:
+    case 0x07:
+    case 0x0A:
+    case 0x12:
+        need = 2;
+        break;
+    case 0x0D:
+        need = 6;
+        break;
+    case 0x13:
+        need = 4;
+        break;
+    default:
+        need = 1;
+        break;
+    }
+    if (hw_.fdc.cmd_n == need)
+    {
+        fdc_exec();
+    }
+}
+
+uint8_t pc::fdc_read_res()
+{
+    if ((hw_.fdc.phase != 1) || (hw_.fdc.res_i >= hw_.fdc.res_n))
+    {
+        return 0;
+    }
+    const uint8_t v = hw_.fdc.res[hw_.fdc.res_i];
+    hw_.fdc.res_i = static_cast<uint8_t>(hw_.fdc.res_i + 1u);
+    if (hw_.fdc.res_i >= hw_.fdc.res_n)
+    {
+        hw_.fdc.msr = 0x80;
+        hw_.fdc.phase = 0;
+        pic_deassert(6);
+    }
+    return v;
+}
+
+void pc::fdc_exec()
+{
+    const uint8_t cmd = static_cast<uint8_t>(hw_.fdc.cmd[0] & 0x1Fu);
+    const uint8_t drv = (hw_.fdc.cmd_n > 1u) ? static_cast<uint8_t>(hw_.fdc.cmd[1] & 3u) : hw_.fdc.sel;
+    const bool have = fdc_drive();
+    hw_.fdc.msr = 0x10;
+    hw_.fdc.cmd_n = 0;
+
+    if (cmd == 0x03)
+    {
+        hw_.fdc.msr = 0x80;
+        hw_.fdc.phase = 0;
+        return;
+    }
+    if (cmd == 0x07)
+    {
+        hw_.fdc.cyl[drv] = 0;
+        hw_.fdc.st0 = have ? static_cast<uint8_t>(0x28u | drv) : static_cast<uint8_t>(0x70u | drv);
+        hw_.fdc.msr = 0x80;
+        hw_.fdc.phase = 0;
+        pic_deassert(6);
+        pic_assert(6);
+        return;
+    }
+    if (cmd == 0x0F)
+    {
+        const uint8_t cyl = hw_.fdc.cmd[2];
+        hw_.fdc.cyl[drv] = cyl;
+        hw_.fdc.st0 = have ? static_cast<uint8_t>(0x28u | drv) : static_cast<uint8_t>(0x70u | drv);
+        hw_.fdc.msr = 0x80;
+        hw_.fdc.phase = 0;
+        pic_deassert(6);
+        pic_assert(6);
+        return;
+    }
+    if (cmd == 0x08)
+    {
+        if (hw_.fdc.pending_ri > 0)
+        {
+            const uint8_t slot = static_cast<uint8_t>(4u - hw_.fdc.pending_ri);
+            hw_.fdc.pending_ri = static_cast<uint8_t>(hw_.fdc.pending_ri - 1u);
+            hw_.fdc.res[0] = static_cast<uint8_t>(0xC0u | (slot & 3u));
+            hw_.fdc.res[1] = 0;
+        }
+        else
+        {
+            hw_.fdc.res[0] = hw_.fdc.st0;
+            hw_.fdc.res[1] = hw_.fdc.cyl[hw_.fdc.st0 & 3u];
+            pic_deassert(6);
+        }
+        hw_.fdc.res_n = 2;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 1;
+        hw_.fdc.msr = 0xD0;
+        pic_assert(6);
+        return;
+    }
+    if (cmd == 0x04)
+    {
+        const uint8_t head = static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u);
+        uint8_t st3 = static_cast<uint8_t>(drv | (head << 2));
+        if (have)
+        {
+            st3 = static_cast<uint8_t>(st3 | 0x28u);
+            if (hw_.fdc.cyl[drv] == 0)
+            {
+                st3 = static_cast<uint8_t>(st3 | 0x10u);
+            }
+        }
+        hw_.fdc.res[0] = st3;
+        hw_.fdc.res_n = 1;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 1;
+        hw_.fdc.msr = 0xD0;
+        pic_assert(6);
+        return;
+    }
+    if ((cmd == 0x06) || (cmd == 0x0C) || (cmd == 0x02))
+    {
+        const uint8_t cyl = hw_.fdc.cmd[2];
+        const uint8_t head = static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u);
+        uint8_t sec = hw_.fdc.cmd[4];
+        const uint8_t n = hw_.fdc.cmd[5];
+        uint8_t eot = hw_.fdc.cmd[6];
+        if (hw_.fdc.spt > eot)
+        {
+            eot = hw_.fdc.spt;
+        }
+        const uint32_t sec_sz = (n < 8u) ? (128u << n) : 512u;
+        hw_.fdc.st0 = static_cast<uint8_t>(drv);
+        hw_.fdc.st1 = 0;
+        hw_.fdc.st2 = 0;
+        if (!have)
+        {
+            hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
+            hw_.fdc.st1 = 0x04;
+        }
+        else
+        {
+            uint8_t k = 0;
+            for (k = 0; k < 64u; k++)
+            {
+                const uint32_t lba = chs_lba(cyl, head, sec);
+                const uint32_t off = lba * sec_sz;
+                if ((lba == 0xFFFFFFFFu) || ((off + sec_sz) > floppy_.size()))
+                {
+                    hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
+                    hw_.fdc.st1 = static_cast<uint8_t>(hw_.fdc.st1 | 0x04u);
+                    break;
+                }
+                fdc_dma_to_mem(floppy_.data() + off, sec_sz);
+                if (sec >= eot)
+                {
+                    break;
+                }
+                if (hw_.fdc.dma_more == 0)
+                {
+                    break;
+                }
+                sec = static_cast<uint8_t>(sec + 1u);
+            }
+        }
+        hw_.fdc.res[0] = hw_.fdc.st0;
+        hw_.fdc.res[1] = hw_.fdc.st1;
+        hw_.fdc.res[2] = hw_.fdc.st2;
+        hw_.fdc.res[3] = cyl;
+        hw_.fdc.res[4] = head;
+        hw_.fdc.res[5] = sec;
+        hw_.fdc.res[6] = n;
+        hw_.fdc.res_n = 7;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 1;
+        hw_.fdc.msr = 0xD0;
+        pic_deassert(6);
+        pic_assert(6);
+        return;
+    }
+    if ((cmd == 0x05) || (cmd == 0x09))
+    {
+        hw_.fdc.st0 = have ? drv : static_cast<uint8_t>(0x40u | drv);
+        hw_.fdc.st1 = have ? 0 : 0x04;
+        hw_.fdc.st2 = 0;
+        hw_.fdc.res[0] = hw_.fdc.st0;
+        hw_.fdc.res[1] = hw_.fdc.st1;
+        hw_.fdc.res[2] = hw_.fdc.st2;
+        hw_.fdc.res[3] = hw_.fdc.cmd[2];
+        hw_.fdc.res[4] = static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u);
+        hw_.fdc.res[5] = hw_.fdc.cmd[4];
+        hw_.fdc.res[6] = hw_.fdc.cmd[5];
+        hw_.fdc.res_n = 7;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 1;
+        hw_.fdc.msr = 0xD0;
+        pic_assert(6);
+        return;
+    }
+    hw_.fdc.res[0] = 0x80;
+    hw_.fdc.res_n = 1;
+    hw_.fdc.res_i = 0;
+    hw_.fdc.phase = 1;
+    hw_.fdc.msr = 0xD0;
+    pic_assert(6);
+}
+
 uint8_t pc::in_port(uint16_t port)
 {
     const uint16_t p = port;
@@ -849,6 +1253,38 @@ uint8_t pc::in_port(uint16_t port)
     if (p == 0x3D8u)
     {
         return hw_.vid.mode_3d8;
+    }
+    if ((p >= 0x3F0u) && (p <= 0x3F7u))
+    {
+        if (p == 0x3F2u)
+        {
+            return hw_.fdc.dor;
+        }
+        if (p == 0x3F4u)
+        {
+            return hw_.fdc.msr;
+        }
+        if (p == 0x3F5u)
+        {
+            return fdc_read_res();
+        }
+        return 0;
+    }
+    if (p == 0x81u)
+    {
+        return hw_.dma.page[2];
+    }
+    if (p == 0x82u)
+    {
+        return hw_.dma.page[3];
+    }
+    if (p == 0x83u)
+    {
+        return hw_.dma.page[1];
+    }
+    if (p == 0x87u)
+    {
+        return hw_.dma.page[0];
     }
     return 0xFF;
 }
@@ -919,6 +1355,36 @@ void pc::out_port(uint16_t port, uint8_t v)
     if (p == 0x3D8u)
     {
         hw_.vid.mode_3d8 = v;
+        return;
+    }
+    if (p == 0x3F2u)
+    {
+        fdc_write_dor(v);
+        return;
+    }
+    if (p == 0x3F5u)
+    {
+        fdc_write_cmd(v);
+        return;
+    }
+    if (p == 0x81u)
+    {
+        hw_.dma.page[2] = v;
+        return;
+    }
+    if (p == 0x82u)
+    {
+        hw_.dma.page[3] = v;
+        return;
+    }
+    if (p == 0x83u)
+    {
+        hw_.dma.page[1] = v;
+        return;
+    }
+    if (p == 0x87u)
+    {
+        hw_.dma.page[0] = v;
     }
 }
 

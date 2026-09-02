@@ -1084,6 +1084,47 @@ rex_status dos_machine::load_bios_5150(const char *path)
     return REX_OK;
 }
 
+rex_status dos_machine::attach_floppy_image(const char *image)
+{
+    std::FILE *fp = nullptr;
+    std::vector<uint8_t> img;
+    long sz = 0;
+    if ((image == nullptr) || (!iron))
+    {
+        return REX_ERR_ARG;
+    }
+    fp = std::fopen(image, "rb");
+    if (fp == nullptr)
+    {
+        return REX_ERR_IO;
+    }
+    if (std::fseek(fp, 0, SEEK_END) != 0)
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    sz = std::ftell(fp);
+    if (sz < 512)
+    {
+        std::fclose(fp);
+        return REX_ERR_FMT;
+    }
+    std::rewind(fp);
+    img.resize(static_cast<size_t>(sz));
+    if (std::fread(img.data(), 1, img.size(), fp) != img.size())
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    std::fclose(fp);
+    if (!iron->attach_floppy(img.data(), img.size()))
+    {
+        return REX_ERR_IO;
+    }
+    rex_logf(REX_LOG_INFO, "iron86 FDC A: %s %zu bytes", image, img.size());
+    return REX_OK;
+}
+
 rex_status dos_machine::load_floppy_uc(const char *image)
 {
     std::FILE *fp = nullptr;
@@ -1426,10 +1467,17 @@ void dos_machine::push_key(uint8_t ascii, uint8_t scan)
     ev.scan = (scan != 0) ? scan : ascii;
     kbd.push_back(ev);
     wait_key = false;
-    if (iron && (ascii != 0))
+    if (iron)
     {
-        const char one[2] = {static_cast<char>(ascii), 0};
-        iron->type_keys(one);
+        if (ascii != 0)
+        {
+            const char one[2] = {static_cast<char>(ascii), 0};
+            iron->type_keys(one);
+        }
+        else if (scan != 0)
+        {
+            iron->type_scan(scan);
+        }
     }
 }
 
