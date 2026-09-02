@@ -509,6 +509,26 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["int_bps"] = iarr;
         resp["insn_bps"] = narr;
         resp["range_bps"] = rarr;
+        {
+            rex_range_bp mb[32];
+            json marr = json::array();
+            const size_t nm = rex_mem_bp_list(s, mb, 32);
+            size_t j = 0;
+            for (j = 0; j < nm; j++)
+            {
+                json e;
+                e["id"] = mb[j].id;
+                e["remain"] = mb[j].remain;
+                e["seg0"] = mb[j].seg0;
+                e["off0"] = mb[j].off0;
+                e["seg1"] = mb[j].seg1;
+                e["off1"] = mb[j].off1;
+                e["lo"] = mb[j].lo;
+                e["hi"] = mb[j].hi;
+                marr.push_back(e);
+            }
+            resp["mem_bps"] = marr;
+        }
     }
     else if ((cmd == "bpint") || (cmd == "bp_int"))
     {
@@ -611,6 +631,95 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             resp["id"] = id;
             resp["pat"] = pat;
             resp["hits"] = hits;
+        }
+    }
+    else if ((cmd == "bpm") || (cmd == "bp_mem") || (cmd == "bpmw"))
+    {
+        std::string addr = req.value("addr", "");
+        std::string addr_end = req.value("end", "");
+        uint64_t lin = 0;
+        uint64_t lin1 = 0;
+        uint32_t id = 0;
+        uint16_t seg = 0;
+        uint16_t off = 0;
+        uint16_t seg1 = 0;
+        uint16_t off1 = 0;
+        uint32_t hits = req.value("hits", 0u);
+        if (addr.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            std::string a;
+            std::string b;
+            std::string c;
+            is >> a >> b >> c;
+            addr = a;
+            if (b.find(':') != std::string::npos)
+            {
+                addr_end = b;
+            }
+            else if ((b == "once") || (b == "every") || (!b.empty() && (std::isdigit((unsigned char)b[0]) != 0)))
+            {
+                if (b == "once")
+                {
+                    hits = 1;
+                }
+                else if (b != "every")
+                {
+                    hits = (uint32_t)std::strtoul(b.c_str(), nullptr, 0);
+                }
+            }
+            if (c == "once")
+            {
+                hits = 1;
+            }
+        }
+        {
+            const auto dash = addr.find('-');
+            if ((dash != std::string::npos) && (dash > 0) && addr_end.empty())
+            {
+                addr_end = addr.substr(dash + 1);
+                addr = addr.substr(0, dash);
+            }
+        }
+        if (req.value("once", false) == true)
+        {
+            hits = 1;
+        }
+        if (!parse_addr(addr, &lin, &seg, &off))
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad addr";
+        }
+        else
+        {
+            if (addr_end.empty())
+            {
+                addr_end = addr;
+            }
+            else if (addr_end.find(':') == std::string::npos)
+            {
+                addr_end = addr.substr(0, addr.find(':') + 1) + addr_end;
+            }
+            if (!parse_addr(addr_end, &lin1, &seg1, &off1))
+            {
+                lin1 = lin;
+                seg1 = seg;
+                off1 = off;
+            }
+            if (rex_bp_add_segoff_write(s, seg, off, seg1, off1, hits, &id) != REX_OK)
+            {
+                resp["ok"] = false;
+                resp["error"] = "bad range";
+            }
+            else
+            {
+                resp["id"] = id;
+                resp["cs"] = seg;
+                resp["ip"] = off;
+                resp["end_cs"] = seg1;
+                resp["end_ip"] = off1;
+                resp["hits"] = hits;
+            }
         }
     }
     else if ((cmd == "cga") || (cmd == "video") || (cmd == "frame"))
@@ -796,7 +905,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop pause unpause delay faster slower reset regs disasm mem bp bpint bpinsn bpdel bplist shot key nav status cga ping quit";
+            "step over run stop pause unpause delay faster slower reset regs disasm mem bp bpint bpinsn bpm bpdel bplist shot key nav status cga ping quit";
     }
     else
     {

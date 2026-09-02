@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.10"
+VERSION = "0.11"
 
 
 def usage() -> None:
@@ -35,8 +35,11 @@ Commands:
   bpinsn <pat> [once|every|N]
                      any insn matching Capstone text, e.g. bpinsn int 10
                      bpinsn call   bpinsn out
+  bpm <seg:off> [<seg:off>] [once|every]
+                     write-watch (TD BPM). Guest CPU stores only.
+                     CGA: bpm B800:0000 B800:3FFF
   bpdel <id>
-  bplist             exec + INT + insn breakpoints
+  bplist             exec + INT + insn + range + mem watches
   shot [path]        screenshot; stdout = versioned path (Xmux-style timestamp)
   key <key>          DOS INT 16 (starts F9)
   nav <Up|Down|Home|End|PgUp|PgDn>
@@ -98,6 +101,19 @@ def build_line(cmd: str, rest: list[str]) -> str:
             hits = _hits_token(toks[-1])
             toks = toks[:-1]
         return json.dumps({"cmd": "bpinsn", "pat": " ".join(toks), "hits": hits})
+    if cmd in {"bpm", "bp_mem", "bpmw"} and rest:
+        obj = {"cmd": "bpm", "addr": rest[0]}
+        for tok in rest[1:]:
+            if tok.lower() in {"once", "every"}:
+                obj["hits"] = _hits_token(tok)
+            elif ":" in tok:
+                obj["end"] = tok
+            else:
+                try:
+                    obj["hits"] = _hits_token(tok)
+                except ValueError:
+                    obj["end"] = tok
+        return json.dumps(obj)
     if cmd in {"bpdel", "bp_del"} and rest:
         return json.dumps({"cmd": "bpdel", "id": int(rest[0], 0)})
     if cmd == "key" and rest:

@@ -264,6 +264,20 @@ struct rex_range_bp
 
 REX_API size_t rex_range_bp_list(const rex_session *s, rex_range_bp *out, size_t cap);
 
+/**
+ * @brief Break when the guest writes any byte in [@p lo, @p hi] (TD BPM).
+ *
+ * Catches CPU stores (MOV/STOS to CGA `B800:0000` …). BIOS INT 10 that pokes
+ * host RAM directly does not go through Unicorn and will not fire.
+ * @param hits 0 = every write, 1 = first only.
+ */
+REX_API rex_status rex_bp_add_write(rex_session *s, uint64_t lo, uint64_t hi, uint32_t hits,
+                                    uint32_t *id);
+REX_API rex_status rex_bp_add_segoff_write(rex_session *s, uint16_t seg0, uint16_t off0,
+                                           uint16_t seg1, uint16_t off1, uint32_t hits,
+                                           uint32_t *id);
+REX_API size_t rex_mem_bp_list(const rex_session *s, rex_range_bp *out, size_t cap);
+
 /** Load a TSV/MAP symbol file (`seg:off\\tname` or `linear\\tname`). */
 REX_API rex_status rex_symbols_load(rex_session *s, const char *path);
 REX_API const char *rex_symbols_lookup(const rex_session *s, uint64_t linear);

@@ -101,6 +101,41 @@ TEST_CASE("range BP once auto-clears after first hit")
     rex_session_destroy(s);
 }
 
+TEST_CASE("BPM write-watch stops on guest store to DS:0200")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    rex_range_bp mb[4]{};
+    uint32_t id = 0;
+    uint8_t cell = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/memw.com", nullptr) == REX_OK);
+    REQUIRE(rex_bp_add_segoff_write(s, 0x1000, 0x0200, 0x1000, 0x0200, 0, &id) == REX_OK);
+    REQUIRE(rex_mem_bp_list(s, mb, 4) == 1);
+    REQUIRE(mb[0].id == id);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_BREAK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.cs == 0x1000);
+    REQUIRE(rex_session_read_mem(s, rex_segoff_to_linear(0x1000, 0x0200), &cell, 1) == REX_OK);
+    REQUIRE(cell == 0xAA);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("BPM once auto-clears after the first guest write")
+{
+    rex_session *s = rex_session_create();
+    rex_range_bp mb[4]{};
+    uint32_t id = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/memw.com", nullptr) == REX_OK);
+    REQUIRE(rex_bp_add_segoff_write(s, 0x1000, 0x0200, 0x1000, 0x0200, 1, &id) == REX_OK);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_BREAK);
+    REQUIRE(rex_mem_bp_list(s, mb, 4) == 0);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    rex_session_destroy(s);
+}
+
 TEST_CASE("rex_version is 0.8")
 {
     REQUIRE(std::string(rex_version()) == "0.8");

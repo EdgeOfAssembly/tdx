@@ -135,6 +135,8 @@ struct dos_machine
         uint16_t off1 = 0;
     };
     std::vector<range_bp_ent> range_bps;
+    std::vector<range_bp_ent> mem_bps; /**< write watches (TD BPM) */
+    unsigned mem_bp_quiet = 0;         /**< >0: ignore watches (mode-set fill) */
 
     dos_file files[DOS_MAX_FILES]{};
     std::deque<dos_kbd_ev> kbd;
@@ -187,9 +189,13 @@ struct dos_machine
     rex_status bp_insn_add(const char *pat, uint32_t hits, uint32_t *id);
     rex_status bp_range_add(uint64_t lo, uint64_t hi, uint16_t seg0, uint16_t off0, uint16_t seg1,
                             uint16_t off1, uint32_t hits, uint32_t *id);
+    rex_status bp_mem_add(uint64_t lo, uint64_t hi, uint16_t seg0, uint16_t off0, uint16_t seg1,
+                          uint16_t off1, uint32_t hits, uint32_t *id);
     bool hit_insn_bp(uint64_t lin);
     bool hit_range_bp(uint64_t lin);
+    bool hit_mem_bp(uint64_t lin, int size);
     void consume_exec_bp(uint64_t lin);
+    void note_write(uint64_t lin, int size);
 
     void rebuild_decode(void);
     void pit_poll(void);

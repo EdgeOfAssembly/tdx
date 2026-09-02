@@ -207,6 +207,10 @@ void on_write(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64
             m->vcr_pending.push_back(d);
         }
     }
+    if (m != nullptr)
+    {
+        m->note_write(address, size);
+    }
 }
 
 bool on_unmapped(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value,
@@ -730,6 +734,7 @@ void dos_machine::blank_regen(void)
     {
         return;
     }
+    mem_bp_quiet++;
     /* PCBIOS SET_MODE: graphics regen is zeros; alpha is ' ' + attribute 07. */
     if ((video_mode == 0x04) || (video_mode == 0x05) || (video_mode == 0x06) ||
         (video_mode == 0x0D) || (video_mode == 0x13))
@@ -745,6 +750,10 @@ void dos_machine::blank_regen(void)
         }
     }
     video_dirty = true;
+    if (mem_bp_quiet > 0)
+    {
+        mem_bp_quiet--;
+    }
 }
 
 uint64_t dos_machine::linear_ip() const
@@ -830,6 +839,7 @@ rex_status dos_machine::write_mem(uint64_t linear, const void *src, size_t n)
     {
         video_dirty = true;
     }
+    note_write(linear, (int)n);
     return REX_OK;
 }
 
@@ -1071,6 +1081,14 @@ rex_status dos_machine::bp_del(uint32_t id)
             return REX_OK;
         }
     }
+    for (i = 0; i < mem_bps.size(); i++)
+    {
+        if (mem_bps[i].id == id)
+        {
+            mem_bps.erase(mem_bps.begin() + static_cast<std::ptrdiff_t>(i));
+            return REX_OK;
+        }
+    }
     return REX_ERR_ARG;
 }
 
@@ -1083,6 +1101,7 @@ void dos_machine::bp_clear(void)
     int_bps.clear();
     insn_bps.clear();
     range_bps.clear();
+    mem_bps.clear();
     skip_int_bp = false;
 }
 
@@ -1108,6 +1127,74 @@ rex_status dos_machine::bp_range_add(uint64_t lo, uint64_t hi, uint16_t seg0, ui
         *id = e.id;
     }
     return REX_OK;
+}
+
+rex_status dos_machine::bp_mem_add(uint64_t lo, uint64_t hi, uint16_t seg0, uint16_t off0,
+                                   uint16_t seg1, uint16_t off1, uint32_t hits, uint32_t *id)
+{
+    range_bp_ent e{};
+    if (hi < lo)
+    {
+        return REX_ERR_ARG;
+    }
+    e.id = next_bp_id++;
+    e.remain = hits;
+    e.lo = lo;
+    e.hi = hi;
+    e.seg0 = seg0;
+    e.off0 = off0;
+    e.seg1 = seg1;
+    e.off1 = off1;
+    mem_bps.push_back(e);
+    if (id != nullptr)
+    {
+        *id = e.id;
+    }
+    return REX_OK;
+}
+
+bool dos_machine::hit_mem_bp(uint64_t lin, int size)
+{
+    const uint64_t wlo = lin;
+    const uint64_t whi = lin + ((size > 1) ? (uint64_t)(size - 1) : 0ull);
+    size_t i = 0;
+    if ((mem_bp_quiet != 0u) || mem_bps.empty() || (size <= 0))
+    {
+        return false;
+    }
+    for (i = 0; i < mem_bps.size(); i++)
+    {
+        if ((wlo > mem_bps[i].hi) || (whi < mem_bps[i].lo))
+        {
+            continue;
+        }
+        if (mem_bps[i].remain == 1u)
+        {
+            mem_bps.erase(mem_bps.begin() + static_cast<std::ptrdiff_t>(i));
+        }
+        else if (mem_bps[i].remain > 1u)
+        {
+            mem_bps[i].remain--;
+        }
+        return true;
+    }
+    return false;
+}
+
+void dos_machine::note_write(uint64_t lin, int size)
+{
+    if (!hit_mem_bp(lin, size))
+    {
+        return;
+    }
+    at_break = true;
+    last_stop = REX_STOP_BREAK;
+    if (uc != nullptr)
+    {
+        uc_emu_stop(uc);
+    }
+    rex_logf(REX_LOG_INFO, "BPM write @ 0x%llx len=%d CS:IP=%04X:%04X",
+             (unsigned long long)lin, size, reg16(UC_X86_REG_CS), reg16(UC_X86_REG_IP));
 }
 
 bool dos_machine::hit_range_bp(uint64_t lin)
