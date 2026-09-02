@@ -193,11 +193,13 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         req["_rest"] = rest;
     }
 
-    if ((cmd == "step") || (cmd == "t") || (cmd == "F7"))
+    if ((cmd == "step") || (cmd == "step-in") || (cmd == "stepin") || (cmd == "stepi") ||
+        (cmd == "into") || (cmd == "t") || (cmd == "F7"))
     {
         rex_session_step(s);
     }
-    else if ((cmd == "over") || (cmd == "p") || (cmd == "F8"))
+    else if ((cmd == "over") || (cmd == "step-over") || (cmd == "stepover") || (cmd == "stepo") ||
+             (cmd == "next") || (cmd == "p") || (cmd == "F8"))
     {
         rex_session_step_over(s, 0);
     }
@@ -905,7 +907,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop pause unpause delay faster slower reset regs disasm mem bp bpint bpinsn bpm bpdel bplist shot key nav status cga ping quit";
+            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem bp bpint bpinsn bpm bpdel bplist shot key nav status cga ping quit";
     }
     else
     {

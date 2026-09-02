@@ -515,7 +515,9 @@ std::string view_handle(void *user, const std::string &line)
     }
     if ((cmd == "key") || (cmd == "run") || (cmd == "F9") || (cmd == "stop") || (cmd == "pause") ||
         (cmd == "unpause") || (cmd == "delay") || (cmd == "faster") || (cmd == "slower") ||
-        (cmd == "step") || (cmd == "over") || (cmd == "reset") || (cmd == "nav") || (cmd == "bp") ||
+        (cmd == "step") || (cmd == "step-in") || (cmd == "stepin") || (cmd == "over") ||
+        (cmd == "step-over") || (cmd == "stepover") || (cmd == "reset") || (cmd == "nav") ||
+        (cmd == "bp") ||
         (cmd == "bpint") || (cmd == "bpinsn") || (cmd == "bpm") || (cmd == "bpdel") ||
         (cmd == "bplist"))
     {

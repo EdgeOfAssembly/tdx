@@ -6,7 +6,9 @@ Line-oriented. Either a JSON object or a bare command word.
 
 ```text
 {"cmd":"step"}
+{"cmd":"step-in"}
 {"cmd":"over"}
+{"cmd":"step-over"}
 {"cmd":"run"}
 {"cmd":"stop"}
 {"cmd":"pause"}
@@ -66,7 +68,9 @@ key Space
 nav Down
 ```
 
-Bare words: `step`, `over`, `regs`, `cga`, `mem B800:0000 64`, `bp 1000:0100`.
+Bare words: `step`, `step-in`, `over`, `step-over`, `regs`, `cga`, `mem B800:0000 64`, `bp 1000:0100`.
+
+`step` / `step-in` / `F7` = one instruction (into CALL). `over` / `step-over` / `F8` = over CALL/INT/REP/LOOP.
 
 Reply is one JSON line (`ok`, `cs`, `ip`, `stop`, plus command fields).
 `cga` returns `mode`, `w`, `h`, `pixels_b64` (320×200 indices 0..3) for **tdxview**.

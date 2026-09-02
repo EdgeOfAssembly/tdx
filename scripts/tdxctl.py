@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.11"
+VERSION = "0.12"
 
 
 def usage() -> None:
@@ -24,7 +24,7 @@ def usage() -> None:
   (same as CPU +/- keys); 0 ms is fastest.
 
 Commands:
-  step | over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | quit | help
+  step | step-in | over | step-over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | quit | help
   mem <seg:off> [len]
   bp <seg:off> [once|every|N]
                      exec BP at CS:IP; once = first hit only
@@ -40,6 +40,8 @@ Commands:
                      CGA: bpm B800:0000 B800:3FFF
   bpdel <id>
   bplist             exec + INT + insn + range + mem watches
+  step / step-in     F7: one insn (into CALL/INT)
+  over / step-over   F8: over CALL, INT, REP, LOOP
   shot [path]        screenshot; stdout = versioned path (Xmux-style timestamp)
   key <key>          DOS INT 16 (starts F9)
   nav <Up|Down|Home|End|PgUp|PgDn>
