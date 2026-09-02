@@ -48,7 +48,7 @@ struct view_cli
     std::string sock_path = "/tmp/tdx.sock";
     std::string listen_path = "/tmp/tdxview.sock";
     bool no_listen = false;
-    int scale = 3;
+    int scale = 2; /**< Graphics only; text is always 640×400. */
 };
 
 void print_usage(FILE *fp)
@@ -67,7 +67,7 @@ void print_usage(FILE *fp)
         "      --sock PATH      tdx socket (default: /tmp/tdx.sock)\n"
         "      --listen PATH    agent socket (default: /tmp/tdxview.sock)\n"
         "      --no-listen      Do not listen for agents\n"
-        "      --scale N        Integer scale (default: 3 → 960×600)\n"
+        "      --scale N        Graphics scale (default: 2 → 640×400). Text is 640×400.\n"
         "\n"
         "tdxview " TDX_VERSION_STRING "\n",
         fp);
@@ -562,6 +562,7 @@ int main(int argc, char **argv)
     bool quit = false;
     int wait_ticks = 0;
     uint8_t last_mode = 0xFF;
+    bool tex_gfx = false; /* start as 640×400 text */
     std::vector<uint8_t> fb;
     std::vector<uint8_t> b800;
     std::string sock_acc;
@@ -589,12 +590,12 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "tdxview: SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
+    /* 80×25 CGA/VGA-ish text is 640×400 (8×16 cells). Graphics uses --scale
+     * on 320×200 (default 2 → also 640×400). */
     win = SDL_CreateWindow("TDX — User screen", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                           DOS_CGA_WIDTH * cli.scale, DOS_CGA_HEIGHT * cli.scale,
-                           SDL_WINDOW_RESIZABLE);
+                           640, 400, SDL_WINDOW_RESIZABLE);
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                            DOS_CGA_WIDTH, DOS_CGA_HEIGHT);
+    tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 400);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     vst.ren = ren;
     vst.tex = tex;
@@ -695,11 +696,26 @@ int main(int argc, char **argv)
             }
         }
 
+        {
+            const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || (last_mode == 0x06) ||
+                             (last_mode == 0x13);
+            if (gfx != tex_gfx)
+            {
+                const int tw = gfx ? DOS_CGA_WIDTH : 640;
+                const int th = gfx ? DOS_CGA_HEIGHT : 400;
+                SDL_DestroyTexture(tex);
+                tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                        tw, th);
+                SDL_SetWindowSize(win, gfx ? (tw * cli.scale) : tw, gfx ? (th * cli.scale) : th);
+                vst.tex = tex;
+                tex_gfx = gfx;
+            }
+        }
+
         if (SDL_LockTexture(tex, nullptr, (void **)&pix, &pitch) == 0)
         {
             const int pitch_px = pitch / 4;
-            const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || (last_mode == 0x06) ||
-                             (last_mode == 0x13);
+            const bool gfx = tex_gfx;
             if (gfx)
             {
                 uint32_t pal[4] = {k_cga[0], k_cga[1], k_cga[2], k_cga[3]};
@@ -720,7 +736,8 @@ int main(int argc, char **argv)
             }
             else if (b800.size() >= 4000u)
             {
-                /* 80x25 text → 320x200 (4x8 px/cell from 8x16 font). */
+                /* 80×25 text at 640×400 — full 8×16 glyphs (CPU window already
+                 * does this; 320×200 4×8 downsample was unreadable). */
                 int row = 0;
                 int col = 0;
                 for (row = 0; row < 25; row++)
@@ -734,13 +751,13 @@ int main(int argc, char **argv)
                         const uint8_t *g = tdx_font_glyph(ch);
                         int gy = 0;
                         int gx = 0;
-                        for (gy = 0; gy < 8; gy++)
+                        for (gy = 0; gy < 16; gy++)
                         {
-                            const uint8_t bits = (uint8_t)(g[gy * 2] | g[gy * 2 + 1]);
-                            uint32_t *dst = pix + (row * 8 + gy) * pitch_px + col * 4;
-                            for (gx = 0; gx < 4; gx++)
+                            const uint8_t bits = g[gy];
+                            uint32_t *dst = pix + (row * 16 + gy) * pitch_px + col * 8;
+                            for (gx = 0; gx < 8; gx++)
                             {
-                                dst[gx] = (bits & (uint8_t)(0xC0 >> (gx * 2))) ? fg : bg;
+                                dst[gx] = (bits & (uint8_t)(0x80 >> gx)) ? fg : bg;
                             }
                         }
                     }
@@ -748,10 +765,12 @@ int main(int argc, char **argv)
             }
             else
             {
-                for (y = 0; y < DOS_CGA_HEIGHT; y++)
+                const int th = gfx ? DOS_CGA_HEIGHT : 400;
+                const int tw = gfx ? DOS_CGA_WIDTH : 640;
+                for (y = 0; y < th; y++)
                 {
                     uint32_t *dst = pix + y * pitch_px;
-                    for (x = 0; x < DOS_CGA_WIDTH; x++)
+                    for (x = 0; x < tw; x++)
                     {
                         dst[x] = 0xFF000000;
                     }

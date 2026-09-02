@@ -3,6 +3,9 @@
 /tdxview
 /tdx_test
 /tests/run_tests
+/subprojects/iron86/iron86
+/subprojects/iron86/tests/run_tests
+/subprojects/iron86/tests/run_pc
 /tests/fixtures/*.com
 /tests/fixtures/*.exe
 *.o

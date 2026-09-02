@@ -48,7 +48,32 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.8");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.10");
+}
+
+TEST_CASE("bios is opt-in iron86 5150 POST")
+{
+    auto a = parse({"game.exe"});
+    REQUIRE(a.bios.empty());
+    auto b = parse({"--bios", "rom.bin"});
+    REQUIRE(b.bios == "rom.bin");
+    auto c = parse({"--bios=rom.bin", "--no-ui"});
+    REQUIRE(c.bios == "rom.bin");
+    REQUIRE(c.no_ui);
+}
+
+TEST_CASE("floppy is opt-in iron86 boot")
+{
+    auto a = parse({"game.exe"});
+    REQUIRE(a.floppy.empty());
+    auto b = parse({"--floppy", "disk.img"});
+    REQUIRE(b.floppy == "disk.img");
+    auto c = parse({"--floppy=disk.img", "--no-ui"});
+    REQUIRE(c.floppy == "disk.img");
+    REQUIRE(c.no_ui);
+    auto d = parse({"--uc-floppy", "disk.img"});
+    REQUIRE(d.uc_floppy == "disk.img");
+    REQUIRE(d.floppy.empty());
 }
 
 TEST_CASE("in-process game window is opt-in")

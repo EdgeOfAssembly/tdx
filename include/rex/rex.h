@@ -54,6 +54,22 @@ REX_API void rex_session_destroy(rex_session *s);
 REX_API rex_status rex_session_load(rex_session *s, const char *path, const char *cwd);
 
 /**
+ * @brief Boot a floppy image at 0000:7C00 on iron86 (opt-in; Unicorn EXE path unchanged).
+ *
+ * @param[in] s     Session.
+ * @param[in] image Host path to a 360K (or larger) raw image.
+ */
+REX_API rex_status rex_session_load_floppy(rex_session *s, const char *image);
+
+/**
+ * @brief Boot a floppy image at 0000:7C00 on Unicorn (INT 13h from the image).
+ */
+REX_API rex_status rex_session_load_floppy_uc(rex_session *s, const char *image);
+
+/** @brief Load IBM 5150 8K BIOS on iron86; CS=FFFF IP=0000. */
+REX_API rex_status rex_session_load_bios(rex_session *s, const char *path);
+
+/**
  * @brief Reload the same image at entry (Turbo Debugger Ctrl-F2).
  *
  * Breakpoints are kept. Keyboard buffer and CON output are cleared.

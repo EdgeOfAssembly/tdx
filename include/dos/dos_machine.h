@@ -9,9 +9,11 @@
 #include "mz_parse.h"
 #include "pic8259.h"
 #include "pit8253.h"
+#include "iron86/pc.h"
 #include "rex/rex.h"
 
 #include <cstdint>
+#include <memory>
 #ifndef UINT64_MAX
 #include <limits>
 #endif
@@ -71,6 +73,8 @@ struct dos_machine
     uc_engine *uc = nullptr;
     uint8_t *ram = nullptr;
     size_t ram_size = 0;
+    std::unique_ptr<iron86::pc> iron; /**< Non-null: iron86 floppy boot (Unicorn unused). */
+    std::vector<uint8_t> floppy_img;  /**< Host 360K image for Unicorn INT 13h. */
 
     std::string image_path;
     std::string dos_cwd;
@@ -157,6 +161,12 @@ struct dos_machine
 
     rex_status init_cpu();
     rex_status load_path(const char *path, const char *cwd);
+    /** @brief Boot a 360K (or larger) image at 0000:7C00 via iron86. Unicorn unused. */
+    rex_status load_floppy(const char *image);
+    /** @brief Same image on Unicorn (INT 13h from floppy_img). EXE path unchanged. */
+    rex_status load_floppy_uc(const char *image);
+    /** @brief IBM 5150 8K BIOS at FE000, reset FFFF:0000 (Py86). iron86 only. */
+    rex_status load_bios_5150(const char *path);
     rex_status step_one();
     rex_status run_until(uint64_t until_linear, uint64_t max_insns, bool until_valid);
 

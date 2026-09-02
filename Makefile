@@ -13,7 +13,7 @@ CATCH_CFLAGS := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null
 CATCH_LIBS   := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --libs catch2-with-main)
 
 CXXFLAGS_COMMON := -std=gnu++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
-	-fno-omit-frame-pointer -Iinclude
+	-fno-omit-frame-pointer -Iinclude -Isubprojects/iron86/include
 CFLAGS_COMMON := -std=gnu23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
 	-fno-omit-frame-pointer -Iinclude
 
@@ -37,14 +37,17 @@ CFLAGS   := $(CFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined
 
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
+IRON86_SRC := subprojects/iron86/src/cpu.cpp subprojects/iron86/src/ea.cpp \
+	subprojects/iron86/src/pc.cpp
 REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp \
-	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c
+	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c \
+	$(IRON86_SRC)
 TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp \
 	src/tdx/tdx_shot.cpp
 VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_agent_sock.cpp
 TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
 	tests/test_shot.cpp tests/test_int10.cpp tests/test_fault.cpp tests/test_bios.cpp \
-	tests/test_pit.cpp
+	tests/test_pit.cpp tests/test_floppy.cpp
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 

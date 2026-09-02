@@ -5,6 +5,7 @@
 #include "iron86/cpu.h"
 #include "iron86/pc.h"
 
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -12,7 +13,7 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.6";
+static const char *k_version = "0.7";
 
 static void usage(FILE *out)
 {
@@ -24,16 +25,18 @@ static void usage(FILE *out)
         "  Chip-level 8086 (C++23, Py86 port). Hardware only — no DOS.\n"
         "  .COM loads at 1000:0100. --floppy without --bios: 0000:7C00.\n"
         "  --bios: IBM 5150 8K at FE000, reset FFFF:0000 (Py86 load_bios_5150_8k).\n"
+        "  PPI/PIT/PIC/DMA wired for 1981 POST. Fast-post (BDA 1234h) is default.\n"
         "  Options and operands may be interleaved.\n"
         "\n"
         "Options:\n"
-        "  -h, --help       Show this help and exit\n"
-        "  -v, --version    Show version and exit\n"
-        "  --bios FILE      Load 5150 8K BIOS (default: none)\n"
-        "  --floppy IMAGE   360K (or larger) floppy image\n"
-        "  --keys STRING    Type STRING as INT 16h keys (default: none)\n"
+        "  -h, --help         Show this help and exit\n"
+        "  -v, --version      Show version and exit\n"
+        "  --bios FILE        Load 5150 8K BIOS (default: none)\n"
+        "  --no-fast-post     Cold POST (do not set RESET_FLAG=1234h)\n"
+        "  --floppy IMAGE     360K (or larger) floppy image\n"
+        "  --keys STRING      Type STRING as INT 16h keys (default: none)\n"
         "\n"
-        "iron86 0.6\n",
+        "iron86 0.7\n",
         out);
 }
 
@@ -54,6 +57,7 @@ int main(int argc, char **argv)
     const char *floppy = nullptr;
     const char *keys = nullptr;
     const char *bios = nullptr;
+    bool no_fast_post = false;
     int i = 1;
     for (i = 1; i < argc; i++)
     {
@@ -86,6 +90,11 @@ int main(int argc, char **argv)
                 return 2;
             }
             bios = argv[++i];
+            continue;
+        }
+        if (std::strcmp(a, "--no-fast-post") == 0)
+        {
+            no_fast_post = true;
             continue;
         }
         if (std::strcmp(a, "--keys") == 0)
@@ -142,7 +151,13 @@ int main(int argc, char **argv)
         {
             return 1;
         }
-        std::fprintf(stderr, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000\n", rom.size());
+        p.wire_pc_hw();
+        if (!no_fast_post)
+        {
+            p.enable_fast_post();
+        }
+        std::fprintf(stderr, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000%s\n", rom.size(),
+                     no_fast_post ? "" : " fast-post");
         uint64_t n = 0;
         while ((!p.c.halted()) && (n < 20000000ull))
         {
@@ -151,6 +166,17 @@ int main(int argc, char **argv)
                 break;
             }
             n++;
+        }
+        {
+            char line[81];
+            size_t col = 0;
+            for (col = 0; col < 80u; col++)
+            {
+                const uint8_t ch = p.c.mem_read8(0xB8000u + static_cast<uint32_t>(col) * 2u);
+                line[col] = ((ch >= 32u) && (ch < 127u)) ? static_cast<char>(ch) : ' ';
+            }
+            line[80] = '\0';
+            std::fprintf(stderr, "B800: %s\n", line);
         }
         std::fputs(p.tty().c_str(), stdout);
         if (!p.tty().empty() && (p.tty().back() != '\n'))

@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         std::printf("tdx %s\n", TDX_VERSION_STRING);
         return 0;
     }
-    if (cli.input.empty())
+    if (cli.input.empty() && cli.floppy.empty() && cli.uc_floppy.empty() && cli.bios.empty())
     {
         tdx_print_usage(stderr);
         return 2;
@@ -107,7 +107,22 @@ int main(int argc, char **argv)
     s = rex_session_create();
     assert(s != nullptr);
     cwd = cli.cwd.empty() ? nullptr : cli.cwd.c_str();
-    rc = (int)rex_session_load(s, cli.input.c_str(), cwd);
+    if (!cli.bios.empty())
+    {
+        rc = (int)rex_session_load_bios(s, cli.bios.c_str());
+    }
+    else if (!cli.uc_floppy.empty())
+    {
+        rc = (int)rex_session_load_floppy_uc(s, cli.uc_floppy.c_str());
+    }
+    else if (!cli.floppy.empty())
+    {
+        rc = (int)rex_session_load_floppy(s, cli.floppy.c_str());
+    }
+    else
+    {
+        rc = (int)rex_session_load(s, cli.input.c_str(), cwd);
+    }
     if (rc != (int)REX_OK)
     {
         std::fprintf(stderr, "tdx: load failed: %s\n", rex_status_str((rex_status)rc));

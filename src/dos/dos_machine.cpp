@@ -4,6 +4,7 @@
  */
 
 #include "dos/dos_machine.h"
+#include "iron86/pc.h"
 #include "dos/ibm_bda.h"
 
 #include "rex/rex_disasm.h"
@@ -22,6 +23,7 @@
 #include <ctime>
 #include <deque>
 #include <fstream>
+#include <vector>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -356,6 +358,42 @@ dos_machine::~dos_machine()
 uint16_t dos_machine::reg16(int uc_reg) const
 {
     uint16_t v = 0;
+    if (iron)
+    {
+        switch (uc_reg)
+        {
+        case UC_X86_REG_AX:
+            return iron->c.ax();
+        case UC_X86_REG_BX:
+            return iron->c.bx();
+        case UC_X86_REG_CX:
+            return iron->c.cx();
+        case UC_X86_REG_DX:
+            return iron->c.dx();
+        case UC_X86_REG_SI:
+            return iron->c.si();
+        case UC_X86_REG_DI:
+            return iron->c.di();
+        case UC_X86_REG_BP:
+            return iron->c.bp();
+        case UC_X86_REG_SP:
+            return iron->c.sp();
+        case UC_X86_REG_CS:
+            return iron->c.cs();
+        case UC_X86_REG_DS:
+            return iron->c.ds();
+        case UC_X86_REG_ES:
+            return iron->c.es();
+        case UC_X86_REG_SS:
+            return iron->c.ss();
+        case UC_X86_REG_IP:
+            return iron->c.ip();
+        case UC_X86_REG_FLAGS:
+            return iron->c.flags();
+        default:
+            return 0;
+        }
+    }
     assert(uc != nullptr);
     uc_reg_read(uc, uc_reg, &v);
     return v;
@@ -363,6 +401,56 @@ uint16_t dos_machine::reg16(int uc_reg) const
 
 void dos_machine::set_reg16(int uc_reg, uint16_t v)
 {
+    if (iron)
+    {
+        switch (uc_reg)
+        {
+        case UC_X86_REG_AX:
+            iron->c.set_ax(v);
+            return;
+        case UC_X86_REG_BX:
+            iron->c.set_bx(v);
+            return;
+        case UC_X86_REG_CX:
+            iron->c.set_cx(v);
+            return;
+        case UC_X86_REG_DX:
+            iron->c.set_dx(v);
+            return;
+        case UC_X86_REG_CS:
+            iron->c.set_cs(v);
+            return;
+        case UC_X86_REG_DS:
+            iron->c.set_ds(v);
+            return;
+        case UC_X86_REG_ES:
+            iron->c.set_es(v);
+            return;
+        case UC_X86_REG_SS:
+            iron->c.set_ss(v);
+            return;
+        case UC_X86_REG_SP:
+            iron->c.set_sp(v);
+            return;
+        case UC_X86_REG_IP:
+            iron->c.set_ip(v);
+            return;
+        case UC_X86_REG_SI:
+            iron->c.set_si(v);
+            return;
+        case UC_X86_REG_DI:
+            iron->c.set_di(v);
+            return;
+        case UC_X86_REG_BP:
+            iron->c.set_bp(v);
+            return;
+        case UC_X86_REG_FLAGS:
+            iron->c.set_flags(v);
+            return;
+        default:
+            return;
+        }
+    }
     assert(uc != nullptr);
     uc_reg_write(uc, uc_reg, &v);
     /* Unicorn 16-bit stores a linear EIP; keep it in sync with CS:IP. */
@@ -378,6 +466,10 @@ void dos_machine::set_reg16(int uc_reg, uint16_t v)
 uint32_t dos_machine::eip32(void) const
 {
     uint32_t eip = 0;
+    if (iron)
+    {
+        return iron86::cpu::phys(iron->c.cs(), iron->c.ip());
+    }
     assert(uc != nullptr);
     uc_reg_read(uc, UC_X86_REG_EIP, &eip);
     return eip;
@@ -385,6 +477,10 @@ uint32_t dos_machine::eip32(void) const
 
 void dos_machine::sync_ip_from_eip(void)
 {
+    if (iron)
+    {
+        return;
+    }
     const uint32_t eip = eip32();
     const uint16_t cs = reg16(UC_X86_REG_CS);
     const uint32_t base = (uint32_t)cs << 4;
@@ -823,7 +919,21 @@ void dos_machine::set_regs(const rex_regs_i8086 *in)
 
 rex_status dos_machine::read_mem(uint64_t linear, void *dst, size_t n) const
 {
-    if ((dst == nullptr) || (ram == nullptr))
+    if (dst == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    if (iron)
+    {
+        auto *p = static_cast<uint8_t *>(dst);
+        size_t i = 0;
+        for (i = 0; i < n; i++)
+        {
+            p[i] = iron->c.mem_read8(static_cast<uint32_t>((linear + i) & 0xFFFFFull));
+        }
+        return REX_OK;
+    }
+    if (ram == nullptr)
     {
         return REX_ERR_ARG;
     }
@@ -837,7 +947,26 @@ rex_status dos_machine::read_mem(uint64_t linear, void *dst, size_t n) const
 
 rex_status dos_machine::write_mem(uint64_t linear, const void *src, size_t n)
 {
-    if ((src == nullptr) || (ram == nullptr))
+    if (src == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    if (iron)
+    {
+        const auto *p = static_cast<const uint8_t *>(src);
+        size_t i = 0;
+        for (i = 0; i < n; i++)
+        {
+            iron->c.mem_write8(static_cast<uint32_t>((linear + i) & 0xFFFFFull), p[i]);
+        }
+        if ((linear < 0xC0000ull) && ((linear + n) > 0xB8000ull))
+        {
+            video_dirty = true;
+        }
+        note_write(linear, (int)n);
+        return REX_OK;
+    }
+    if (ram == nullptr)
     {
         return REX_ERR_ARG;
     }
@@ -854,10 +983,228 @@ rex_status dos_machine::write_mem(uint64_t linear, const void *src, size_t n)
     return REX_OK;
 }
 
+rex_status dos_machine::load_floppy(const char *image)
+{
+    std::FILE *fp = nullptr;
+    std::vector<uint8_t> img;
+    long sz = 0;
+    if (image == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    fp = std::fopen(image, "rb");
+    if (fp == nullptr)
+    {
+        return REX_ERR_IO;
+    }
+    if (std::fseek(fp, 0, SEEK_END) != 0)
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    sz = std::ftell(fp);
+    if (sz < 512)
+    {
+        std::fclose(fp);
+        return REX_ERR_FMT;
+    }
+    std::rewind(fp);
+    img.resize(static_cast<size_t>(sz));
+    if (std::fread(img.data(), 1, img.size(), fp) != img.size())
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    std::fclose(fp);
+    iron = std::make_unique<iron86::pc>();
+    if (!iron->load_floppy(img.data(), img.size()))
+    {
+        iron.reset();
+        return REX_ERR_IO;
+    }
+    iron->boot();
+    image_path = image;
+    video_mode = iron->video_mode();
+    entry_linear = 0x7C00;
+    halted = false;
+    con_out.clear();
+    rex_logf(REX_LOG_INFO, "iron86 floppy %s entry 0000:7C00", image);
+    return REX_OK;
+}
+
+rex_status dos_machine::load_bios_5150(const char *path)
+{
+    std::FILE *fp = nullptr;
+    std::vector<uint8_t> rom;
+    long sz = 0;
+    if (path == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    fp = std::fopen(path, "rb");
+    if (fp == nullptr)
+    {
+        return REX_ERR_IO;
+    }
+    if (std::fseek(fp, 0, SEEK_END) != 0)
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    sz = std::ftell(fp);
+    if (sz < 5)
+    {
+        std::fclose(fp);
+        return REX_ERR_FMT;
+    }
+    std::rewind(fp);
+    rom.resize(static_cast<size_t>(sz));
+    if (std::fread(rom.data(), 1, rom.size(), fp) != rom.size())
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    std::fclose(fp);
+    if (!iron)
+    {
+        iron = std::make_unique<iron86::pc>();
+    }
+    if (!iron->c.load_bios_5150_8k(rom.data(), rom.size()))
+    {
+        return REX_ERR_IO;
+    }
+    iron->wire_pc_hw();
+    iron->enable_fast_post();
+    image_path = path;
+    video_mode = 0x03;
+    entry_linear = 0xFFFF0u;
+    halted = false;
+    con_out.clear();
+    rex_logf(REX_LOG_INFO, "iron86 BIOS %s FE000 reset FFFF:0000 fast-post", path);
+    return REX_OK;
+}
+
+rex_status dos_machine::load_floppy_uc(const char *image)
+{
+    std::FILE *fp = nullptr;
+    long sz = 0;
+    rex_status st = REX_OK;
+    if (image == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    iron.reset();
+    st = init_cpu();
+    if (st != REX_OK)
+    {
+        return st;
+    }
+    fp = std::fopen(image, "rb");
+    if (fp == nullptr)
+    {
+        return REX_ERR_IO;
+    }
+    if (std::fseek(fp, 0, SEEK_END) != 0)
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    sz = std::ftell(fp);
+    if (sz < 512)
+    {
+        std::fclose(fp);
+        return REX_ERR_FMT;
+    }
+    std::rewind(fp);
+    floppy_img.resize(static_cast<size_t>(sz));
+    if (std::fread(floppy_img.data(), 1, floppy_img.size(), fp) != floppy_img.size())
+    {
+        std::fclose(fp);
+        return REX_ERR_IO;
+    }
+    std::fclose(fp);
+    std::memcpy(ram + 0x7C00, floppy_img.data(), 512);
+    image_path = image;
+    video_mode = 0x03;
+    blank_regen();
+    set_reg16(UC_X86_REG_CS, 0);
+    set_reg16(UC_X86_REG_IP, 0x7C00);
+    set_reg16(UC_X86_REG_SS, 0);
+    set_reg16(UC_X86_REG_SP, 0x7C00);
+    set_reg16(UC_X86_REG_DS, 0);
+    set_reg16(UC_X86_REG_ES, 0);
+    set_reg16(UC_X86_REG_DX, 0);
+    set_reg16(UC_X86_REG_AX, 0);
+    set_reg16(UC_X86_REG_FLAGS, 0xF002);
+    sync_ip_from_eip();
+    entry_linear = 0x7C00;
+    halted = false;
+    con_out.clear();
+    rex_logf(REX_LOG_INFO, "unicorn floppy %s entry 0000:7C00", image);
+    return REX_OK;
+}
+
 rex_status dos_machine::step_one()
 {
     const uint64_t lin = linear_ip();
     uc_err e = UC_ERR_OK;
+
+    if (iron)
+    {
+        if (halted || iron->c.halted())
+        {
+            halted = true;
+            last_stop = REX_STOP_HALTED;
+            return REX_OK;
+        }
+        if (iron->waiting_key())
+        {
+            wait_key = true;
+            last_stop = REX_STOP_WAIT_KEY;
+            con_out = iron->tty();
+            video_mode = iron->video_mode();
+            return REX_OK;
+        }
+        if ((bps.find(lin) != bps.end()) && (!skip_bp))
+        {
+            at_break = true;
+            skip_bp = true;
+            last_stop = REX_STOP_BREAK;
+            return REX_OK;
+        }
+        at_break = false;
+        if (!iron->c.step())
+        {
+            if (iron->c.halted())
+            {
+                halted = true;
+                last_stop = REX_STOP_HALTED;
+                con_out = iron->tty();
+                return REX_OK;
+            }
+            last_stop = REX_STOP_FAULT;
+            rex_logf(REX_LOG_ERROR, "iron86 unimplemented op=%02X @ %04X:%04X", iron->c.last_op(),
+                     iron->c.cs(), iron->c.ip());
+            return REX_ERR_CPU;
+        }
+        con_out = iron->tty();
+        video_mode = iron->video_mode();
+        video_dirty = true;
+        if (iron->waiting_key())
+        {
+            wait_key = true;
+            last_stop = REX_STOP_WAIT_KEY;
+            return REX_OK;
+        }
+        last_stop = REX_STOP_STEP;
+        if (bps.find(linear_ip()) != bps.end())
+        {
+            at_break = true;
+            skip_bp = true;
+            last_stop = REX_STOP_BREAK;
+        }
+        return REX_OK;
+    }
 
     if (halted)
     {
@@ -923,6 +1270,36 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
 {
     uint64_t left = (max_insns == 0) ? 10000000ull : max_insns;
     const uint64_t until = until_valid ? until_linear : 0;
+
+    if (iron)
+    {
+        rex_status st = REX_OK;
+        stop_req = false;
+        wait_key = false;
+        while ((left > 0) && (!halted) && (!at_break) && (!wait_key) && (!stop_req))
+        {
+            st = step_one();
+            left--;
+            if (st != REX_OK)
+            {
+                return st;
+            }
+            if (until_valid && (linear_ip() == until_linear))
+            {
+                last_stop = REX_STOP_STEP;
+                return REX_OK;
+            }
+            if ((last_stop != REX_STOP_STEP) && (last_stop != REX_STOP_NONE))
+            {
+                break;
+            }
+        }
+        if (halted)
+        {
+            last_stop = REX_STOP_HALTED;
+        }
+        return REX_OK;
+    }
 
     if (halted)
     {
@@ -1049,6 +1426,11 @@ void dos_machine::push_key(uint8_t ascii, uint8_t scan)
     ev.scan = (scan != 0) ? scan : ascii;
     kbd.push_back(ev);
     wait_key = false;
+    if (iron && (ascii != 0))
+    {
+        const char one[2] = {static_cast<char>(ascii), 0};
+        iron->type_keys(one);
+    }
 }
 
 rex_status dos_machine::bp_add(uint64_t linear, uint32_t *id, uint16_t seg, uint16_t off)

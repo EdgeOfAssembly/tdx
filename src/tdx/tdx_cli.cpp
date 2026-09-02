@@ -16,14 +16,20 @@ void tdx_print_usage(FILE *fp)
 {
     std::fputs(
         "Usage: tdx [options] [file.exe|file.com]\n"
+        "       tdx --floppy image.img [options]\n"
+        "       tdx --uc-floppy image.img [options]\n"
+        "       tdx --bios BIOS.BIN [options]\n"
         "\n"
         "  Turbo Debugger X — native Linux debugger for DOS EXE/COM\n"
-        "  (librex core; Unicorn 8086 + Capstone). Options and the input\n"
-        "  path may appear in any order.\n"
+        "  (librex core; Unicorn 8086 default; --floppy uses iron86).\n"
+        "  Options and the input path may appear in any order.\n"
         "\n"
         "Options:\n"
         "  -h, --help            Show this help and exit\n"
         "  -v, --version         Show version and exit\n"
+        "      --floppy IMAGE    Boot IMAGE at 0000:7C00 on iron86 (default: Unicorn EXE)\n"
+        "      --uc-floppy IMAGE Same boot on Unicorn (A/B vs --floppy)\n"
+        "      --bios FILE       IBM 5150 8K BIOS on iron86 (FFFF:0000, Py86 map)\n"
         "      --no-ui           Headless (no SDL windows)\n"
         "      --game            Also open CGA in this process (default: use tdxview)\n"
         "      --no-sock         Do not listen on the agent UNIX socket\n"
@@ -76,6 +82,45 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         else if (std::strcmp(a, "--game") == 0)
         {
             out->game = true;
+        }
+        else if (std::strcmp(a, "--floppy") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->floppy = argv[++i];
+        }
+        else if (std::strncmp(a, "--floppy=", 9) == 0)
+        {
+            out->floppy = a + 9;
+        }
+        else if (std::strcmp(a, "--uc-floppy") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->uc_floppy = argv[++i];
+        }
+        else if (std::strncmp(a, "--uc-floppy=", 12) == 0)
+        {
+            out->uc_floppy = a + 12;
+        }
+        else if (std::strcmp(a, "--bios") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->bios = argv[++i];
+        }
+        else if (std::strncmp(a, "--bios=", 7) == 0)
+        {
+            out->bios = a + 7;
         }
         else if (std::strcmp(a, "--no-sock") == 0)
         {

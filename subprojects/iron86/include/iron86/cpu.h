@@ -122,6 +122,21 @@ public:
      */
     void set_bios(std::function<bool(cpu &, uint8_t)> fn);
 
+    /** @brief Optional port I/O (PPI/PIT/PIC). Default IN=FFh, OUT=nop. */
+    void set_io(std::function<uint8_t(uint16_t)> in, std::function<void(uint16_t, uint8_t)> out);
+
+    /** @brief Called after each instruction (PIT ticks). */
+    void set_after_step(std::function<void()> fn);
+
+    /**
+     * @brief Latch a hardware interrupt vector (PIC INTA result).
+     * Delivered at end of step if IF=1.
+     */
+    void raise_intr(uint8_t vector);
+
+    /** @brief Latch IRQ0 (vector 08h). */
+    void raise_irq0();
+
 private:
     uint8_t fetch8();
     uint16_t fetch16();
@@ -167,7 +182,7 @@ private:
     void op_string(uint8_t op);
     void op_loop(uint8_t kind);
     void op_les_lds(bool les);
-    uint8_t in8(uint16_t port) const;
+    uint8_t in8(uint16_t port);
     void out8(uint16_t port, uint8_t v);
 
     using handler = void (cpu::*)();
@@ -270,6 +285,11 @@ private:
     bool prefix_more_ = false;
 
     std::function<bool(cpu &, uint8_t)> bios_{};
+    std::function<uint8_t(uint16_t)> io_in_{};
+    std::function<void(uint16_t, uint8_t)> io_out_{};
+    std::function<void()> after_step_{};
+    bool intr_pending_ = false;
+    uint8_t intr_vec_ = 0;
     uint16_t seg_ov_ = 0xFFFF; /**< 0xFFFF = none */
     uint8_t rep_ = 0;
     std::unique_ptr<uint8_t[]> mem_;

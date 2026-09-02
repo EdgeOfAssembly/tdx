@@ -42,6 +42,8 @@ void cpu::reset()
     seg_ov_ = 0xFFFF;
     rep_ = 0;
     mr_ = {};
+    intr_pending_ = false;
+    intr_vec_ = 0;
 }
 
 uint32_t cpu::phys(uint16_t seg, uint16_t off)
@@ -118,6 +120,28 @@ void cpu::do_int(uint8_t vector)
 void cpu::set_bios(std::function<bool(cpu &, uint8_t)> fn)
 {
     bios_ = std::move(fn);
+}
+
+void cpu::set_io(std::function<uint8_t(uint16_t)> in, std::function<void(uint16_t, uint8_t)> out)
+{
+    io_in_ = std::move(in);
+    io_out_ = std::move(out);
+}
+
+void cpu::set_after_step(std::function<void()> fn)
+{
+    after_step_ = std::move(fn);
+}
+
+void cpu::raise_intr(uint8_t vector)
+{
+    intr_vec_ = vector;
+    intr_pending_ = true;
+}
+
+void cpu::raise_irq0()
+{
+    raise_intr(8);
 }
 
 void cpu::set_logic_flags(uint32_t res, unsigned size)
@@ -1029,14 +1053,21 @@ void cpu::op_les_lds(bool les)
     }
 }
 
-uint8_t cpu::in8(uint16_t /*port*/) const
+uint8_t cpu::in8(uint16_t port)
 {
-    /* Open bus: no 8250/PPI modelled yet. */
+    if (io_in_)
+    {
+        return io_in_(port);
+    }
     return 0xFF;
 }
 
-void cpu::out8(uint16_t /*port*/, uint8_t /*v*/)
+void cpu::out8(uint16_t port, uint8_t v)
 {
+    if (io_out_)
+    {
+        io_out_(port, v);
+    }
 }
 
 cpu::handler cpu::dispatch_[256]{};
@@ -1450,6 +1481,16 @@ bool cpu::step()
         last_op_ = fetch8();
         (this->*dispatch_[last_op_])();
     } while (prefix_more_ && !halted_);
+
+    if (after_step_)
+    {
+        after_step_();
+    }
+    if ((!halted_) && intr_pending_ && ((flags_ & k_flag_if) != 0))
+    {
+        intr_pending_ = false;
+        do_int(intr_vec_);
+    }
 
     return (last_op_ == 0xF4) || !halted_;
 }

@@ -333,6 +333,9 @@ static uint8_t fcb_read_records(dos_machine *m, uint8_t *fcb, uint16_t nrec, boo
     return 0;
 }
 
+static bool video_is_alpha(uint8_t mode);
+static void tty_putc(dos_machine *m, uint8_t ch);
+
 static void handle_int21(dos_machine *m)
 {
     const uint16_t ax = m->reg16(UC_X86_REG_AX);
@@ -415,6 +418,78 @@ static void handle_int21(dos_machine *m)
         }
         buf[n] = 0;
         m->write_dos_string(buf);
+        if (video_is_alpha(m->video_mode))
+        {
+            size_t i = 0;
+            for (i = 0; i < n; i++)
+            {
+                tty_putc(m, (uint8_t)buf[i]);
+            }
+        }
+        break;
+    }
+    case 0x0A:
+    {
+        /* Buffered input: DS:DX -> max, count, chars. Wait like INT 16 AH=00. */
+        uint8_t *buf = m->ptr_segoff(ds, dx);
+        const uint8_t max = (buf != nullptr) ? buf[0] : 0;
+        uint8_t n = (buf != nullptr) ? buf[1] : 0;
+        if ((buf == nullptr) || (max < 2u))
+        {
+            break;
+        }
+        if (n >= (uint8_t)(max - 1u))
+        {
+            n = (uint8_t)(max - 1u);
+        }
+        for (;;)
+        {
+            if (m->kbd.empty())
+            {
+                buf[1] = n;
+                m->wait_key = true;
+                rewind_software_int(m, 2);
+                break;
+            }
+            {
+                const dos_kbd_ev ev = m->kbd.front();
+                const uint8_t ch = ev.ascii;
+                m->kbd.pop_front();
+                if ((ch == 0x0Du) || (ch == 0x0Au))
+                {
+                    buf[1] = n;
+                    if (video_is_alpha(m->video_mode))
+                    {
+                        tty_putc(m, 0x0D);
+                        tty_putc(m, 0x0A);
+                    }
+                    break;
+                }
+                if ((ch == 0x08u) || (ch == 0x7Fu))
+                {
+                    if (n > 0)
+                    {
+                        n--;
+                        if (video_is_alpha(m->video_mode))
+                        {
+                            tty_putc(m, 0x08);
+                            tty_putc(m, (uint8_t)' ');
+                            tty_putc(m, 0x08);
+                        }
+                    }
+                    continue;
+                }
+                if ((ch >= 32u) && (n < (uint8_t)(max - 1u)))
+                {
+                    buf[2u + n] = ch;
+                    n++;
+                    if (video_is_alpha(m->video_mode))
+                    {
+                        tty_putc(m, ch);
+                    }
+                }
+            }
+        }
         break;
     }
     case 0x0B:
@@ -1223,8 +1298,70 @@ void dos_machine::handle_intr(uint32_t intno)
         set_reg16(UC_X86_REG_AX, 640);
         break;
     case 0x13:
-        set_cf(true);
-        set_reg16(UC_X86_REG_AX, 0x0100);
+        if (floppy_img.size() < 512u)
+        {
+            set_cf(true);
+            set_reg16(UC_X86_REG_AX, 0x0100);
+            break;
+        }
+        {
+            const uint16_t ax = reg16(UC_X86_REG_AX);
+            const uint16_t cx = reg16(UC_X86_REG_CX);
+            const uint16_t dx = reg16(UC_X86_REG_DX);
+            const uint16_t es = reg16(UC_X86_REG_ES);
+            const uint16_t bx = reg16(UC_X86_REG_BX);
+            const uint8_t ah = (uint8_t)(ax >> 8);
+            const uint8_t al = (uint8_t)(ax & 0xFFu);
+            if (ah == 0x00)
+            {
+                set_reg16(UC_X86_REG_AX, (uint16_t)(ax & 0x00FFu));
+                set_cf(false);
+                break;
+            }
+            if (ah == 0x02)
+            {
+                const uint8_t nsec = (al == 0) ? 1 : al;
+                const uint8_t sec = (uint8_t)(cx & 0x3Fu);
+                const uint8_t cyl = (uint8_t)(cx >> 8);
+                const uint8_t head = (uint8_t)(dx >> 8);
+                uint32_t lba = 0;
+                uint32_t off = 0;
+                uint32_t bytes = 0;
+                uint8_t *dst = nullptr;
+                uint32_t i = 0;
+                if (sec == 0)
+                {
+                    set_reg16(UC_X86_REG_AX, 0x0400);
+                    set_cf(true);
+                    break;
+                }
+                lba = (uint32_t)((uint32_t)cyl * 2u + head) * 9u + (uint32_t)(sec - 1u);
+                off = lba * 512u;
+                bytes = (uint32_t)nsec * 512u;
+                if (off + bytes > floppy_img.size())
+                {
+                    set_reg16(UC_X86_REG_AX, 0x0400);
+                    set_cf(true);
+                    break;
+                }
+                dst = ptr_segoff(es, bx);
+                if (dst == nullptr)
+                {
+                    set_reg16(UC_X86_REG_AX, 0x0400);
+                    set_cf(true);
+                    break;
+                }
+                for (i = 0; i < bytes; i++)
+                {
+                    dst[i] = floppy_img[off + i];
+                }
+                set_reg16(UC_X86_REG_AX, nsec);
+                set_cf(false);
+                break;
+            }
+            set_reg16(UC_X86_REG_AX, 0x0100);
+            set_cf(true);
+        }
         break;
     case 0x15:
         set_cf(true);

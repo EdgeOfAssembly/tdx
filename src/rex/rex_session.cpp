@@ -29,6 +29,9 @@ struct rex_session
     std::unordered_map<uint64_t, std::string> syms;
     std::string load_path;
     std::string load_cwd;
+    bool floppy = false;
+    bool floppy_uc = false;
+    bool bios = false;
     int ui_cmd = 0;
     uint32_t run_delay_ms = 0;
 };
@@ -96,6 +99,52 @@ rex_status rex_session_load(rex_session *s, const char *path, const char *cwd)
     return s->dos->load_path(path, cwd);
 }
 
+rex_status rex_session_load_floppy(rex_session *s, const char *image)
+{
+    if ((s == nullptr) || (image == nullptr))
+    {
+        return REX_ERR_ARG;
+    }
+    s->dos = std::make_unique<dos_machine>();
+    s->arch = REX_ARCH_I8086;
+    s->load_path = image;
+    s->load_cwd.clear();
+    s->floppy = true;
+    s->floppy_uc = false;
+    return s->dos->load_floppy(image);
+}
+
+rex_status rex_session_load_floppy_uc(rex_session *s, const char *image)
+{
+    if ((s == nullptr) || (image == nullptr))
+    {
+        return REX_ERR_ARG;
+    }
+    s->dos = std::make_unique<dos_machine>();
+    s->arch = REX_ARCH_I8086;
+    s->load_path = image;
+    s->load_cwd.clear();
+    s->floppy = false;
+    s->floppy_uc = true;
+    return s->dos->load_floppy_uc(image);
+}
+
+rex_status rex_session_load_bios(rex_session *s, const char *path)
+{
+    if ((s == nullptr) || (path == nullptr))
+    {
+        return REX_ERR_ARG;
+    }
+    s->dos = std::make_unique<dos_machine>();
+    s->arch = REX_ARCH_I8086;
+    s->load_path = path;
+    s->load_cwd.clear();
+    s->floppy = false;
+    s->floppy_uc = false;
+    s->bios = true;
+    return s->dos->load_bios_5150(path);
+}
+
 rex_status rex_session_reset(rex_session *s)
 {
     if ((s == nullptr) || s->load_path.empty() || (!s->dos))
@@ -106,7 +155,11 @@ rex_status rex_session_reset(rex_session *s)
     const auto bp_by_id = s->dos->bp_by_id;
     const uint32_t next_id = s->dos->next_bp_id;
     const char *cwd = s->load_cwd.empty() ? nullptr : s->load_cwd.c_str();
-    const rex_status st = s->dos->load_path(s->load_path.c_str(), cwd);
+    const rex_status st =
+        s->bios ? s->dos->load_bios_5150(s->load_path.c_str())
+                : (s->floppy_uc ? s->dos->load_floppy_uc(s->load_path.c_str())
+                                : (s->floppy ? s->dos->load_floppy(s->load_path.c_str())
+                                             : s->dos->load_path(s->load_path.c_str(), cwd)));
     if (st != REX_OK)
     {
         return st;
