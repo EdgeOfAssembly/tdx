@@ -12,12 +12,17 @@
 #include <unicorn/x86.h>
 
 #include <cassert>
+#include <cctype>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <deque>
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include <stdlib.h>
@@ -25,6 +30,69 @@
 namespace
 {
 constexpr uint64_t k_ram = static_cast<uint64_t>(DOS_RAM_SIZE);
+
+std::string norm_insn_pat(const char *s)
+{
+    std::string in = (s != nullptr) ? s : "";
+    std::istringstream is(in);
+    std::string tok;
+    std::vector<std::string> ts;
+    size_t i = 0;
+    for (i = 0; i < in.size(); i++)
+    {
+        in[i] = (char)std::tolower((unsigned char)in[i]);
+    }
+    is.clear();
+    is.str(in);
+    while (is >> tok)
+    {
+        ts.push_back(tok);
+    }
+    if (ts.empty())
+    {
+        return "";
+    }
+    if (ts.size() == 1)
+    {
+        return ts[0];
+    }
+    {
+        std::string op = ts[1];
+        char *end = nullptr;
+        unsigned long v = 0;
+        if ((!op.empty()) && ((op.back() == 'h') || (op.back() == 'H')))
+        {
+            op.pop_back();
+        }
+        if ((op.size() >= 2) && (op[0] == '0') && ((op[1] == 'x') || (op[1] == 'X')))
+        {
+            op = op.substr(2);
+        }
+        v = std::strtoul(op.c_str(), &end, 16);
+        if ((end != op.c_str()) && (end != nullptr) && (*end == '\0'))
+        {
+            char buf[80];
+            std::snprintf(buf, sizeof(buf), "%s 0x%lx", ts[0].c_str(), v);
+            return std::string(buf);
+        }
+    }
+    return ts[0] + " " + ts[1];
+}
+
+bool insn_text_match(const char *text, const std::string &needle)
+{
+    const std::string hay = norm_insn_pat(text);
+    if (hay == needle)
+    {
+        return true;
+    }
+    if ((hay.size() > needle.size()) && (hay.compare(0, needle.size(), needle) == 0) &&
+        (hay[needle.size()] == ' '))
+    {
+        return true;
+    }
+    return false;
+}
 
 void on_intr(uc_engine *uc, uint32_t intno, void *user)
 {
@@ -81,23 +149,34 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
             m->intr_inhibit = 1u;
         }
     }
-    if (m->bps.find(address) == m->bps.end())
     {
-        return;
+        const bool exec_hit = (m->bps.find(address) != m->bps.end());
+        if ((!exec_hit) && m->insn_bps.empty())
+        {
+            return;
+        }
+        if (address == m->run_ignore_bp)
+        {
+            return;
+        }
+        if (m->skip_bp)
+        {
+            m->skip_bp = false;
+            return;
+        }
+        if ((!exec_hit) && (!m->hit_insn_bp(address)))
+        {
+            return;
+        }
+        if (exec_hit)
+        {
+            m->consume_exec_bp(address);
+        }
+        m->at_break = true;
+        m->skip_bp = true; /* next continue executes this insn */
+        m->last_stop = REX_STOP_BREAK;
+        uc_emu_stop(uc);
     }
-    if (address == m->run_ignore_bp)
-    {
-        return;
-    }
-    if (m->skip_bp)
-    {
-        m->skip_bp = false;
-        return;
-    }
-    m->at_break = true;
-    m->skip_bp = true; /* next continue executes this insn */
-    m->last_stop = REX_STOP_BREAK;
-    uc_emu_stop(uc);
 }
 
 void on_write(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value,
@@ -967,14 +1046,24 @@ rex_status dos_machine::bp_add(uint64_t linear, uint32_t *id, uint16_t seg, uint
 rex_status dos_machine::bp_del(uint32_t id)
 {
     auto it = bp_by_id.find(id);
-    if (it == bp_by_id.end())
+    size_t i = 0;
+    if (it != bp_by_id.end())
     {
-        return REX_ERR_ARG;
+        bps.erase(it->second);
+        bp_by_id.erase(it);
+        bp_segoff.erase(id);
+        bp_remain.erase(id);
+        return REX_OK;
     }
-    bps.erase(it->second);
-    bp_by_id.erase(it);
-    bp_segoff.erase(id);
-    return REX_OK;
+    for (i = 0; i < insn_bps.size(); i++)
+    {
+        if (insn_bps[i].id == id)
+        {
+            insn_bps.erase(insn_bps.begin() + static_cast<std::ptrdiff_t>(i));
+            return REX_OK;
+        }
+    }
+    return REX_ERR_ARG;
 }
 
 void dos_machine::bp_clear(void)
@@ -982,6 +1071,102 @@ void dos_machine::bp_clear(void)
     bps.clear();
     bp_by_id.clear();
     bp_segoff.clear();
+    bp_remain.clear();
+    int_bps.clear();
+    insn_bps.clear();
+    skip_int_bp = false;
+}
+
+rex_status dos_machine::bp_insn_add(const char *pat, uint32_t hits, uint32_t *id)
+{
+    insn_bp_ent e{};
+    if ((pat == nullptr) || (pat[0] == '\0'))
+    {
+        return REX_ERR_ARG;
+    }
+    e.needle = norm_insn_pat(pat);
+    if (e.needle.empty())
+    {
+        return REX_ERR_ARG;
+    }
+    e.id = next_bp_id++;
+    e.remain = hits;
+    insn_bps.push_back(e);
+    if (id != nullptr)
+    {
+        *id = e.id;
+    }
+    return REX_OK;
+}
+
+void dos_machine::consume_exec_bp(uint64_t lin)
+{
+    auto it = bps.find(lin);
+    uint32_t id = 0;
+    if (it == bps.end())
+    {
+        return;
+    }
+    id = it->second;
+    {
+        auto rit = bp_remain.find(id);
+        if (rit == bp_remain.end())
+        {
+            return;
+        }
+        if (rit->second == 1u)
+        {
+            (void)bp_del(id);
+        }
+        else if (rit->second > 1u)
+        {
+            rit->second--;
+        }
+    }
+}
+
+bool dos_machine::hit_insn_bp(uint64_t lin)
+{
+    std::string text;
+    size_t i = 0;
+    if (insn_bps.empty())
+    {
+        return false;
+    }
+    {
+        auto dit = decode.find(lin);
+        if (dit != decode.end())
+        {
+            text = dit->second.text;
+        }
+        else
+        {
+            rex_insn ins{};
+            size_t n = 0;
+            if ((dos_machine_disasm(this, lin, &ins, 1, &n) != REX_OK) || (n == 0))
+            {
+                return false;
+            }
+            text = ins.text;
+        }
+    }
+    for (i = 0; i < insn_bps.size(); i++)
+    {
+        if (!insn_text_match(text.c_str(), insn_bps[i].needle))
+        {
+            continue;
+        }
+        if (insn_bps[i].remain == 1u)
+        {
+            insn_bps.erase(insn_bps.begin() + static_cast<std::ptrdiff_t>(i));
+        }
+        else if (insn_bps[i].remain > 1u)
+        {
+            insn_bps[i].remain--;
+        }
+        return true;
+    }
+    return false;
 }
 
 void dos_machine::vcr_seed(void)

@@ -199,6 +199,45 @@ REX_API size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap);
 REX_API rex_status rex_bp_int(rex_session *s, uint8_t intno);
 REX_API rex_status rex_bp_int_del(rex_session *s, uint8_t intno);
 
+/**
+ * @brief BPINT with a hit count.
+ *
+ * @param hits 0 = every INT @p intno, 1 = first only, N = next N then auto-clear.
+ */
+REX_API rex_status rex_bp_int_hits(rex_session *s, uint8_t intno, uint32_t hits);
+
+/** One BPINT entry for agents (`remain` 0 = every). */
+struct rex_int_bp
+{
+    uint8_t intno;
+    uint32_t remain;
+};
+
+REX_API size_t rex_int_bp_list(const rex_session *s, rex_int_bp *out, size_t cap);
+
+/**
+ * @brief Break when CS:IP matches Capstone text @p pat (any instruction).
+ *
+ * @param pat  e.g. `"int 0x10"`, `"int 10"`, `"call"`, `"out"`. Case-insensitive.
+ *             Bare numbers are hex (DOS): `"int 10"` is INT 10h.
+ * @param hits 0 = every match, 1 = first only, N = next N then auto-clear.
+ * @param[out] id Optional assigned id (same space as exec BPs; `bpdel` works).
+ */
+REX_API rex_status rex_bp_insn(rex_session *s, const char *pat, uint32_t hits, uint32_t *id);
+
+/** One mnemonic/opcode breakpoint. */
+struct rex_insn_bp
+{
+    uint32_t id;
+    uint32_t remain;
+    char text[96];
+};
+
+REX_API size_t rex_insn_bp_list(const rex_session *s, rex_insn_bp *out, size_t cap);
+
+/** Set remaining hits on an exec or insn BP id (0 = every). */
+REX_API rex_status rex_bp_set_hits(rex_session *s, uint32_t id, uint32_t hits);
+
 /** Load a TSV/MAP symbol file (`seg:off\\tname` or `linear\\tname`). */
 REX_API rex_status rex_symbols_load(rex_session *s, const char *path);
 REX_API const char *rex_symbols_lookup(const rex_session *s, uint64_t linear);

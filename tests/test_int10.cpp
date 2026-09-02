@@ -85,3 +85,43 @@ TEST_CASE("BPINT 10 stops on the CD 10 before the handler")
     REQUIRE(r.ip == 0x010B);
     rex_session_destroy(s);
 }
+
+TEST_CASE("BPINT 10 once stops only on the first INT 10")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    rex_int_bp ib[4]{};
+    REQUIRE(rex_session_load(s, "tests/fixtures/int10.com", nullptr) == REX_OK);
+    REQUIRE(rex_bp_int_hits(s, 0x10, 1) == REX_OK);
+    REQUIRE(rex_int_bp_list(s, ib, 4) == 1);
+    REQUIRE(ib[0].intno == 0x10);
+    REQUIRE(ib[0].remain == 1);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_BREAK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ip == 0x0103);
+    REQUIRE(rex_int_bp_list(s, ib, 4) == 0);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    rex_session_destroy(s);
+}
+
+TEST_CASE("bpinsn int 10 once matches Capstone text and auto-clears")
+{
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 r{};
+    rex_insn_bp ib[4]{};
+    uint32_t id = 0;
+    REQUIRE(rex_session_load(s, "tests/fixtures/int10.com", nullptr) == REX_OK);
+    REQUIRE(rex_bp_insn(s, "int 10", 1, &id) == REX_OK);
+    REQUIRE(id != 0);
+    REQUIRE(rex_insn_bp_list(s, ib, 4) == 1);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_stop_reason(s) == REX_STOP_BREAK);
+    rex_session_get_regs_i8086(s, &r);
+    REQUIRE(r.ip == 0x0103);
+    REQUIRE(rex_insn_bp_list(s, ib, 4) == 0);
+    REQUIRE(rex_session_run(s, 10000) == REX_OK);
+    REQUIRE(rex_session_halted(s));
+    rex_session_destroy(s);
+}

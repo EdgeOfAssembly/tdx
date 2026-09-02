@@ -52,9 +52,9 @@ TEST_CASE("bp segoff is preserved in rex_bp_list")
     rex_session_destroy(s);
 }
 
-TEST_CASE("rex_version is 0.7")
+TEST_CASE("rex_version is 0.8")
 {
-    REQUIRE(std::string(rex_version()) == "0.7");
+    REQUIRE(std::string(rex_version()) == "0.8");
 }
 
 TEST_CASE("F9 run delay nudges in 5ms steps and will not go below 0")

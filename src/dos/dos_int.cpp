@@ -1127,15 +1127,24 @@ static void handle_int16(dos_machine *m)
 
 void dos_machine::handle_intr(uint32_t intno)
 {
-    if (int_bps.find((uint8_t)intno) != int_bps.end())
     {
-        if (!skip_int_bp)
+        auto it = int_bps.find((uint8_t)intno);
+        const bool armed = (it != int_bps.end());
+        if (armed && (!skip_int_bp))
         {
             const uint16_t ip = reg16(UC_X86_REG_IP);
             set_reg16(UC_X86_REG_IP, (uint16_t)(ip - 2u));
             at_break = true;
             skip_int_bp = true;
             last_stop = REX_STOP_BREAK;
+            if (it->second == 1u)
+            {
+                int_bps.erase(it);
+            }
+            else if (it->second > 1u)
+            {
+                it->second--;
+            }
             uc_emu_stop(uc);
             rex_logf(REX_LOG_INFO, "BPINT %02X AX=%04X @ %04X:%04X", (unsigned)intno,
                      reg16(UC_X86_REG_AX), reg16(UC_X86_REG_CS), (uint16_t)(ip - 2u));

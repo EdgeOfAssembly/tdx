@@ -459,12 +459,17 @@ bool rex_bp_at(const rex_session *s, uint64_t linear)
 
 rex_status rex_bp_int(rex_session *s, uint8_t intno)
 {
+    return rex_bp_int_hits(s, intno, 0);
+}
+
+rex_status rex_bp_int_hits(rex_session *s, uint8_t intno, uint32_t hits)
+{
     dos_machine *m = need_dos(s);
     if (m == nullptr)
     {
         return REX_ERR_ARG;
     }
-    m->int_bps.insert(intno);
+    m->int_bps[intno] = hits;
     return REX_OK;
 }
 
@@ -477,6 +482,83 @@ rex_status rex_bp_int_del(rex_session *s, uint8_t intno)
     }
     m->int_bps.erase(intno);
     return REX_OK;
+}
+
+size_t rex_int_bp_list(const rex_session *s, rex_int_bp *out, size_t cap)
+{
+    const dos_machine *m = need_dos_c(s);
+    size_t n = 0;
+    if ((m == nullptr) || (out == nullptr) || (cap == 0))
+    {
+        return 0;
+    }
+    for (const auto &kv : m->int_bps)
+    {
+        if (n >= cap)
+        {
+            break;
+        }
+        out[n].intno = kv.first;
+        out[n].remain = kv.second;
+        n++;
+    }
+    return n;
+}
+
+rex_status rex_bp_insn(rex_session *s, const char *pat, uint32_t hits, uint32_t *id)
+{
+    dos_machine *m = need_dos(s);
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    return m->bp_insn_add(pat, hits, id);
+}
+
+size_t rex_insn_bp_list(const rex_session *s, rex_insn_bp *out, size_t cap)
+{
+    const dos_machine *m = need_dos_c(s);
+    size_t n = 0;
+    if ((m == nullptr) || (out == nullptr) || (cap == 0))
+    {
+        return 0;
+    }
+    for (const auto &e : m->insn_bps)
+    {
+        if (n >= cap)
+        {
+            break;
+        }
+        out[n].id = e.id;
+        out[n].remain = e.remain;
+        std::snprintf(out[n].text, sizeof(out[n].text), "%s", e.needle.c_str());
+        n++;
+    }
+    return n;
+}
+
+rex_status rex_bp_set_hits(rex_session *s, uint32_t id, uint32_t hits)
+{
+    dos_machine *m = need_dos(s);
+    size_t i = 0;
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    if (m->bp_by_id.find(id) != m->bp_by_id.end())
+    {
+        m->bp_remain[id] = hits;
+        return REX_OK;
+    }
+    for (i = 0; i < m->insn_bps.size(); i++)
+    {
+        if (m->insn_bps[i].id == id)
+        {
+            m->insn_bps[i].remain = hits;
+            return REX_OK;
+        }
+    }
+    return REX_ERR_ARG;
 }
 
 size_t rex_bp_list(const rex_session *s, rex_bp *out, size_t cap)

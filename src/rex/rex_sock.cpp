@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cassert>
+#include <cctype>
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>
@@ -365,6 +366,34 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             resp["id"] = id;
             resp["linear"] = lin;
         }
+        {
+            uint32_t hits = req.value("hits", 0u);
+            std::string once = req.value("once", "");
+            if (once.empty() && req.contains("_rest"))
+            {
+                std::istringstream is2(req["_rest"].get<std::string>());
+                std::string a;
+                std::string b;
+                is2 >> a >> b;
+                if ((b == "once") || (a == "once"))
+                {
+                    hits = 1;
+                }
+                else if (!b.empty() && (b != "every"))
+                {
+                    hits = (uint32_t)std::strtoul(b.c_str(), nullptr, 0);
+                }
+            }
+            if (req.value("once", false) == true)
+            {
+                hits = 1;
+            }
+            if (hits != 0)
+            {
+                rex_bp_set_hits(s, id, hits);
+            }
+            resp["hits"] = hits;
+        }
     }
     else if ((cmd == "bpdel") || (cmd == "bp_del"))
     {
@@ -381,24 +410,146 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     else if (cmd == "bplist")
     {
+        rex_bp bps[64];
+        rex_int_bp ib[32];
+        rex_insn_bp inb[32];
+        size_t nb = rex_bp_list(s, bps, 64);
+        size_t ni = rex_int_bp_list(s, ib, 32);
+        size_t nn = rex_insn_bp_list(s, inb, 32);
+        json arr = json::array();
+        json iarr = json::array();
+        json narr = json::array();
+        size_t i = 0;
+        for (i = 0; i < nb; i++)
+        {
+            json e;
+            e["id"] = bps[i].id;
+            e["seg"] = bps[i].seg;
+            e["off"] = bps[i].off;
+            e["linear"] = bps[i].linear;
+            arr.push_back(e);
+        }
+        for (i = 0; i < ni; i++)
+        {
+            json e;
+            e["int"] = ib[i].intno;
+            e["remain"] = ib[i].remain;
+            iarr.push_back(e);
+        }
+        for (i = 0; i < nn; i++)
+        {
+            json e;
+            e["id"] = inb[i].id;
+            e["remain"] = inb[i].remain;
+            e["pat"] = inb[i].text;
+            narr.push_back(e);
+        }
         resp["count"] = rex_bp_count(s);
+        resp["bps"] = arr;
+        resp["int_bps"] = iarr;
+        resp["insn_bps"] = narr;
     }
     else if ((cmd == "bpint") || (cmd == "bp_int"))
     {
-        unsigned n = req.value("int", 0);
-        if ((n == 0) && req.contains("_rest"))
+        unsigned n = 0;
+        uint32_t hits = req.value("hits", 0u);
+        bool have = req.contains("int");
+        if (have)
         {
-            n = (unsigned)std::strtoul(req["_rest"].get<std::string>().c_str(), nullptr, 0);
+            n = req["int"].get<unsigned>();
         }
-        if (n > 255u)
+        if ((!have) && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            std::string a;
+            std::string b;
+            is >> a >> b;
+            n = (unsigned)std::strtoul(a.c_str(), nullptr, 16);
+            have = !a.empty();
+            if ((b == "once") || (b == "1"))
+            {
+                hits = 1;
+            }
+            else if ((b == "every") || (b == "0") || b.empty())
+            {
+                hits = 0;
+            }
+            else
+            {
+                hits = (uint32_t)std::strtoul(b.c_str(), nullptr, 0);
+            }
+        }
+        if (req.value("once", false) == true)
+        {
+            hits = 1;
+        }
+        if ((!have) || (n > 255u))
         {
             resp["ok"] = false;
             resp["error"] = "bad int";
         }
         else
         {
-            rex_bp_int(s, (uint8_t)n);
+            rex_bp_int_hits(s, (uint8_t)n, hits);
             resp["bpint"] = n;
+            resp["hits"] = hits;
+        }
+    }
+    else if ((cmd == "bpinsn") || (cmd == "bp_insn"))
+    {
+        std::string pat = req.value("pat", "");
+        uint32_t hits = req.value("hits", 0u);
+        uint32_t id = 0;
+        if (pat.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            std::vector<std::string> ts;
+            std::string t;
+            while (is >> t)
+            {
+                ts.push_back(t);
+            }
+            if ((!ts.empty()) &&
+                ((ts.back() == "once") || (ts.back() == "every") ||
+                 (std::isdigit((unsigned char)ts.back()[0]) != 0)))
+            {
+                if (ts.back() == "once")
+                {
+                    hits = 1;
+                }
+                else if (ts.back() == "every")
+                {
+                    hits = 0;
+                }
+                else
+                {
+                    hits = (uint32_t)std::strtoul(ts.back().c_str(), nullptr, 0);
+                }
+                ts.pop_back();
+            }
+            for (const auto &w : ts)
+            {
+                if (!pat.empty())
+                {
+                    pat += " ";
+                }
+                pat += w;
+            }
+        }
+        if (req.value("once", false) == true)
+        {
+            hits = 1;
+        }
+        if (rex_bp_insn(s, pat.c_str(), hits, &id) != REX_OK)
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad pat";
+        }
+        else
+        {
+            resp["id"] = id;
+            resp["pat"] = pat;
+            resp["hits"] = hits;
         }
     }
     else if ((cmd == "cga") || (cmd == "video") || (cmd == "frame"))
@@ -584,7 +735,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step over run stop pause unpause delay faster slower reset regs disasm mem bp bpdel bplist shot key nav status cga ping quit";
+            "step over run stop pause unpause delay faster slower reset regs disasm mem bp bpint bpinsn bpdel bplist shot key nav status cga ping quit";
     }
     else
     {

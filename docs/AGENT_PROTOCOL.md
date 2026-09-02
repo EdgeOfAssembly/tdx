@@ -20,7 +20,13 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"disasm"}
 {"cmd":"mem","addr":"B800:0000","len":64}
 {"cmd":"bp","addr":"1010:001A"}
+{"cmd":"bp","addr":"1970:4969","hits":1}
+{"cmd":"bpint","int":16}
+{"cmd":"bpint","int":16,"hits":1}
+{"cmd":"bpinsn","pat":"int 10","hits":0}
+{"cmd":"bpinsn","pat":"call","hits":1}
 {"cmd":"bpdel","id":1}
+{"cmd":"bplist"}
 {"cmd":"shot"}
 {"cmd":"key","key":"Left"}
 {"cmd":"status"}
@@ -34,6 +40,14 @@ Line-oriented. Either a JSON object or a bare command word.
 by 5 ms (same as CPU `+` / `-`). `key` is DOS INT 16 and **starts** F9 so the
 guest actually consumes it. `nav` is the CPU VCR (`Up`/`Down`/`Home`/`End`/
 `PgUp`/`PgDn`) — Down steps **over** CALL/INT/REP/LOOP.
+
+Breakpoints pause F9 (`stop` = breakpoint). Agents may set:
+
+- `bp 1970:4969` — this CS:IP (optional `"hits":1` = first only)
+- `bpint 10` — every `INT 10h`; `bpint 10 once` / `"hits":1` = first only
+- `bpinsn int 10` / `bpinsn call` / `bpinsn out` — any instruction whose
+  Capstone text matches (hex operands; `"int 10"` is INT 10h)
+- `bplist` — exec + INT + insn lists; `bpdel <id>` removes exec/insn ids
 
 Agents drive **tdx** (`/tmp/tdx.sock`) and **tdxview** (`/tmp/tdxview.sock`)
 directly. Xmux is optional (human spectator only).

@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.8"
+VERSION = "0.9"
 
 
 def usage() -> None:
@@ -26,10 +26,15 @@ def usage() -> None:
 Commands:
   step | over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | quit | help
   mem <seg:off> [len]
-  bp <seg:off>
-  bpint <n>          break on INT n (hex), e.g. bpint 10
+  bp <seg:off> [once|every|N]
+                     exec BP at CS:IP; once = first hit only
+  bpint <n> [once|every|N]
+                     INT n (hex); default every, once = first only
+  bpinsn <pat> [once|every|N]
+                     any insn matching Capstone text, e.g. bpinsn int 10
+                     bpinsn call   bpinsn out
   bpdel <id>
-  bplist
+  bplist             exec + INT + insn breakpoints
   shot [path]        screenshot; stdout = versioned path (Xmux-style timestamp)
   key <key>          DOS INT 16 (starts F9)
   nav <Up|Down|Home|End|PgUp|PgDn>
@@ -49,6 +54,16 @@ tdxctl """
     )
 
 
+def _hits_token(tok: str) -> int:
+    """once=1, every=0, else integer remaining hits."""
+    low = tok.lower()
+    if low == "once":
+        return 1
+    if low == "every":
+        return 0
+    return int(tok, 0)
+
+
 def build_line(cmd: str, rest: list[str]) -> str:
     """Turn argv into a JSON command object."""
     if cmd in {"mem"} and rest:
@@ -57,9 +72,22 @@ def build_line(cmd: str, rest: list[str]) -> str:
             obj["len"] = int(rest[1], 0)
         return json.dumps(obj)
     if cmd in {"bp", "bp_set"} and rest:
-        return json.dumps({"cmd": "bp", "addr": rest[0]})
+        obj: dict[str, object] = {"cmd": "bp", "addr": rest[0]}
+        if len(rest) > 1:
+            obj["hits"] = _hits_token(rest[1])
+        return json.dumps(obj)
     if cmd in {"bpint", "bp_int"} and rest:
-        return json.dumps({"cmd": "bpint", "int": int(rest[0], 16)})
+        obj = {"cmd": "bpint", "int": int(rest[0], 16)}
+        if len(rest) > 1:
+            obj["hits"] = _hits_token(rest[1])
+        return json.dumps(obj)
+    if cmd in {"bpinsn", "bp_insn"} and rest:
+        toks = list(rest)
+        hits = 0
+        if toks and toks[-1].lower() in {"once", "every"}:
+            hits = _hits_token(toks[-1])
+            toks = toks[:-1]
+        return json.dumps({"cmd": "bpinsn", "pat": " ".join(toks), "hits": hits})
     if cmd in {"bpdel", "bp_del"} and rest:
         return json.dumps({"cmd": "bpdel", "id": int(rest[0], 0)})
     if cmd == "key" and rest:

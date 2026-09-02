@@ -112,8 +112,17 @@ struct dos_machine
     std::unordered_map<uint64_t, uint32_t> bps;
     std::unordered_map<uint32_t, uint64_t> bp_by_id;
     std::unordered_map<uint32_t, uint32_t> bp_segoff; /**< id -> (seg<<16)|off */
-    std::unordered_set<uint8_t> int_bps;
+    std::unordered_map<uint32_t, uint32_t> bp_remain; /**< id -> hits left; 0/missing = every */
+    /** INT n → remaining hits; 0 = every. */
+    std::unordered_map<uint8_t, uint32_t> int_bps;
     bool skip_int_bp = false;
+    struct insn_bp_ent
+    {
+        uint32_t id = 0;
+        uint32_t remain = 0; /**< 0 = every */
+        std::string needle;
+    };
+    std::vector<insn_bp_ent> insn_bps;
 
     dos_file files[DOS_MAX_FILES]{};
     std::deque<dos_kbd_ev> kbd;
@@ -163,6 +172,9 @@ struct dos_machine
     rex_status bp_add(uint64_t linear, uint32_t *id, uint16_t seg, uint16_t off);
     rex_status bp_del(uint32_t id);
     void bp_clear(void);
+    rex_status bp_insn_add(const char *pat, uint32_t hits, uint32_t *id);
+    bool hit_insn_bp(uint64_t lin);
+    void consume_exec_bp(uint64_t lin);
 
     void rebuild_decode(void);
     void pit_poll(void);
