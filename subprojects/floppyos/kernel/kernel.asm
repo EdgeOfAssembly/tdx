@@ -10,12 +10,19 @@ HEADS           equ 2
 SB_SEG          equ 0x0900
 MAX_HANDLES     equ 4
 HANDLE_BASE     equ 5
-ROOT_ENTRIES    equ 16
+ROOT_ENTRIES    equ 32
 ARENA_FIRST     equ 0x3000
 ARENA_TOP       equ 0xA000
 
 kernel_entry:
         mov     [cs:boot_drive], dl
+        mov     al, dl
+        cmp     al, 1
+        jbe     .drvok
+        xor     al, al
+.drvok: mov     [cs:cur_drive], al
+        mov     [cs:io_drive], al
+        mov     byte [cs:fs_drive], 0xFF
         cli
         cld
         mov     ax, cs
@@ -257,7 +264,18 @@ fs_init:
         push    di
         push    ds
         push    es
-        mov     byte [cs:fs_ok], 0
+        mov     al, [cs:io_drive]
+        cmp     byte [cs:fs_ok], 1
+        jne     .need
+        cmp     al, [cs:fs_drive]
+        je      .fd
+.need:  mov     byte [cs:fs_ok], 0
+        mov     [cs:fs_drive], al
+        cmp     al, 1
+        je      .b
+        cmp     al, 0
+        jne     .fd
+        ; A: superblock already at 0900:0 (boot)
         mov     ax, SB_SEG
         mov     es, ax
         cmp     word [es:0], 0x4C46
@@ -266,6 +284,8 @@ fs_init:
         mov     [cs:root_lba], ax
         test    ax, ax
         jz      .fd
+        mov     ax, [es:70]
+        mov     [cs:root_secs], ax
         mov     ax, SB_SEG
         mov     ds, ax
         mov     si, 72
@@ -274,14 +294,52 @@ fs_init:
         mov     di, init_fcb
         mov     cx, 11
         rep     movsb
-        push    cs
-        pop     ds
-        push    cs
+        jmp     .load_root
+.b:     push    cs
         pop     es
-        mov     bx, root_buf
-        mov     ax, [cs:root_lba]
+        mov     bx, sb_b
+        mov     ax, 1                   ; LBA 1 → CHS 0/0/2
         call    disk_read
         jc      .fd
+        cmp     word [cs:sb_b], 0x4C46
+        jne     .fd
+        mov     ax, [cs:sb_b+66]
+        mov     [cs:root_lba], ax
+        test    ax, ax
+        jz      .fd
+        mov     ax, [cs:sb_b+70]
+        mov     [cs:root_secs], ax
+.load_root:
+        mov     ax, [cs:root_secs]
+        test    ax, ax
+        jnz     .rs
+        mov     ax, 1
+.rs:    cmp     ax, 2
+        jbe     .rs2
+        mov     ax, 2
+.rs2:   mov     [cs:root_secs], ax
+        push    cs
+        pop     es
+        push    cs
+        pop     ds
+        mov     di, root_buf
+        xor     ax, ax
+        mov     cx, 512                 ; 1024-byte root
+        rep     stosw
+        mov     cx, [cs:root_secs]
+        mov     bx, root_buf
+        mov     ax, [cs:root_lba]
+.rl:    push    cx
+        push    ax
+        push    bx
+        call    disk_read
+        pop     bx
+        pop     ax
+        pop     cx
+        jc      .fd
+        inc     ax
+        add     bx, 512
+        loop    .rl
         mov     byte [cs:fs_ok], 1
 .fd:    pop     es
         pop     ds
@@ -414,7 +472,7 @@ enter_com:
         xor     dx, dx
         xor     si, si
         xor     di, di
-        mov     dl, [cs:boot_drive]
+        mov     dl, [cs:cur_drive]
         retf
 
 load_com_fallback:
@@ -518,7 +576,7 @@ disk_read:
         div     bx
         mov     ch, al
         mov     dh, dl
-        mov     dl, [cs:boot_drive]
+        mov     dl, [cs:io_drive]
         mov     bx, [cs:dr_bx]
         mov     ax, 0x0201
         int     0x13
@@ -574,7 +632,7 @@ enter_preloaded_com:
         xor     bx, bx
         xor     cx, cx
         xor     dx, dx
-        mov     dl, [cs:boot_drive]
+        mov     dl, [cs:cur_drive]
         retf
 
 
@@ -608,6 +666,8 @@ int21_handler:
         je      i0a
         cmp     ah, 0x0B
         je      i0b
+        cmp     ah, 0x0E
+        je      i0e
         cmp     ah, 0x0F
         je      i0f
         cmp     ah, 0x10
@@ -624,6 +684,8 @@ int21_handler:
         je      i30
         cmp     ah, 0x35
         je      i35
+        cmp     ah, 0x19
+        je      i19
         cmp     ah, 0x1A
         je      i1a
         cmp     ah, 0x3D
@@ -718,6 +780,12 @@ i0b:    call    con_key_ready
         mov     al, 0xFF
 .i0b0:  clc
         iret
+i0e:    cmp     al, 1
+        ja      .i0e_n                  ; ignore drive > B:
+        mov     [cs:cur_drive], al
+.i0e_n: mov     al, 2                   ; two logical drives
+        clc
+        iret
 i0f:    call    fcb_open
         jmp     iret_cf
 i10:    call    fcb_close
@@ -734,6 +802,9 @@ i27:    mov     word [cs:fcb_nrec], cx       ; MS-DOS 1.25 GETRRPOS: CX = record
         mov     byte [cs:fcb_mode], 2        ; block, RR = last+1
         call    fcb_read
         jmp     iret_cf
+i19:    mov     al, [cs:cur_drive]
+        clc
+        iret
 i1a:    mov     [cs:dta_seg], ds
         mov     [cs:dta_off], dx
         clc
@@ -1053,7 +1124,7 @@ ex_run:
         xor     di, di
         push    word [cs:ex_cs]
         push    word [cs:ex_ip]
-        mov     dl, [cs:boot_drive]
+        mov     dl, [cs:cur_drive]
         retf
 
 ex_fail_free:
@@ -1127,15 +1198,12 @@ dos_findfirst:
         push    di
         push    es
         push    ds
-        cmp     byte [cs:fs_ok], 1
-        je      .havefs
-        call    fs_init
-        cmp     byte [cs:fs_ok], 1
-        jne     .ffe
-.havefs:
         mov     si, dx
         call    path_parse_wild
         jc      .ffe
+        call    fs_init
+        cmp     byte [cs:fs_ok], 1
+        jne     .ffe
         push    cs
         pop     es
         push    cs
@@ -1291,6 +1359,30 @@ fill_dta:
         pop     ax
         ret
 
+; DS:SI ASCIIZ. Set io_drive from A:/B: or cur_drive; SI past X:.
+parse_drive:
+        push    ax
+        mov     al, [cs:cur_drive]
+        mov     [cs:io_drive], al
+        mov     al, [si]
+        test    al, al
+        jz      .out
+        cmp     byte [si+1], ':'
+        jne     .out
+        call    toupper
+        cmp     al, 'A'
+        je      .a
+        cmp     al, 'B'
+        je      .b
+        jmp     .out
+.a:     mov     byte [cs:io_drive], 0
+        jmp     .sk
+.b:     mov     byte [cs:io_drive], 1
+.sk:    inc     si
+        inc     si
+.out:   pop     ax
+        ret
+
 ; path_parse_wild: like path_parse but * -> ? fill
 path_parse_wild:
         push    ax
@@ -1305,6 +1397,7 @@ path_parse_wild:
         mov     al, ' '
         rep     stosb
         mov     di, fcb_tmp
+        call    parse_drive
 .w0:    mov     al, [si]
         test    al, al
         jz      .wok
@@ -1383,6 +1476,7 @@ path_parse:
         mov     al, ' '
         rep     stosb
         mov     di, fcb_tmp
+        call    parse_drive
 .s0:    mov     al, [si]
         test    al, al
         jz      .bad
@@ -1444,15 +1538,12 @@ dos_open:
         push    di
         push    es
         push    ds
-        cmp     byte [cs:fs_ok], 1
-        je      .havefs
-        call    fs_init
-        cmp     byte [cs:fs_ok], 1
-        jne     .err
-.havefs:
         mov     si, dx
         call    path_parse
         jc      .err
+        call    fs_init
+        cmp     byte [cs:fs_ok], 1
+        jne     .err
         push    cs
         pop     ds                  ; fcb_tmp is in kernel CS
         xor     bx, bx
@@ -1490,6 +1581,8 @@ dos_open:
         inc     si
         jmp     .hf
 .got:   mov     byte [cs:bx], 1
+        mov     al, [cs:io_drive]
+        mov     [cs:bx+1], al           ; drive for later disk_read
         mov     ax, [cs:di+12]
         mov     [cs:bx+2], ax
         mov     ax, [cs:di+14]
@@ -1563,6 +1656,8 @@ dos_read:
         mov     bx, ax
         cmp     byte [cs:bx], 0
         je      .re
+        mov     al, [cs:bx+1]
+        mov     [cs:io_drive], al
 .loop:  mov     ax, [cs:rd_want]
         sub     ax, [cs:rd_got]
         jz      .rok
@@ -1732,11 +1827,22 @@ fcb11_to_path:
         push    es
         push    ds
         push    cs
-        pop     ds
-        push    cs
         pop     es
         mov     di, path_buf
-        mov     si, fcb_tmp
+        mov     ds, [cs:fcb_ds]
+        mov     si, [cs:fcb_dx]
+        mov     al, [si]                ; FCB drive 0=default, 1=A, 2=B
+        push    cs
+        pop     ds
+        cmp     al, 1
+        jb      .ndrv
+        cmp     al, 2
+        ja      .ndrv
+        add     al, 'A' - 1
+        stosb
+        mov     al, ':'
+        stosb
+.ndrv:  mov     si, fcb_tmp
         mov     cx, 8
 .n:     lodsb
         cmp     al, ' '
@@ -2247,6 +2353,9 @@ msg_byname:   db "COM by name OK", 13, 10, "$"
 msg_fallback: db "COM fallback LBA", 13, 10, "$"
 
 boot_drive:   db 0
+cur_drive:    db 0                      ; 0=A, 1=B
+io_drive:     db 0                      ; INT 13 DL for disk_read
+fs_drive:     db 0xFF                   ; last fs_init drive
 fs_ok:        db 0
         align 2
 dta_seg:      dw 0
@@ -2285,6 +2394,7 @@ first_mcb:    dw 0
 al_need:      dw 0
 al_best:      dw 0
 root_lba:     dw 0
+root_secs:    dw 0
 psp_seg:      dw 0
 com_lba:      dw 0
 com_secs:     dw 0
@@ -2301,7 +2411,7 @@ rd_chunk:     dw 0
 rd_hp:        dw 0
 init_fcb:     times 11 db 0
 fcb_tmp:      times 11 db 0
-path_buf:     times 16 db 0
+path_buf:     times 20 db 0
 fcb_ds:       dw 0
 fcb_dx:       dw 0
 fcb_hnd:      dw 0
@@ -2316,7 +2426,8 @@ fcb_offhi:    dw 0
 fcb_got:      dw 0
 fcb_gotrec:   dw 0
 handles:      times 64 db 0
-root_buf:     times 512 db 0
+root_buf:     times 1024 db 0
+sb_b:         times 512 db 0
 sec_buf:      times 512 db 0
 
         times 16384 - ($ - $$) db 0

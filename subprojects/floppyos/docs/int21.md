@@ -8,6 +8,8 @@
 | **08** | Read char | no echo |
 | **0A** | Buffered line | DS:DX buffer max/count/data |
 | **0B** | Input status | AL=00 none, AL=FF ready |
+| **0E** | Select drive | AL=0/1 (A:/B:); ignore AL>1. Returns AL=2 (logical drives). |
+| **19** | Get drive | AL=`cur_drive` (0=A, 1=B) |
 | 09 | Write string | DS:DX, ends with `$` |
 | 25 | Set vector | AL=int, DS:DX=handler |
 | 30 | Get version | AL=7, AH=10 (7.10) |
@@ -17,11 +19,11 @@
 | **14** | FCB sequential read | DTA; AL=0 full / 1 EOF / 3 partial |
 | **21** | FCB random read | RR; does not increment RR |
 | **27** | FCB random block | CX=records; RR = last+1 |
-| 3D | Open | AL=0 read-only, DS:DX ASCIIZ 8.3 → AX=handle (5–8) |
+| 3D | Open | AL=0 read-only, DS:DX ASCIIZ 8.3 (`B:FILE.COM`) → AX=handle (5–8) |
 | 3E | Close | BX=handle |
 | 3F | Read | BX=handle, CX=bytes, DS:DX buf → AX=count |
 | **1A** | Set DTA | DS:DX = disk transfer area |
-| **4E** | Find first | CX=attr, DS:DX filespec (`*.*`) |
+| **4E** | Find first | CX=attr, DS:DX filespec (`*.*`, `B:*.*`) |
 | **4F** | Find next | continue search |
 | **4B** | Exec | AL=0 load+run **COM or MZ EXE**; relocs; ES:BX EPB (minimal) |
 | **48** | Allocate | BX=paragraphs → AX=segment; fail CF AX=8 BX=largest free |

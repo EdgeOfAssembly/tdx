@@ -10,7 +10,7 @@ NASMFLAGS += -DDEBUG
 endif
 PYTHON   ?= python3
 
-.PHONY: all boot stage15 kernel programs tools image smoke smoke-py86 smoke-iron86 run-py86 test tests clean size help
+.PHONY: all boot stage15 kernel programs tools image smoke smoke-py86 smoke-iron86 run-py86 test tests test-mkflopfs clean size help
 
 all: image
 
@@ -84,15 +84,19 @@ smoke: smoke-iron86
 
 smoke-iron86: image
 	@test -x $(IRON86) || $(MAKE) -s -C ../iron86
-	$(IRON86) --floppy $(BUILD_DIR)/floppyos.img --keys $$'FCBTEST\r' \
+	$(IRON86) --floppy $(BUILD_DIR)/floppyos.img --keys $$'B:\rA:\rFCBTEST\r' \
 		| tee $(BUILD_DIR)/smoke-iron86.log
 	grep -q "FCB OK" $(BUILD_DIR)/smoke-iron86.log
 	grep -q "A>" $(BUILD_DIR)/smoke-iron86.log
+	grep -q "B>" $(BUILD_DIR)/smoke-iron86.log
 
 smoke-interactive: image
 	python3 tests/smoke_interactive.py $(BUILD_DIR)/floppyos.img
 
-test: smoke-iron86
+test-mkflopfs: $(BUILD_DIR)/mkimg $(BUILD_DIR)/mkflopfs
+	python3 tests/test_mkflopfs_root.py
+
+test: test-mkflopfs smoke-iron86
 tests: test
 
 size: image

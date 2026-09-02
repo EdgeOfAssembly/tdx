@@ -39,7 +39,7 @@
 | 62 | 2 | `com_sectors` |
 | 64 | 2 | `com_load_seg` (PSP, default `0x2000`) |
 | 66 | 4 | `root_lba` |
-| 70 | 2 | `root_sectors` (M7: 1) |
+| 70 | 2 | `root_sectors` (1, or 2 when >16 files) |
 | 72 | 11 | `init_name` FCB 8.3 (`HELLO   COM`) |
 | 83 | 429 | `reserved` |
 
@@ -56,7 +56,7 @@
 
 Empty entry: `name[0] == 0`. End of dir: `name[0] == 0xE5` optional; M7 uses zero name as free/end.
 
-Max entries per root sector: **16**.
+Max entries per root: **32** (16 per sector; `root_sectors` is 1 or 2).
 
 ## Integrity + dedup (planned v0.5 — not on-disk yet)
 
@@ -86,7 +86,7 @@ Do not bump `FLOPFS01` / version_minor until mkflopfs + kernel actually write th
 | 3F | Read: BX=handle, CX=bytes, DS:DX buf → AX=bytes read |
 | 3E | Close: BX=handle |
 
-Paths: `HELLO.COM`, `\HELLO.COM` (leading `\` ignored). 8.3 only.
+Paths: `HELLO.COM`, `\HELLO.COM`, `B:HELLO.COM`, `B:\HELLO.COM`. 8.3 only. Drive `A:`/`B:` (DL=0/1).
 
 ## Init program (M7)
 

@@ -15,6 +15,10 @@ start:
         int     0x21
 
 .main:
+        mov     ah, 0x19
+        int     0x21
+        add     al, 'A'
+        mov     [msg_prompt], al
         mov     dx, msg_prompt
         mov     ah, 0x09
         int     0x21
@@ -39,6 +43,9 @@ start:
         je      .main
         cmp     byte [si], 13
         je      .main
+
+        call    try_drv
+        jc      .main
 
         ; EXIT?
         mov     di, cmd_exit
@@ -114,7 +121,9 @@ start:
         mov     dx, msg_dir
         mov     ah, 0x09
         int     0x21
-        mov     dx, pattern
+        call    skip_sp
+        call    build_dir_pat
+        mov     dx, dir_pat
         xor     cx, cx
         mov     ah, 0x4E
         int     0x21
@@ -282,6 +291,100 @@ up_ah:
         sub     ah, 32
 .u:     ret
 
+up_al:
+        cmp     al, 'a'
+        jb      .u
+        cmp     al, 'z'
+        ja      .u
+        sub     al, 32
+.u:     ret
+
+; A: / B: / A:\ / B:\ → AH=0E. CF=1 if handled.
+try_drv:
+        push    ax
+        push    bx
+        mov     al, [si]
+        call    up_al
+        cmp     al, 'A'
+        jb      .no
+        cmp     al, 'B'
+        ja      .no
+        cmp     byte [si+1], ':'
+        jne     .no
+        mov     bl, [si+2]
+        test    bl, bl
+        jz      .yes
+        cmp     bl, 13
+        je      .yes
+        cmp     bl, ' '
+        je      .yes
+        cmp     bl, '\'
+        je      .sl
+        cmp     bl, '/'
+        je      .sl
+        jmp     .no
+.sl:    mov     bl, [si+3]
+        test    bl, bl
+        jz      .yes
+        cmp     bl, 13
+        je      .yes
+        cmp     bl, ' '
+        je      .yes
+        jmp     .no
+.yes:   sub     al, 'A'
+        mov     ah, 0x0E
+        int     0x21
+        pop     bx
+        pop     ax
+        stc
+        ret
+.no:    pop     bx
+        pop     ax
+        clc
+        ret
+
+; SI remainder after DIR → dir_pat (`*.*` or `B:*.*` if X: / X:\).
+build_dir_pat:
+        push    ax
+        push    si
+        push    di
+        mov     di, dir_pat
+        mov     al, [si]
+        test    al, al
+        jz      .star
+        cmp     al, 13
+        je      .star
+.cp:    mov     al, [si]
+        test    al, al
+        jz      .end
+        cmp     al, 13
+        je      .end
+        cmp     al, ' '
+        je      .end
+        mov     [di], al
+        inc     si
+        inc     di
+        jmp     .cp
+.end:   mov     al, [di-1]
+        cmp     al, ':'
+        je      .star
+        cmp     al, '\'
+        je      .star
+        cmp     al, '/'
+        je      .star
+        jmp     .nul
+.star:  mov     byte [di], '*'
+        inc     di
+        mov     byte [di], '.'
+        inc     di
+        mov     byte [di], '*'
+        inc     di
+.nul:   mov     byte [di], 0
+        pop     di
+        pop     si
+        pop     ax
+        ret
+
 skip_sp:
 .sp:    mov     al, [si]
         cmp     al, ' '
@@ -308,12 +411,12 @@ print_asz:
         ret
 
 epb:    dw 0, 0, 0, 0, 0, 0, 0
-exec_path: times 16 db 0
+exec_path: times 32 db 0
+dir_pat: times 24 db 0
 handle: dw 0
 onebuf: db 0
 ver_maj: db 0
 ver_min: db 0
-pattern: db "*.*", 0
 
 linebuf:
         db 80                   ; max

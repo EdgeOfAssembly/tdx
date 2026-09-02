@@ -27,12 +27,12 @@ enum
     KERNEL_MAX_BYTES = KERNEL_MAX_SECS * SECTOR_SIZE,
     KERNEL_LOAD_SEG_DEFAULT = 0x1000,
     COM_LOAD_SEG_DEFAULT = 0x2000,
-    ROOT_ENTRIES = 16,
+    ROOT_ENTRIES = 32,
     DIRENT_SIZE = 32,
     ROOT_BYTES = ROOT_ENTRIES * DIRENT_SIZE,
-    FILE_MAX_SECS = 64,
+    FILE_MAX_SECS = 256,
     FILE_MAX_BYTES = FILE_MAX_SECS * SECTOR_SIZE,
-    MAX_FILES = 8
+    MAX_FILES = 32
 };
 
 #pragma pack(push, 1)
@@ -76,7 +76,7 @@ struct flopfs_dirent
 
 _Static_assert(sizeof(struct flopfs_superblock) == 512, "sb");
 _Static_assert(sizeof(struct flopfs_dirent) == 32, "dirent");
-_Static_assert(ROOT_BYTES == 512, "root one sector");
+_Static_assert(ROOT_BYTES == 1024, "root two sectors");
 
 struct file_item
 {
@@ -303,6 +303,11 @@ int main(int argc, char **argv)
         }
         nfiles++;
     }
+    if (nfiles > ROOT_ENTRIES)
+    {
+        fprintf(stderr, "mkflopfs: too many files (max %d)\n", ROOT_ENTRIES);
+        return 2;
+    }
 
     FILE *fp = fopen(img_path, "r+b");
     if (fp == NULL)
@@ -384,8 +389,13 @@ int main(int argc, char **argv)
         next += files[i].sectors;
     }
 
+    uint16_t root_nsec = 1;
+    if (nfiles > (int)(SECTOR_SIZE / DIRENT_SIZE))
+    {
+        root_nsec = 2;
+    }
     uint32_t root_lba = next;
-    next += 1; /* one root sector */
+    next += root_nsec;
     if (next > (uint32_t)sector_count)
     {
         fprintf(stderr, "mkflopfs: image full\n");
@@ -431,7 +441,7 @@ int main(int argc, char **argv)
     sb.kernel_codec = 0;
     sb.com_load_seg = COM_LOAD_SEG_DEFAULT;
     sb.root_lba = root_lba;
-    sb.root_sectors = 1;
+    sb.root_sectors = root_nsec;
 
     if (nfiles > 0)
     {
@@ -469,7 +479,7 @@ int main(int argc, char **argv)
         files[i].data = NULL;
     }
 
-    if (write_at(fp, (long)root_lba, root, sizeof root) != 0)
+    if (write_at(fp, (long)root_lba, root, (size_t)root_nsec * SECTOR_SIZE) != 0)
     {
         fprintf(stderr, "mkflopfs: root write failed\n");
         free(kernel);
@@ -485,8 +495,8 @@ int main(int argc, char **argv)
 
     char init_str[16];
     fcb_to_str(sb.init_name, init_str, sizeof init_str);
-    printf("mkflopfs: %s — kernel LBA %u (%u), root LBA %u, %d files, init=%s\n",
-           img_path, kernel_lba, kernel_secs, root_lba, nfiles, init_str);
+    printf("mkflopfs: %s — kernel LBA %u (%u), root LBA %u (%u sec), %d files, init=%s\n",
+           img_path, kernel_lba, kernel_secs, root_lba, root_nsec, nfiles, init_str);
     for (int i = 0; i < nfiles; ++i)
     {
         char nm[16];
