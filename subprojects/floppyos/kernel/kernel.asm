@@ -252,13 +252,6 @@ fs_init:
         push    bp
         push    si
         push    di
-        push    ax
-        push    cx
-        push    dx
-        push    bx
-        push    bp
-        push    si
-        push    di
         push    ds
         push    es
         mov     byte [cs:fs_ok], 0
@@ -282,17 +275,11 @@ fs_init:
         pop     ds
         push    cs
         pop     es
-        mov     dx, msg_fsinit
-        mov     ah, 0x09
-        int     0x21
         mov     bx, root_buf
         mov     ax, [cs:root_lba]
         call    disk_read
         jc      .fd
         mov     byte [cs:fs_ok], 1
-        mov     dx, msg_fsdone
-        mov     ah, 0x09
-        int     0x21
 .fd:    pop     es
         pop     ds
         pop     di
@@ -1152,7 +1139,11 @@ dos_findfirst:
         push    es
         push    ds
         cmp     byte [cs:fs_ok], 1
+        je      .havefs
+        call    fs_init
+        cmp     byte [cs:fs_ok], 1
         jne     .ffe
+.havefs:
         mov     si, dx
         call    path_parse_wild
         jc      .ffe
@@ -1472,7 +1463,11 @@ dos_open:
         push    es
         push    ds
         cmp     byte [cs:fs_ok], 1
+        je      .havefs
+        call    fs_init
+        cmp     byte [cs:fs_ok], 1
         jne     .err
+.havefs:
         mov     si, dx
         call    path_parse
         jc      .err
@@ -1906,11 +1901,13 @@ con_key_ready:
         mov     ah, 0x01
         int     0x16
         jnz     .ckr_yes
-        ; serial data ready?
+        ; serial data ready? 0xFF = open bus (no 8250 on Py86/5150)
         push    dx
         mov     dx, 0x3FD
         in      al, dx
         pop     dx
+        cmp     al, 0xFF
+        je      .ckr_no
         test    al, 0x01
         jz      .ckr_no
 .ckr_yes:
@@ -1935,6 +1932,8 @@ con_getkey:
         jnz     .cgk_bios
         mov     dx, 0x3FD
         in      al, dx
+        cmp     al, 0xFF                ; no UART (open bus)
+        je      .cgk_wait
         test    al, 0x01
         jz      .cgk_wait
         mov     dx, 0x3F8

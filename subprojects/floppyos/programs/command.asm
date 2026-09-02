@@ -174,29 +174,57 @@ start:
         jmp     .main
 
 ; try exec SI as path; CF=0 success, CF=1 not attempted/fail
+; If no '.', try NAME.COM then NAME.EXE (MS-DOS COMMAND).
 try_exec:
         push    si
-        ; must contain '.'
         mov     bx, si
 .te1:   mov     al, [bx]
         test    al, al
-        jz      .te_no
+        jz      .te_nodot
         cmp     al, '.'
         je      .te_dot
         inc     bx
         jmp     .te1
 .te_dot:
         mov     dx, si
+        call    .te_4b
+        pop     si
+        ret
+.te_nodot:
+        mov     di, exec_path
+        mov     bx, si
+.te_cp: mov     al, [bx]
+        test    al, al
+        jz      .te_com
+        cmp     al, 13
+        je      .te_com
+        mov     [di], al
+        inc     bx
+        inc     di
+        jmp     .te_cp
+.te_com:
+        mov     byte [di], '.'
+        mov     byte [di+1], 'C'
+        mov     byte [di+2], 'O'
+        mov     byte [di+3], 'M'
+        mov     byte [di+4], 0
+        mov     dx, exec_path
+        call    .te_4b
+        jnc     .te_ok
+        mov     byte [di+1], 'E'
+        mov     byte [di+2], 'X'
+        mov     byte [di+3], 'E'
+        mov     dx, exec_path
+        call    .te_4b
+.te_ok: pop     si
+        ret
+.te_4b:
         push    cs
         pop     es
         mov     bx, epb
         mov     ax, 0x4B00
         int     0x21
-        pop     si
-        ret                             ; CF from 4B
-.te_no:
-        pop     si
-        stc
+        ret
         ret
 
 ; DI -> uppercase cmd keyword (ASCIIZ), SI -> line
@@ -280,6 +308,7 @@ print_asz:
         ret
 
 epb:    dw 0, 0, 0, 0, 0, 0, 0
+exec_path: times 16 db 0
 handle: dw 0
 onebuf: db 0
 ver_maj: db 0
