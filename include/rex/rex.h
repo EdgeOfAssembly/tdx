@@ -69,8 +69,16 @@ REX_API rex_status rex_session_load_floppy_uc(rex_session *s, const char *image)
 /** @brief Load IBM 5150 8K BIOS on iron86; CS=FFFF IP=0000. */
 REX_API rex_status rex_session_load_bios(rex_session *s, const char *path);
 
-/** @brief Attach a floppy image as A: for BIOS INT 13h (PyFloppy / uPD765). */
+/** @brief Attach a floppy image or host directory (FlopFS pack) as A:. */
 REX_API rex_status rex_session_attach_floppy(rex_session *s, const char *image);
+
+/**
+ * @brief Attach a floppy image or host directory as B: (unit 1).
+ *
+ * Directories are packed to a 360K FlopFS data disk. Does not replace
+ * @c rex_session_attach_floppy (A:).
+ */
+REX_API rex_status rex_session_attach_floppy_b(rex_session *s, const char *image);
 
 /**
  * @brief Reload the same image at entry (Turbo Debugger Ctrl-F2).

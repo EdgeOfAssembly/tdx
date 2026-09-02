@@ -16,21 +16,23 @@ void tdx_print_usage(FILE *fp)
 {
     std::fputs(
         "Usage: tdx [options] [file.exe|file.com]\n"
-        "       tdx --floppy image.img [options]\n"
+        "       tdx --floppy-a image.img [options]\n"
         "       tdx --uc-floppy image.img [options]\n"
-        "       tdx --bios BIOS.BIN [--floppy IMAGE] [options]\n"
+        "       tdx --bios BIOS.BIN [--floppy-a A] [--floppy-b B] [options]\n"
         "\n"
         "  Turbo Debugger X — native Linux debugger for DOS EXE/COM\n"
-        "  (librex core; Unicorn 8086 default; --floppy uses iron86).\n"
+        "  (librex core; Unicorn 8086 default; --floppy-a uses iron86).\n"
         "  Options and the input path may appear in any order.\n"
         "\n"
         "Options:\n"
         "  -h, --help            Show this help and exit\n"
         "  -v, --version         Show version and exit\n"
-        "      --floppy IMAGE    Boot IMAGE at 0000:7C00 on iron86 (default: Unicorn EXE)\n"
-        "      --uc-floppy IMAGE Same boot on Unicorn (A/B vs --floppy)\n"
+        "      --floppy-a PATH   A: raw image or host directory (FlopFS pack)\n"
+        "      --floppy PATH     Alias for --floppy-a\n"
+        "      --floppy-b PATH   B: raw image or host directory (FlopFS pack)\n"
+        "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
         "      --bios FILE       IBM 5150 8K BIOS on iron86 (FFFF:0000, Py86 map)\n"
-        "                        with --floppy: PyFloppy uPD765 A: for INT 19h\n"
+        "                        with --floppy-a: PyFloppy uPD765 A: for INT 19h\n"
         "      --no-ui           Headless (no SDL windows)\n"
         "      --game            Also open CGA in this process (default: use tdxview)\n"
         "      --no-sock         Do not listen on the agent UNIX socket\n"
@@ -84,7 +86,7 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         {
             out->game = true;
         }
-        else if (std::strcmp(a, "--floppy") == 0)
+        else if ((std::strcmp(a, "--floppy-a") == 0) || (std::strcmp(a, "--floppy") == 0))
         {
             if (i + 1 >= argc)
             {
@@ -93,9 +95,26 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
             }
             out->floppy = argv[++i];
         }
+        else if (std::strncmp(a, "--floppy-a=", 11) == 0)
+        {
+            out->floppy = a + 11;
+        }
         else if (std::strncmp(a, "--floppy=", 9) == 0)
         {
             out->floppy = a + 9;
+        }
+        else if (std::strcmp(a, "--floppy-b") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->floppy_b = argv[++i];
+        }
+        else if (std::strncmp(a, "--floppy-b=", 11) == 0)
+        {
+            out->floppy_b = a + 11;
         }
         else if (std::strcmp(a, "--uc-floppy") == 0)
         {

@@ -114,6 +114,10 @@ int main(int argc, char **argv)
         {
             rc = (int)rex_session_attach_floppy(s, cli.floppy.c_str());
         }
+        if ((rc == (int)REX_OK) && (!cli.floppy_b.empty()))
+        {
+            rc = (int)rex_session_attach_floppy_b(s, cli.floppy_b.c_str());
+        }
     }
     else if (!cli.uc_floppy.empty())
     {
@@ -122,6 +126,10 @@ int main(int argc, char **argv)
     else if (!cli.floppy.empty())
     {
         rc = (int)rex_session_load_floppy(s, cli.floppy.c_str());
+        if ((rc == (int)REX_OK) && (!cli.floppy_b.empty()))
+        {
+            rc = (int)rex_session_attach_floppy_b(s, cli.floppy_b.c_str());
+        }
     }
     else
     {

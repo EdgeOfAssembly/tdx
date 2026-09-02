@@ -24,7 +24,8 @@ struct tdx_cli
     std::string symbols;
     std::string input;
     std::string cwd;
-    std::string floppy;    /**< Opt-in iron86 FloppyOS boot. */
+    std::string floppy;    /**< A: image or dir (--floppy / --floppy-a). */
+    std::string floppy_b;  /**< B: image or dir (--floppy-b). */
     std::string uc_floppy; /**< Same image on Unicorn (A/B vs iron86). */
     std::string bios;      /**< IBM 5150 8K BIOS (iron86, Py86 mapping). */
     int scale = 2;

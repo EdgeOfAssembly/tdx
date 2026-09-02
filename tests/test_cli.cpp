@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.11");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.12");
 }
 
 TEST_CASE("bios is opt-in iron86 5150 POST")
@@ -77,6 +77,24 @@ TEST_CASE("floppy is opt-in iron86 boot")
     auto d = parse({"--uc-floppy", "disk.img"});
     REQUIRE(d.uc_floppy == "disk.img");
     REQUIRE(d.floppy.empty());
+}
+
+TEST_CASE("floppy-a and floppy-b")
+{
+    auto a = parse({"--floppy-a", "a.img", "--floppy-b", "b.img"});
+    REQUIRE(a.floppy == "a.img");
+    REQUIRE(a.floppy_b == "b.img");
+    auto b = parse({"--floppy-a=a.img", "--floppy-b=b.img", "--no-ui"});
+    REQUIRE(b.floppy == "a.img");
+    REQUIRE(b.floppy_b == "b.img");
+    REQUIRE(b.no_ui);
+    auto c = parse({"--bios", "rom.bin", "--floppy-b", "/mnt/bushido/bushido"});
+    REQUIRE(c.bios == "rom.bin");
+    REQUIRE(c.floppy.empty());
+    REQUIRE(c.floppy_b == "/mnt/bushido/bushido");
+    auto d = parse({"--floppy", "a.img"});
+    REQUIRE(d.floppy == "a.img");
+    REQUIRE(d.floppy_b.empty());
 }
 
 TEST_CASE("in-process game window is opt-in")

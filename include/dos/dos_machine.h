@@ -167,8 +167,10 @@ struct dos_machine
     rex_status load_floppy_uc(const char *image);
     /** @brief IBM 5150 8K BIOS at FE000, reset FFFF:0000 (Py86). iron86 only. */
     rex_status load_bios_5150(const char *path);
-    /** @brief Mount IMAGE as A: on the iron86 FDC (PyFloppy). BIOS INT 13h uses it. */
+    /** @brief Mount IMAGE or host DIR as A: on the iron86 FDC (PyFloppy). */
     rex_status attach_floppy_image(const char *image);
+    /** @brief Mount IMAGE or host DIR as B: (FDC unit 1 / INT 13h DL=1). */
+    rex_status attach_floppy_image_b(const char *image);
     rex_status step_one();
     rex_status run_until(uint64_t until_linear, uint64_t max_insns, bool until_valid);
 

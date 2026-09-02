@@ -32,6 +32,8 @@ struct rex_session
     bool floppy = false;
     bool floppy_uc = false;
     bool bios = false;
+    std::string floppy_a;
+    std::string floppy_b;
     int ui_cmd = 0;
     uint32_t run_delay_ms = 0;
 };
@@ -111,6 +113,7 @@ rex_status rex_session_load_floppy(rex_session *s, const char *image)
     s->load_cwd.clear();
     s->floppy = true;
     s->floppy_uc = false;
+    s->floppy_a = image;
     return s->dos->load_floppy(image);
 }
 
@@ -151,7 +154,18 @@ rex_status rex_session_attach_floppy(rex_session *s, const char *image)
     {
         return REX_ERR_ARG;
     }
+    s->floppy_a = image;
     return s->dos->attach_floppy_image(image);
+}
+
+rex_status rex_session_attach_floppy_b(rex_session *s, const char *image)
+{
+    if ((s == nullptr) || (image == nullptr) || (!s->dos))
+    {
+        return REX_ERR_ARG;
+    }
+    s->floppy_b = image;
+    return s->dos->attach_floppy_image_b(image);
 }
 
 rex_status rex_session_reset(rex_session *s)
@@ -164,7 +178,7 @@ rex_status rex_session_reset(rex_session *s)
     const auto bp_by_id = s->dos->bp_by_id;
     const uint32_t next_id = s->dos->next_bp_id;
     const char *cwd = s->load_cwd.empty() ? nullptr : s->load_cwd.c_str();
-    const rex_status st =
+    rex_status st =
         s->bios ? s->dos->load_bios_5150(s->load_path.c_str())
                 : (s->floppy_uc ? s->dos->load_floppy_uc(s->load_path.c_str())
                                 : (s->floppy ? s->dos->load_floppy(s->load_path.c_str())
@@ -172,6 +186,22 @@ rex_status rex_session_reset(rex_session *s)
     if (st != REX_OK)
     {
         return st;
+    }
+    if (s->bios && (!s->floppy_a.empty()))
+    {
+        st = s->dos->attach_floppy_image(s->floppy_a.c_str());
+        if (st != REX_OK)
+        {
+            return st;
+        }
+    }
+    if (!s->floppy_b.empty())
+    {
+        st = s->dos->attach_floppy_image_b(s->floppy_b.c_str());
+        if (st != REX_OK)
+        {
+            return st;
+        }
     }
     s->dos->bps = bps;
     s->dos->bp_by_id = bp_by_id;

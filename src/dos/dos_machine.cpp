@@ -1086,42 +1086,29 @@ rex_status dos_machine::load_bios_5150(const char *path)
 
 rex_status dos_machine::attach_floppy_image(const char *image)
 {
-    std::FILE *fp = nullptr;
-    std::vector<uint8_t> img;
-    long sz = 0;
     if ((image == nullptr) || (!iron))
     {
         return REX_ERR_ARG;
     }
-    fp = std::fopen(image, "rb");
-    if (fp == nullptr)
+    if (!iron->attach_floppy_path(0, image))
     {
         return REX_ERR_IO;
     }
-    if (std::fseek(fp, 0, SEEK_END) != 0)
+    rex_logf(REX_LOG_INFO, "iron86 FDC A: %s", image);
+    return REX_OK;
+}
+
+rex_status dos_machine::attach_floppy_image_b(const char *image)
+{
+    if ((image == nullptr) || (!iron))
     {
-        std::fclose(fp);
-        return REX_ERR_IO;
+        return REX_ERR_ARG;
     }
-    sz = std::ftell(fp);
-    if (sz < 512)
-    {
-        std::fclose(fp);
-        return REX_ERR_FMT;
-    }
-    std::rewind(fp);
-    img.resize(static_cast<size_t>(sz));
-    if (std::fread(img.data(), 1, img.size(), fp) != img.size())
-    {
-        std::fclose(fp);
-        return REX_ERR_IO;
-    }
-    std::fclose(fp);
-    if (!iron->attach_floppy(img.data(), img.size()))
+    if (!iron->attach_floppy_path(1, image))
     {
         return REX_ERR_IO;
     }
-    rex_logf(REX_LOG_INFO, "iron86 FDC A: %s %zu bytes", image, img.size());
+    rex_logf(REX_LOG_INFO, "iron86 FDC B: %s", image);
     return REX_OK;
 }
 

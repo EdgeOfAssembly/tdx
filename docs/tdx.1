@@ -35,6 +35,18 @@ Agent socket (default
 .Pa /tmp/tdx.sock ).
 .It Fl -run
 Run until break or halt after load.
+.It Fl -floppy-a Ar PATH
+Mount
+.Ar PATH
+as drive A: (raw 360K image or host directory packed as FlopFS).
+.Fl -floppy
+is an alias.
+.It Fl -floppy-b Ar PATH
+Mount
+.Ar PATH
+as drive B: (image or directory).
+.It Fl -bios Ar FILE
+Load an IBM 5150 8K BIOS on iron86 (reset at FFFF:0000).
 .El
 .Sh KEYS
 F7 trace into, F8 or Down step over (CALL/INT/REP/LOOP as one VCR frame),

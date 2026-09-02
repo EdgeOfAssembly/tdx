@@ -216,10 +216,7 @@ uint8_t pc::ascii_make(uint8_t ch)
 
 static bool ascii_needs_shift(uint8_t ch)
 {
-    if ((ch >= 'A') && (ch <= 'Z'))
-    {
-        return true;
-    }
+    /* Letters stay unshifted (BIOS INT 9 → lowercase; COMMAND.COM upcases). */
     switch (ch)
     {
     case ':':
@@ -265,6 +262,16 @@ void pc::type_keys(const char *s)
     {
         return;
     }
+    auto pump = [this]() {
+        int n = 0;
+        for (n = 0; (n < 1200) && (!c.halted()); n++)
+        {
+            if (!c.step())
+            {
+                break;
+            }
+        }
+    };
     for (const char *p = s; *p != '\0'; p++)
     {
         const uint8_t ch = static_cast<uint8_t>(*p);
@@ -273,14 +280,20 @@ void pc::type_keys(const char *s)
         kbd_.push_back(ch);
         if (mk != 0)
         {
+            /* Pump BIOS INT 9 between make/break so Shift is actually held. */
             if (shift)
             {
                 queue_scan(0x2A);
+                pump();
             }
-            type_scan(mk);
+            queue_scan(mk);
+            pump();
+            queue_scan(static_cast<uint8_t>(mk | 0x80u));
+            pump();
             if (shift)
             {
                 queue_scan(0xAA);
+                pump();
             }
         }
     }
