@@ -1,12 +1,13 @@
 /**
  * @file pc.h
- * @brief Tiny IBM PC: 360K floppy + INT 10h teletype + INT 13h read + INT 16h keys.
+ * @brief Tiny IBM PC: 360K floppy + INT 10h/13h/16h + INT 1Ah ticks.
  */
 #ifndef IRON86_PC_H
 #define IRON86_PC_H
 
 #include "iron86/cpu.h"
 
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <string>
@@ -43,11 +44,14 @@ private:
     bool int10();
     bool int13();
     bool int16();
+    bool int1a();
     uint32_t chs_lba(uint8_t cyl, uint8_t head, uint8_t sec) const;
+    uint32_t ticks_18hz() const;
 
     std::vector<uint8_t> floppy_;
     std::string tty_;
     std::deque<uint8_t> kbd_;
+    std::chrono::steady_clock::time_point t0_{};
 };
 
 } // namespace iron86

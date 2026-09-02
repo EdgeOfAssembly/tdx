@@ -1,6 +1,6 @@
 /**
  * @file pc.cpp
- * @brief INT 10h AH=0Eh, INT 13h AH=00/02, INT 16h AH=00/01 against a host floppy.
+ * @brief INT 10h AH=0Eh, INT 13h AH=00/02, INT 16h AH=00/01, INT 1Ah ticks.
  */
 #include "iron86/pc.h"
 
@@ -24,6 +24,7 @@ bool pc::load_floppy(const uint8_t *img, size_t n)
 
 void pc::boot()
 {
+    t0_ = std::chrono::steady_clock::now();
     c.set_bios([this](cpu &, uint8_t v) { return bios_int(v); });
     c.set_cs(0);
     c.set_ds(0);
@@ -70,7 +71,48 @@ bool pc::bios_int(uint8_t vector)
     {
         return int16();
     }
+    if (vector == 0x1A)
+    {
+        return int1a();
+    }
     return false;
+}
+
+uint32_t pc::ticks_18hz() const
+{
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - t0_)
+                        .count();
+    /* BIOS INT 1Ah: ~18.2 ticks/s. */
+    return static_cast<uint32_t>((static_cast<uint64_t>(ms) * 182u) / 10000u);
+}
+
+bool pc::int1a()
+{
+    const uint8_t ah = static_cast<uint8_t>(c.ax() >> 8);
+    const auto ms = static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0_)
+            .count());
+    if (ah == 0xFF)
+    {
+        /* FloppyOS DEBUG stamp: milliseconds since boot, AL=86h signature. */
+        c.set_cx(static_cast<uint16_t>(ms >> 16));
+        c.set_dx(static_cast<uint16_t>(ms));
+        c.set_ax(0xFF86);
+        c.set_cf(false);
+        return true;
+    }
+    if (ah == 0x00)
+    {
+        const uint32_t t = ticks_18hz();
+        c.set_cx(static_cast<uint16_t>(t >> 16));
+        c.set_dx(static_cast<uint16_t>(t));
+        c.set_ax(static_cast<uint16_t>(c.ax() & 0xFF00u)); /* AL=0, not midnight */
+        c.set_cf(false);
+        return true;
+    }
+    c.set_cf(false);
+    return true;
 }
 
 bool pc::int10()
