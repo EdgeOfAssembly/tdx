@@ -1262,13 +1262,6 @@ fill_dta:
         push    bp
         push    si
         push    di
-        push    ax
-        push    cx
-        push    dx
-        push    bx
-        push    bp
-        push    si
-        push    di
         push    es
         mov     [cs:fd_di], di
         mov     ax, [cs:dta_seg]
@@ -1966,8 +1959,8 @@ con_getkey:
         jnz     .cgk_bios
         mov     dx, 0x3FD
         in      al, dx
-        cmp     al, 0xFF                ; no UART (open bus)
-        je      .cgk_wait
+        cmp     al, 0xFF                ; no UART: block on BIOS INT 16 AH=00
+        je      .cgk_bios
         test    al, 0x01
         jz      .cgk_wait
         mov     dx, 0x3F8
