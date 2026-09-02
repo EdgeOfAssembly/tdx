@@ -15,11 +15,11 @@ LDFLAGS ?= $(LDFLAGS_DEBUG)
 
 all: iron86 tests/run_tests
 
-iron86: src/cpu.cpp src/main.cpp include/iron86/cpu.h
-	$(CXX) $(CXXFLAGS) src/cpu.cpp src/main.cpp -o $@ $(LDFLAGS)
+iron86: src/cpu.cpp src/ea.cpp src/main.cpp include/iron86/cpu.h include/iron86/ea.h
+	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp src/main.cpp -o $@ $(LDFLAGS)
 
-tests/run_tests: src/cpu.cpp tests/test_cpu.cpp include/iron86/cpu.h
-	$(CXX) $(CXXFLAGS) src/cpu.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
+tests/run_tests: src/cpu.cpp src/ea.cpp tests/test_cpu.cpp include/iron86/cpu.h include/iron86/ea.h
+	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
 
 test: tests/run_tests iron86
 	./tests/run_tests

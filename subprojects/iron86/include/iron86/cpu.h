@@ -5,8 +5,11 @@
 #ifndef IRON86_CPU_H
 #define IRON86_CPU_H
 
+#include "iron86/ea.h"
+
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 namespace iron86
 {
@@ -98,7 +101,29 @@ private:
     uint16_t pop16();
     void do_int(uint8_t vector);
 
-    uint8_t mem_[k_mem_size]{};
+    void decode_modrm();
+    uint16_t rm_base(uint8_t rm) const;
+    uint32_t rm_lin() const;
+    uint16_t gpr16(uint8_t n) const;
+    void set_gpr16(uint8_t n, uint16_t v);
+    uint8_t get_reg8(uint8_t n) const;
+    void set_reg8(uint8_t n, uint8_t v);
+    uint8_t get_rm8() const;
+    void set_rm8(uint8_t v);
+    uint16_t get_rm16() const;
+    void set_rm16(uint16_t v);
+
+    void set_flag(uint16_t bit, bool v);
+    void update_zsp(uint32_t res, unsigned size);
+    void set_add_flags(uint32_t res, uint32_t op1, uint32_t op2, unsigned size);
+    void set_sub_flags(uint32_t res, uint32_t op1, uint32_t op2, unsigned size);
+    void inc_r16(uint8_t r);
+    void dec_r16(uint8_t r);
+    bool cond_cc(uint8_t cc) const;
+    void jcc8(uint8_t cc);
+
+    std::unique_ptr<uint8_t[]> mem_;
+    modrm mr_{};
     uint16_t ax_ = 0;
     uint16_t cx_ = 0;
     uint16_t dx_ = 0;
