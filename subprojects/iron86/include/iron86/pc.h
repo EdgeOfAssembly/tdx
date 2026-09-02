@@ -64,6 +64,18 @@ public:
     void enable_fast_post();
 
     /**
+     * @brief Host PC speaker (default on). CLI `--no-audio` passes false.
+     * @param[in] on false: no BEL and no beep events.
+     */
+    void enable_audio(bool on);
+
+    /**
+     * @brief Rising-edge speaker beeps while audio is enabled.
+     * @return Count since construct (0 if audio was off for those edges).
+     */
+    unsigned beep_count() const { return beep_count_; }
+
+    /**
      * @brief Mount a raw sector image as drive A: (PyFloppy attach). No reset.
      */
     bool attach_floppy(const uint8_t *img, size_t n);
@@ -90,6 +102,8 @@ private:
     bool waiting_key_ = false;
 
     pc_hw hw_{};
+    bool audio_enabled_ = true;
+    unsigned beep_count_ = 0;
 
     uint8_t in_port(uint16_t port);
     void out_port(uint16_t port, uint8_t v);
@@ -97,6 +111,7 @@ private:
     void pit_tick();
     void ppi_tick();
     void ppi_on_port_b();
+    void speaker_rising();
     void pic_assert(uint8_t irq);
     void pic_deassert(uint8_t irq);
     void pic_write_cmd(uint8_t v);

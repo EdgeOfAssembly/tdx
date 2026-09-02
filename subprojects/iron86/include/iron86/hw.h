@@ -7,7 +7,8 @@
  * `offsetof` checks stay stable.
  *
  * @note DIP default 0x2D is CGA 80×25 (tdxview B800). Py86 later used 0x3D
- *       (MDA) for its mono display; do not copy that here.
+ *       (MDA) for its mono display; do not copy that here. Port C nibble
+ *       0x06 → 256K (64K planar + 6×32K I/O), matching Py86.
  */
 #ifndef IRON86_HW_H
 #define IRON86_HW_H
@@ -28,7 +29,7 @@ struct ppi8255
     uint8_t port_c;
     uint8_t control;
     uint8_t dip;          /**< SW1; 0x2D = CGA 80×25, 64K, 1 FDD, IPL. */
-    uint8_t io_nibble;    /**< Port C low nibble: I/O-channel RAM ×32K. */
+    uint8_t io_nibble;    /**< Port C low nibble: I/O RAM ×32K; 0x06 → 256K. */
     uint8_t kbd_data;
     uint8_t last_b;
     uint8_t kbd_ready;

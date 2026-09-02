@@ -1,6 +1,6 @@
 /**
  * @file test_pc.cpp
- * @brief Packed 5150 chipset: PIC IMR, PIT countdown, DMA wrap, PPI DIP.
+ * @brief Packed 5150 chipset: PIC IMR, PIT, DMA, PPI DIP/256K nibble, speaker.
  */
 #include "iron86/hw.h"
 #include "iron86/pc.h"
@@ -101,6 +101,15 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "ppi dip 2d");
     }
     {
+        /* Port C low nibble 0x06 → 64K + 6*32K = 256K (Py86). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {0xE4, 0x62, 0xF4}; /* IN AL,62h; HLT */
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 8);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 6, "ppi io nibble 6");
+    }
+    {
         /* PIT ch1 mode 2 LSB count 0: after ticks, latch LSB is not stuck at 00. */
         iron86::pc p;
         p.wire_pc_hw();
@@ -140,6 +149,33 @@ int main()
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 8);
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x001E, "xt scan a");
+    }
+    {
+        /* PIT ch2 mode 3 + OUT 61h bits 0+1 → one rising-edge beep. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0xB6, 0xE6, 0x43, /* MOV AL,B6h; OUT 43h,AL */
+            0xB0, 0xA9, 0xE6, 0x42, /* LSB */
+            0xB0, 0x04, 0xE6, 0x42, /* MSB reload=04A9h */
+            0xB0, 0x03, 0xE6, 0x61, /* OUT 61h, 03h (gate+data) */
+            0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect(p.beep_count() >= 1u, "speaker beep");
+    }
+    {
+        iron86::pc p;
+        p.enable_audio(false);
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0xB6, 0xE6, 0x43, 0xB0, 0xA9, 0xE6, 0x42, 0xB0, 0x04, 0xE6, 0x42,
+            0xB0, 0x03, 0xE6, 0x61, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect(p.beep_count() == 0u, "no-audio silent");
     }
     {
         const char *path =

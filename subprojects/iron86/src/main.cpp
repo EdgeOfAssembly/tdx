@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.8";
+static const char *k_version = "0.9";
 
 static void usage(FILE *out)
 {
@@ -26,7 +26,7 @@ static void usage(FILE *out)
         "  .COM loads at 1000:0100. --floppy without --bios: 0000:7C00.\n"
         "  --bios: IBM 5150 8K at FE000, reset FFFF:0000 (Py86 load_bios_5150_8k).\n"
         "  PPI/PIT/PIC/DMA/FDC (PyFloppy uPD765) for 1981 POST + INT 19h.\n"
-        "  Fast-post (BDA 1234h) is default.\n"
+        "  Fast-post (BDA 1234h) is default. PC speaker BEL is default.\n"
         "  Options and operands may be interleaved.\n"
         "\n"
         "Options:\n"
@@ -34,11 +34,12 @@ static void usage(FILE *out)
         "  -v, --version      Show version and exit\n"
         "  --bios FILE        Load 5150 8K BIOS (default: none)\n"
         "  --no-fast-post     Cold POST (do not set RESET_FLAG=1234h)\n"
+        "  --no-audio         Disable PC speaker BEL (default: on)\n"
         "  --floppy IMAGE     360K (or larger) floppy image\n"
         "  --keys STRING      Type STRING as INT 16h keys (default: none)\n"
-        "\n"
-        "iron86 0.8\n",
+        "\n",
         out);
+    std::fprintf(out, "iron86 %s\n", k_version);
 }
 
 static std::vector<uint8_t> slurp(const char *path)
@@ -59,6 +60,7 @@ int main(int argc, char **argv)
     const char *keys = nullptr;
     const char *bios = nullptr;
     bool no_fast_post = false;
+    bool no_audio = false;
     int i = 1;
     for (i = 1; i < argc; i++)
     {
@@ -98,6 +100,11 @@ int main(int argc, char **argv)
             no_fast_post = true;
             continue;
         }
+        if (std::strcmp(a, "--no-audio") == 0)
+        {
+            no_audio = true;
+            continue;
+        }
         if (std::strcmp(a, "--keys") == 0)
         {
             if (i + 1 >= argc)
@@ -131,6 +138,10 @@ int main(int argc, char **argv)
             return 1;
         }
         iron86::pc p;
+        if (no_audio)
+        {
+            p.enable_audio(false);
+        }
         if (floppy != nullptr)
         {
             const std::vector<uint8_t> img = slurp(floppy);
@@ -205,6 +216,10 @@ int main(int argc, char **argv)
             return 1;
         }
         iron86::pc p;
+        if (no_audio)
+        {
+            p.enable_audio(false);
+        }
         if (!p.load_floppy(img.data(), img.size()))
         {
             return 1;

@@ -4,6 +4,8 @@
  */
 #include "iron86/pc.h"
 
+#include <cstdio>
+
 namespace iron86
 {
 
@@ -376,7 +378,7 @@ void pc::wire_pc_hw()
     hw_ = {};
     hw_.ppi.control = 0x99;
     hw_.ppi.dip = 0x2D; /* CGA 80×25, 64K planar, 1 FDD, IPL (not Py86 MDA 0x3D) */
-    hw_.ppi.io_nibble = 0;
+    hw_.ppi.io_nibble = 0x06; /* 64K + 6*32K = 256K (Py86 io_channel_size_nibble) */
     hw_.pic.imr = 0xFF;
     hw_.pic.vector_base = 8;
     hw_.pic.read_isr = 1;
@@ -406,6 +408,25 @@ void pc::enable_fast_post()
     /* Py86 enable_fast_post: BDA 0040:0072 = 1234h. */
     c.mem_write8(0x472u, 0x34);
     c.mem_write8(0x473u, 0x12);
+}
+
+void pc::enable_audio(bool on)
+{
+    audio_enabled_ = on;
+}
+
+void pc::speaker_rising()
+{
+    if (!audio_enabled_)
+    {
+        return;
+    }
+    const uint16_t reload = hw_.pit.ch[2].reload;
+    const unsigned hz =
+        (reload != 0) ? static_cast<unsigned>(1193182u / static_cast<unsigned>(reload)) : 0u;
+    (void)hz;
+    beep_count_++;
+    (void)std::fputc('\a', stderr);
 }
 
 void pc::pic_assert(uint8_t irq)
@@ -539,6 +560,12 @@ void pc::ppi_on_port_b()
     const uint8_t prev = p.last_b;
     const uint8_t now = p.port_b;
     hw_.pit.ch[2].gate = static_cast<uint8_t>((now & 0x01u) != 0 ? 1 : 0);
+    const bool was_audible = ((prev & 0x03u) == 0x03u);
+    const bool now_audible = ((now & 0x03u) == 0x03u);
+    if (now_audible && !was_audible)
+    {
+        speaker_rising();
+    }
     const bool clock_was_low = (prev & 0x40u) == 0;
     const bool clock_now_high = (now & 0x40u) != 0;
     const bool clock_released = clock_was_low && clock_now_high;

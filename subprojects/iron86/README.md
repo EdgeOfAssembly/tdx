@@ -29,8 +29,8 @@ reset vector at `FFFF0`, CPU `FFFF:0000`. Do not commit the ROM.
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.7** — 5150 BIOS load matching Py86, plus packed PPI/PIT/PIC/DMA
-for authentic POST (IMR echo, timer 1, DMA wrap, CGA DIP 0x2D). Fast-post
+Version **0.9** — 256K PPI I/O nibble (Py86 `0x06`), PC speaker BEL
+(PIT ch2 + PPI 61h bits 0+1; `--no-audio` only). Fast-post
 (BDA `RESET_FLAG=1234h`) is the `--bios` default; `--no-fast-post` for cold.
 
 ```text
