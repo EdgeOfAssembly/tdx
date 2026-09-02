@@ -2,9 +2,11 @@
  * @file test_pc.cpp
  * @brief Packed 5150 chipset: PIC IMR, PIT, DMA, PPI DIP/256K nibble, speaker.
  */
+#include "iron86/crtc.h"
 #include "iron86/hw.h"
 #include "iron86/pc.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -49,7 +51,9 @@ int main()
 {
     expect(sizeof(iron86::ppi8255) == 10u, "sizeof ppi8255");
     expect(sizeof(iron86::fdc765) == 50u, "sizeof fdc765");
-    expect(sizeof(iron86::pc_hw) == 181u, "sizeof pc_hw");
+    expect(sizeof(iron86::mc6845) == 29u, "sizeof mc6845");
+    expect(sizeof(iron86::pc_hw) == 159u, "sizeof pc_hw");
+    expect(offsetof(iron86::pc_hw, fdc) == 108u, "offsetof pc_hw.fdc");
 
     {
         /* PIC ICW then IMR 00 / FF readback (PCBIOS TST6). */
@@ -164,6 +168,64 @@ int main()
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 32);
         expect(p.beep_count() >= 1u, "speaker beep");
+    }
+    {
+        /* IN 3DA twice: POST TEST.10 needs status bits to change. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xBA, 0xDA, 0x03, /* MOV DX,3DAh */
+            0xEC, 0x88, 0xC3, 0xEC, 0x38, 0xD8, 0x74, 0x03, 0xB0, 0x01, 0xF4, 0xB0,
+            0x00, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 1, "cga 3da toggle");
+    }
+    {
+        /* IN 3BA twice: MDA status must also toggle (separate 6845). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xBA, 0xBA, 0x03, /* MOV DX,3BAh */
+            0xEC, 0x88, 0xC3, 0xEC, 0x38, 0xD8, 0x74, 0x03, 0xB0, 0x01, 0xF4, 0xB0,
+            0x00, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 1, "mda 3ba toggle");
+    }
+    {
+        /* MDA LPT probe: 3BD not-busy 0xDF; 3BC data readback. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0xA5, 0xBA, 0xBC, 0x03, 0xEE, /* MOV AL,A5h; MOV DX,3BCh; OUT DX,AL */
+            0xEC,                               /* IN AL,DX */
+            0x88, 0xC4,                         /* MOV AH,AL */
+            0xBA, 0xBD, 0x03, 0xEC,             /* MOV DX,3BDh; IN AL,DX */
+            0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(p.c.ax(), 0xA5DF, "mda lpt 3bc/3bd");
+    }
+    {
+        /* Separate 6845s: MDA R12 != CGA R12. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x0C, 0xBA, 0xB4, 0x03, 0xEE, /* OUT 3B4,12 */
+            0xB0, 0xAA, 0x42, 0xEE,             /* OUT 3B5,AAh */
+            0xB0, 0x0C, 0xBA, 0xD4, 0x03, 0xEE, /* OUT 3D4,12 */
+            0xB0, 0x55, 0x42, 0xEE,             /* OUT 3D5,55h */
+            0xBA, 0xB5, 0x03, 0xEC, 0x88, 0xC4, /* IN 3B5 → AH */
+            0xBA, 0xD5, 0x03, 0xEC,             /* IN 3D5 → AL */
+            0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(p.c.ax(), 0xAA55, "mda/cga 6845 split");
     }
     {
         iron86::pc p;

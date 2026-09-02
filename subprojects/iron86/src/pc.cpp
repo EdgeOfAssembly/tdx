@@ -3,6 +3,7 @@
  * @brief INT 10h AH=0Eh, INT 13h AH=00/02, INT 16h AH=00/01, INT 1Ah ticks.
  */
 #include "iron86/pc.h"
+#include "iron86/crtc.h"
 
 #include <cstdio>
 
@@ -376,6 +377,8 @@ bool pc::int16()
 void pc::wire_pc_hw()
 {
     hw_ = {};
+    crtc_reset(&mda_, 1);
+    crtc_reset(&cga_, 0);
     hw_.ppi.control = 0x99;
     hw_.ppi.dip = 0x2D; /* CGA 80×25, 64K planar, 1 FDD, IPL (not Py86 MDA 0x3D) */
     hw_.ppi.io_nibble = 0x06; /* 64K + 6*32K = 256K (Py86 io_channel_size_nibble) */
@@ -881,6 +884,8 @@ uint8_t pc::dma_in(uint16_t port)
 
 void pc::after_insn()
 {
+    crtc_tick(&mda_);
+    crtc_tick(&cga_);
     hw_.pit_div = static_cast<uint8_t>(hw_.pit_div + 1u);
     if ((hw_.pit_div & 1u) == 0)
     {
@@ -1267,19 +1272,57 @@ uint8_t pc::in_port(uint16_t port)
         }
         return hw_.ppi.control;
     }
-    if ((p == 0x3BAu) || (p == 0x3DAu))
+    if ((p >= 0x3B0u) && (p <= 0x3BFu))
     {
-        /* POST CRT line test: bit3 video enable, bit0 HSYNC must go on then off. */
-        hw_.vid.status = static_cast<uint8_t>(hw_.vid.status ^ 0x09u);
-        return hw_.vid.status;
+        if (p == 0x3B4u)
+        {
+            return mda_.index;
+        }
+        if (p == 0x3B5u)
+        {
+            return crtc_read_data(&mda_);
+        }
+        if (p == 0x3B8u)
+        {
+            return crtc_read_ctrl(&mda_);
+        }
+        if (p == 0x3BAu)
+        {
+            return crtc_read_status(&mda_);
+        }
+        if (p == 0x3BCu)
+        {
+            return mda_.lpt_data;
+        }
+        if (p == 0x3BDu)
+        {
+            return mda_.lpt_stat;
+        }
+        if (p == 0x3BEu)
+        {
+            return mda_.lpt_ctrl;
+        }
+        return 0xFFu;
     }
-    if (p == 0x3B8u)
+    if ((p >= 0x3D0u) && (p <= 0x3DFu))
     {
-        return hw_.vid.mode_3b8;
-    }
-    if (p == 0x3D8u)
-    {
-        return hw_.vid.mode_3d8;
+        if (p == 0x3D4u)
+        {
+            return cga_.index;
+        }
+        if (p == 0x3D5u)
+        {
+            return crtc_read_data(&cga_);
+        }
+        if (p == 0x3D8u)
+        {
+            return crtc_read_ctrl(&cga_);
+        }
+        if (p == 0x3DAu)
+        {
+            return crtc_read_status(&cga_);
+        }
+        return 0xFFu;
     }
     if ((p >= 0x3F0u) && (p <= 0x3F7u))
     {
@@ -1361,27 +1404,52 @@ void pc::out_port(uint16_t port, uint8_t v)
         hw_.ppi.port_c = v;
         return;
     }
-    if ((p == 0x3B4u) || (p == 0x3D4u))
+    if ((p >= 0x3B0u) && (p <= 0x3BFu))
     {
-        hw_.vid.index = static_cast<uint8_t>(v & 0x1Fu);
-        return;
-    }
-    if ((p == 0x3B5u) || (p == 0x3D5u))
-    {
-        if (hw_.vid.index < 18u)
+        if (p == 0x3B4u)
         {
-            hw_.vid.regs[hw_.vid.index] = v;
+            crtc_write_index(&mda_, v);
+            return;
+        }
+        if (p == 0x3B5u)
+        {
+            crtc_write_data(&mda_, v);
+            return;
+        }
+        if (p == 0x3B8u)
+        {
+            crtc_write_ctrl(&mda_, v);
+            return;
+        }
+        if (p == 0x3BCu)
+        {
+            mda_.lpt_data = v;
+            return;
+        }
+        if (p == 0x3BEu)
+        {
+            mda_.lpt_ctrl = v;
+            return;
         }
         return;
     }
-    if (p == 0x3B8u)
+    if ((p >= 0x3D0u) && (p <= 0x3DFu))
     {
-        hw_.vid.mode_3b8 = v;
-        return;
-    }
-    if (p == 0x3D8u)
-    {
-        hw_.vid.mode_3d8 = v;
+        if (p == 0x3D4u)
+        {
+            crtc_write_index(&cga_, v);
+            return;
+        }
+        if (p == 0x3D5u)
+        {
+            crtc_write_data(&cga_, v);
+            return;
+        }
+        if (p == 0x3D8u)
+        {
+            crtc_write_ctrl(&cga_, v);
+            return;
+        }
         return;
     }
     if (p == 0x3F2u)

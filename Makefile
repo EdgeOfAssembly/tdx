@@ -38,7 +38,7 @@ CFLAGS   := $(CFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
 IRON86_SRC := subprojects/iron86/src/cpu.cpp subprojects/iron86/src/ea.cpp \
-	subprojects/iron86/src/pc.cpp
+	subprojects/iron86/src/pc.cpp subprojects/iron86/src/crtc.cpp
 REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp \
 	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c \
 	$(IRON86_SRC)

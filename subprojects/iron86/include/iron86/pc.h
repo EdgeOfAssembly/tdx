@@ -6,6 +6,7 @@
 #define IRON86_PC_H
 
 #include "iron86/cpu.h"
+#include "iron86/crtc.h"
 #include "iron86/hw.h"
 
 #include <chrono>
@@ -102,6 +103,8 @@ private:
     bool waiting_key_ = false;
 
     pc_hw hw_{};
+    mc6845 mda_{}; /**< MDA 6845 + LPT1 (3B4/3B5/3B8/3BA, 3BC–3BE). */
+    mc6845 cga_{}; /**< CGA 6845 (3D4/3D5/3D8/3DA). */
     bool audio_enabled_ = true;
     unsigned beep_count_ = 0;
 

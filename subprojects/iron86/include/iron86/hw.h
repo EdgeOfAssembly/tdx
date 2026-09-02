@@ -1,10 +1,13 @@
 /**
  * @file hw.h
- * @brief Packed IBM PC chipset state (8255/8253/8259/8237 + CRTC ports).
+ * @brief Packed IBM PC chipset state (8255/8253/8259/8237 + FDC).
  *
  * Layout matches Py86 (`ppi8255.py`, `pit8253.py`, `pic8259.py`, `dma8237.py`)
  * as used by the 24-APR-1981 5150 BIOS POST. Packed so on-disk dumps and
  * `offsetof` checks stay stable.
+ *
+ * MDA/CGA MC6845 live on `pc` (`mda_` / `cga_`), not in this blob, so FDC
+ * offsets stay simple.
  *
  * @note DIP default 0x2D is CGA 80×25 (tdxview B800). Py86 later used 0x3D
  *       (MDA) for its mono display; do not copy that here. Port C nibble
@@ -90,16 +93,6 @@ struct dma8237
     uint8_t byte_ptr;
 };
 
-/** @brief MDA/CGA CRTC ports used by 1981 POST (3Bx / 3Dx). */
-struct crtc_video
-{
-    uint8_t index;
-    uint8_t regs[18];
-    uint8_t mode_3b8;
-    uint8_t mode_3d8;
-    uint8_t status;
-};
-
 /**
  * @brief NEC uPD765 / Intel 8272A FDC (PyFloppy), ports 3F2/3F4/3F5.
  *
@@ -137,7 +130,6 @@ struct pc_hw
     pit8253 pit;
     pic8259 pic;
     dma8237 dma;
-    crtc_video vid;
     fdc765 fdc;
     uint8_t pit_div;
 };
@@ -149,12 +141,11 @@ static_assert(sizeof(pit_counter) == 14, "pit_counter packed");
 static_assert(sizeof(pit8253) == 42, "pit8253 packed");
 static_assert(sizeof(pic8259) == 12, "pic8259 packed");
 static_assert(sizeof(dma8237) == 44, "dma8237 packed");
-static_assert(sizeof(crtc_video) == 22, "crtc_video packed");
 static_assert(sizeof(fdc765) == 50, "fdc765 packed");
-static_assert(sizeof(pc_hw) == 181, "pc_hw packed");
+static_assert(sizeof(pc_hw) == 159, "pc_hw packed");
 static_assert(offsetof(pc_hw, pic) == 52, "pc_hw.pic offset");
 static_assert(offsetof(pc_hw, dma) == 64, "pc_hw.dma offset");
-static_assert(offsetof(pc_hw, fdc) == 130, "pc_hw.fdc offset");
+static_assert(offsetof(pc_hw, fdc) == 108, "pc_hw.fdc offset");
 
 } // namespace iron86
 
