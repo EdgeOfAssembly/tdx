@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.14"
+VERSION = "0.15"
 
 
 def usage() -> None:

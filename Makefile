@@ -43,12 +43,13 @@ IRON86_SRC := subprojects/iron86/src/cpu.cpp subprojects/iron86/src/ea.cpp \
 REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp \
 	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c \
 	$(IRON86_SRC)
-TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ui.cpp src/tdx/tdx_main.cpp \
-	src/tdx/tdx_shot.cpp
-VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_agent_sock.cpp
+TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_ui.cpp \
+	src/tdx/tdx_main.cpp src/tdx/tdx_shot.cpp
+VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_shot.cpp \
+	src/tdx/tdx_agent_sock.cpp
 TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
 	tests/test_shot.cpp tests/test_int10.cpp tests/test_fault.cpp tests/test_bios.cpp \
-	tests/test_pit.cpp tests/test_floppy.cpp
+	tests/test_pit.cpp tests/test_floppy.cpp tests/test_ibm_font.cpp
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 
@@ -72,7 +73,7 @@ tdxview: $(VIEW_SRC)
 
 tests/run_tests: $(REX_SRC) $(TEST_SRCS) src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp fixtures
 	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TEST_SRCS) \
-		src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp \
+		src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_ibm_font.cpp \
 		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC)
 
 # Track every header as a dependency so `make` rebuilds the (single-object)

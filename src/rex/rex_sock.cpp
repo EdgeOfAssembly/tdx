@@ -7,6 +7,7 @@
 
 #include "dos/dos_cga.h"
 #include "rex/rex_log.h"
+#include "tdx/tdx_ibm_font.h"
 #include "tdx/tdx_shot.h"
 
 #include <nlohmann/json.hpp>
@@ -745,6 +746,29 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             if (rex_session_read_mem(s, 0xB8000ull, b800, sizeof(b800)) == REX_OK)
             {
                 resp["b800_b64"] = b64_encode(b800, sizeof(b800));
+            }
+        }
+        {
+            uint8_t font[1024];
+            if ((rex_session_read_mem(s, 0xFFA6Eull, font, sizeof(font)) == REX_OK) &&
+                (tdx_ibm_font_looks_cga8(font, sizeof(font)) != 0))
+            {
+                resp["font8_b64"] = b64_encode(font, sizeof(font));
+            }
+            uint8_t iv[4] = {0, 0, 0, 0};
+            if (rex_session_read_mem(s, 0x7Cull, iv, 4) == REX_OK)
+            {
+                const uint16_t off = (uint16_t)(iv[0] | ((uint16_t)iv[1] << 8));
+                const uint16_t seg = (uint16_t)(iv[2] | ((uint16_t)iv[3] << 8));
+                if ((seg != 0) || (off != 0))
+                {
+                    uint8_t hi[1024];
+                    const uint32_t lin = ((uint32_t)seg << 4) + off;
+                    if (rex_session_read_mem(s, lin, hi, sizeof(hi)) == REX_OK)
+                    {
+                        resp["font8hi_b64"] = b64_encode(hi, sizeof(hi));
+                    }
+                }
             }
         }
         if (rex_session_cga_decode(s, px, sizeof(px)) == REX_OK)

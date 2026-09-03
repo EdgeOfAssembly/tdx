@@ -565,6 +565,8 @@ int main(int argc, char **argv)
     bool tex_gfx = false; /* start as 640×400 text */
     std::vector<uint8_t> fb;
     std::vector<uint8_t> b800;
+    std::vector<uint8_t> ibm8;
+    std::vector<uint8_t> ibm8hi;
     std::string sock_acc;
     tdx_agent_sock *agent = nullptr;
     view_state vst{};
@@ -692,6 +694,14 @@ int main(int argc, char **argv)
                         b64_decode(j["pixels_b64"].get<std::string>(), &fb);
                     }
                     palreg = (uint8_t)j.value("cga3d9", 0x30);
+                    if (j.contains("font8_b64"))
+                    {
+                        b64_decode(j["font8_b64"].get<std::string>(), &ibm8);
+                    }
+                    if (j.contains("font8hi_b64"))
+                    {
+                        b64_decode(j["font8hi_b64"].get<std::string>(), &ibm8hi);
+                    }
                     if (j.contains("guest") && (win != nullptr))
                     {
                         char title[256];
@@ -769,9 +779,31 @@ int main(int argc, char **argv)
                         const uint8_t at = b800[(size_t)(row * 80 + col) * 2u + 1u];
                         const uint32_t fg = k_vga[at & 15u];
                         const uint32_t bg = k_vga[(at >> 4) & 7u];
+                        uint8_t ibm_rows[16];
                         const uint8_t *g = tdx_font_glyph(ch);
                         int gy = 0;
                         int gx = 0;
+                        if ((ch < 128u) && (ibm8.size() >= 1024u))
+                        {
+                            int r = 0;
+                            for (r = 0; r < 8; r++)
+                            {
+                                ibm_rows[r * 2] = ibm8[(size_t)ch * 8u + (size_t)r];
+                                ibm_rows[r * 2 + 1] = ibm_rows[r * 2];
+                            }
+                            g = ibm_rows;
+                        }
+                        else if ((ch >= 128u) && (ibm8hi.size() >= 1024u))
+                        {
+                            int r = 0;
+                            const uint8_t idx = (uint8_t)(ch - 128u);
+                            for (r = 0; r < 8; r++)
+                            {
+                                ibm_rows[r * 2] = ibm8hi[(size_t)idx * 8u + (size_t)r];
+                                ibm_rows[r * 2 + 1] = ibm_rows[r * 2];
+                            }
+                            g = ibm_rows;
+                        }
                         for (gy = 0; gy < 16; gy++)
                         {
                             const uint8_t bits = g[gy];
