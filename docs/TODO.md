@@ -42,12 +42,25 @@ The card ROM `ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN` (MAME SHA1 `c2a8b108
 | 6 | CGA 640×200 2-color | listed as gfx; confirm 1bpp vs 4’s 2bpp when a game uses it |
 | 7 | **MDA 80×25 text only** (no graphics) | ok (`--mda`, B000, green 5151) |
 
-MDA has **no other modes**. Hercules graphics is a later card (mode-ish 8 / page at B000). **Do not implement 0/1/6/Hercules until there is a test game.**
+**MDA (IBM 5151)** has **only mode 7** (80×25 text, no bitmap). Green-on-black is the 5151 P39 phosphor.
 
-- [ ] CGA **mode 0 / 1** 40-column text — when a title needs it.
-- [ ] CGA **mode 6** 640×200 1bpp — verify decoder when a title needs it.
-- [ ] **CGA 3D9** palette (cyan/magenta vs red/green) if a game looks wrong.
-- [ ] **Hercules** 720×348 — after a Herc game shows up.
+**Hercules Graphics Card (HGC)** is **not** MDA. It is a later third-party card: MDA-compatible **text** (same `B000` / `3Bx`) **plus** a 720×348 2-color graphics page (two pages, extra bits on `3B8`). Games that “need Hercules” are not MDA titles.
+
+Still missing — **case-by-case when a game needs it** (composite artifact already has a test title):
+
+**CGA**
+- [ ] **3D9 palette** — full color-select (background, cyan/magenta vs red/green vs intense, burst).
+- [ ] **Mode 6** 640×200 1bpp polish (not the same decoder as mode 4’s 2bpp).
+- [ ] **Modes 0 / 1** 40-column text (0 ≈ B&W, 1 = 16-color).
+- [ ] **Composite artifact color** — NTSC chroma from 640×200 / 80-col; **have a game to test**.
+- [ ] **Snow / wait-states** — CGA VRAM contention (cycle-exact 6845). Low priority unless that game shows it.
+
+**MDA**
+- [ ] **Blink** (attr bit 7, ~1.875 Hz).
+- [ ] **Exact 720×350 timing** (9×14 cells; we draw 720×350 already, not crystal-accurate).
+
+**Hercules (separate from MDA)**
+- [ ] **720×348 graphics** at `B000`, page 0/1, `3B8` graphics enable. After a Herc game is in hand.
 
 tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MDA+CGA pair in one guest is **last**, not needed for this debugger.
 
@@ -98,7 +111,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 1. FDC Write (saves / COPY).
 2. Xebec HDD image + test.
 3. FlopFS xxhash3/dedup.
-4. CGA 40-col / mode 6 / Hercules **only with a game in hand**.
+4. CGA 40-col / mode 6 / 3D9 / **composite artifact** (game in hand) / Hercules **only with a title in hand**.
 5. FAT12 and FDC Format/Scan last.
 
 Py86 remains the chip-level reference (`/tmp/RetroCodeMess/Py86`). Unicorn remains the default **MZ EXE** debugger path.
