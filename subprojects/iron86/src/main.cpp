@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.10";
+static const char *k_version = "0.11";
 
 static void usage(FILE *out)
 {
@@ -36,6 +36,7 @@ static void usage(FILE *out)
         "  --bios FILE          Load 5150 8K BIOS (default: none)\n"
         "  --no-fast-post       Cold POST (do not set RESET_FLAG=1234h)\n"
         "  --no-audio           Disable PC speaker BEL (default: on)\n"
+        "  --mda                MDA 80×25 (B000, DIP 0x3D). Default CGA\n"
         "  --floppy-a PATH      Drive 0: image or directory (pack FlopFS)\n"
         "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
         "  --floppy PATH        Alias for --floppy-a\n"
@@ -109,6 +110,7 @@ int main(int argc, char **argv)
     const char *bios = nullptr;
     bool no_fast_post = false;
     bool no_audio = false;
+    bool mda = false;
     int i = 1;
     for (i = 1; i < argc; i++)
     {
@@ -174,6 +176,11 @@ int main(int argc, char **argv)
             no_audio = true;
             continue;
         }
+        if (std::strcmp(a, "--mda") == 0)
+        {
+            mda = true;
+            continue;
+        }
         t = take_path_opt(a, "--keys", &keys, &i, argc, argv);
         if (t != 0)
         {
@@ -228,6 +235,10 @@ int main(int argc, char **argv)
             return 1;
         }
         p.wire_pc_hw();
+        if (mda)
+        {
+            p.set_mda(true);
+        }
         if (!no_fast_post)
         {
             p.enable_fast_post();

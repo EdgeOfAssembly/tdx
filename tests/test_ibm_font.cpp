@@ -20,3 +20,15 @@ TEST_CASE("IBM CGA 8x8 signature is char 0x01 smile")
     REQUIRE(tdx_ibm_font_looks_cga8(blob.data(), blob.size()) == 0);
     REQUIRE(tdx_ibm_font_looks_cga8(blob.data(), 16) == 0);
 }
+
+TEST_CASE("5788005 MDA ROM loads from ROM/ when present")
+{
+    if (tdx_ibm_font_load_5788005(nullptr) == 0)
+    {
+        SKIP("ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN not in tree");
+    }
+    REQUIRE(tdx_ibm_font_mda_loaded() == 1);
+    REQUIRE(tdx_ibm_font_cga8_loaded() == 1);
+    REQUIRE(tdx_ibm_font_cga8_row(1, 0) == 0x7E);
+    REQUIRE(tdx_ibm_font_mda_row(0x41, 5) != 0);
+}

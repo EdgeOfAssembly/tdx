@@ -9,6 +9,7 @@
 #include "dos/dos_cga.h"
 #include "tdx/tdx_agent_sock.h"
 #include "tdx/tdx_font.h"
+#include "tdx/tdx_ibm_font.h"
 #include "tdx/tdx_shot.h"
 #include "tdx/tdx_version.h"
 
@@ -563,10 +564,12 @@ int main(int argc, char **argv)
     int wait_ticks = 0;
     uint8_t last_mode = 0xFF;
     bool tex_gfx = false; /* start as 640×400 text */
+    uint8_t tex_kind = 0xFF; /* 0=CGA text 1=gfx 2=MDA */
     std::vector<uint8_t> fb;
     std::vector<uint8_t> b800;
     std::vector<uint8_t> ibm8;
     std::vector<uint8_t> ibm8hi;
+    std::vector<uint8_t> b000;
     std::string sock_acc;
     tdx_agent_sock *agent = nullptr;
     view_state vst{};
@@ -601,6 +604,7 @@ int main(int argc, char **argv)
         win = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 400,
                                SDL_WINDOW_RESIZABLE);
     }
+    (void)tdx_ibm_font_load_5788005(nullptr);
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 400);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
@@ -702,6 +706,10 @@ int main(int argc, char **argv)
                     {
                         b64_decode(j["font8hi_b64"].get<std::string>(), &ibm8hi);
                     }
+                    if (j.contains("b000_b64"))
+                    {
+                        b64_decode(j["b000_b64"].get<std::string>(), &b000);
+                    }
                     if (j.contains("guest") && (win != nullptr))
                     {
                         char title[256];
@@ -728,18 +736,21 @@ int main(int argc, char **argv)
         }
 
         {
+            const bool mda = (last_mode == 0x07);
             const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || (last_mode == 0x06) ||
                              (last_mode == 0x13);
-            if (gfx != tex_gfx)
+            const uint8_t kind = gfx ? 1u : (mda ? 2u : 0u);
+            if (kind != tex_kind)
             {
-                const int tw = gfx ? DOS_CGA_WIDTH : 640;
-                const int th = gfx ? DOS_CGA_HEIGHT : 400;
+                const int tw = gfx ? DOS_CGA_WIDTH : (mda ? 720 : 640);
+                const int th = gfx ? DOS_CGA_HEIGHT : (mda ? 350 : 400);
                 SDL_DestroyTexture(tex);
                 tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                         tw, th);
                 SDL_SetWindowSize(win, gfx ? (tw * cli.scale) : tw, gfx ? (th * cli.scale) : th);
                 vst.tex = tex;
                 tex_gfx = gfx;
+                tex_kind = kind;
             }
         }
 
@@ -747,7 +758,71 @@ int main(int argc, char **argv)
         {
             const int pitch_px = pitch / 4;
             const bool gfx = tex_gfx;
-            if (gfx)
+            if (last_mode == 0x07 && b000.size() >= 4000u)
+            {
+                int row = 0;
+                int col = 0;
+                const uint32_t ink = 0xFF55FF55;
+                const uint32_t dim = 0xFF00AA00;
+                const uint32_t blk = 0xFF000000;
+                for (row = 0; row < 25; row++)
+                {
+                    for (col = 0; col < 80; col++)
+                    {
+                        const uint8_t ch = b000[(size_t)(row * 80 + col) * 2u];
+                        const uint8_t at = b000[(size_t)(row * 80 + col) * 2u + 1u];
+                        const uint8_t vis = (uint8_t)(at & 0x77u);
+                        uint32_t fg = (at & 0x08u) ? ink : dim;
+                        uint32_t bg = blk;
+                        const bool ul = ((vis & 7u) == 1u);
+                        if ((vis & 0x70u) == 0x70u)
+                        {
+                            const uint32_t t = fg;
+                            fg = bg;
+                            bg = t;
+                        }
+                        else if ((vis & 7u) == 0)
+                        {
+                            fg = bg;
+                        }
+                        int gy = 0;
+                        int gx = 0;
+                        for (gy = 0; gy < 14; gy++)
+                        {
+                            uint8_t bits = 0;
+                            if (tdx_ibm_font_mda_loaded() != 0)
+                            {
+                                bits = tdx_ibm_font_mda_row(ch, gy);
+                            }
+                            else if ((ch < 128u) && (ibm8.size() >= 1024u) && (gy < 16))
+                            {
+                                bits = ibm8[(size_t)ch * 8u + (size_t)(gy / 2)];
+                            }
+                            uint32_t *dst = pix + (row * 14 + gy) * pitch_px + col * 9;
+                            for (gx = 0; gx < 8; gx++)
+                            {
+                                dst[gx] = (bits & (uint8_t)(0x80 >> gx)) ? fg : bg;
+                            }
+                            {
+                                uint8_t ninth = 0;
+                                if ((ch >= 0xC0u) && (ch <= 0xDFu))
+                                {
+                                    ninth = (uint8_t)(bits & 1u);
+                                }
+                                dst[8] = ninth ? fg : bg;
+                            }
+                            if (ul && (gy == 12))
+                            {
+                                for (gx = 0; gx < 9; gx++)
+                                {
+                                    dst[gx] = fg;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else if (gfx)
             {
                 uint32_t pal[4] = {k_cga[0], k_cga[1], k_cga[2], k_cga[3]};
                 dos_cga_palette_argb(palreg, pal);
@@ -783,7 +858,17 @@ int main(int argc, char **argv)
                         const uint8_t *g = tdx_font_glyph(ch);
                         int gy = 0;
                         int gx = 0;
-                        if ((ch < 128u) && (ibm8.size() >= 1024u))
+                        if (tdx_ibm_font_cga8_loaded() != 0)
+                        {
+                            int r = 0;
+                            for (r = 0; r < 8; r++)
+                            {
+                                ibm_rows[r * 2] = tdx_ibm_font_cga8_row(ch, r);
+                                ibm_rows[r * 2 + 1] = ibm_rows[r * 2];
+                            }
+                            g = ibm_rows;
+                        }
+                        else if ((ch < 128u) && (ibm8.size() >= 1024u))
                         {
                             int r = 0;
                             for (r = 0; r < 8; r++)

@@ -44,6 +44,18 @@ void pc::sync_fdd_dip()
     hw_.ppi.dip = dip;
 }
 
+void pc::set_mda(bool on)
+{
+    uint8_t dip = hw_.ppi.dip;
+    if (dip == 0)
+    {
+        dip = 0x2D;
+    }
+    dip = static_cast<uint8_t>(dip & static_cast<uint8_t>(~0x30u));
+    dip = static_cast<uint8_t>(dip | (on ? 0x30u : 0x20u));
+    hw_.ppi.dip = dip;
+}
+
 bool pc::attach_floppy(const uint8_t *img, size_t n)
 {
     return attach_floppy(0, img, n);

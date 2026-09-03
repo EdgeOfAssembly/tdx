@@ -28,8 +28,8 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 ### P1 — display authenticity
 
 - [x] **CGA BIOS CRT_CHAR_GEN 8×8** at `F000:FA6E` (128 glyphs) — tdxview doubles rows to 8×16 at 640×400. Loaded at runtime from guest BIOS (not committed). High 128 via INT 1Fh if set.
-- [ ] **MDA adapter 8K character ROM** (9×14, 256 glyphs on the card — **not** in the 8K BIOS). Need a dump + tdxview MDA path.
-- [ ] **MDA live path** — DIP `0x3D`, `B000:0000` 4K, tdxview (or `--mda`) actually paints it. Ports `3B4/3B5/3B8/3BA` exist; the viewer does not.
+- [x] **MDA 8K 5788005** + **B000 viewer** — `tdx --bios ROM --mda`, tdxview 720×350 mode 7. ROM loaded from `ROM/IBM_5788005_…BIN` (gitignored, not pushed).
+- [ ] **Hercules** 720×348 graphics page after MDA text.
 - [ ] **Hercules** — 720×348 page at `B000`, ports `3B4/3B5/3B8/3BA` extra bits, 32K/64K. Needs a viewer mode and tests (INT 10 is not enough; games talk to the 6845). After MDA text works.
 - [ ] **CGA 3D9** + remaining mode-4/5/6 palette quirks vs Unicorn `dos_cga.c`.
 

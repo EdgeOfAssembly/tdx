@@ -33,6 +33,7 @@ void tdx_print_usage(FILE *fp)
         "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
         "      --bios FILE       IBM 5150 8K BIOS on iron86 (FFFF:0000, Py86 map)\n"
         "                        with --floppy-a: PyFloppy uPD765 A: for INT 19h\n"
+        "      --mda             MDA 80×25 (B000, DIP 0x3D). Default CGA B800\n"
         "      --no-ui           Headless (no SDL windows)\n"
         "      --game            Also open CGA in this process (default: use tdxview)\n"
         "      --no-sock         Do not listen on the agent UNIX socket\n"
@@ -85,6 +86,10 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         else if (std::strcmp(a, "--game") == 0)
         {
             out->game = true;
+        }
+        else if (std::strcmp(a, "--mda") == 0)
+        {
+            out->mda = true;
         }
         else if ((std::strcmp(a, "--floppy-a") == 0) || (std::strcmp(a, "--floppy") == 0))
         {

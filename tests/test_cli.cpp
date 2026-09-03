@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.15");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.16");
 }
 
 TEST_CASE("bios is opt-in iron86 5150 POST")
@@ -103,4 +103,13 @@ TEST_CASE("in-process game window is opt-in")
     REQUIRE_FALSE(a.game);
     auto b = parse({"--game", "game.exe"});
     REQUIRE(b.game);
+}
+
+TEST_CASE("mda is opt-in CGA default")
+{
+    auto a = parse({"--bios", "rom.bin"});
+    REQUIRE_FALSE(a.mda);
+    auto b = parse({"--bios", "rom.bin", "--mda"});
+    REQUIRE(b.mda);
+    REQUIRE(b.bios == "rom.bin");
 }

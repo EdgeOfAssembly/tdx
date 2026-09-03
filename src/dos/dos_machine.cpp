@@ -1084,6 +1084,19 @@ rex_status dos_machine::load_bios_5150(const char *path)
     return REX_OK;
 }
 
+void dos_machine::set_mda(bool on)
+{
+    mda_video = on;
+    if (iron)
+    {
+        iron->set_mda(on);
+        if (on)
+        {
+            video_mode = 0x07;
+        }
+    }
+}
+
 rex_status dos_machine::attach_floppy_image(const char *image)
 {
     if ((image == nullptr) || (!iron))
@@ -1246,7 +1259,14 @@ rex_status dos_machine::step_one()
             con_out = iron->tty();
             {
                 const uint8_t bda_mode = iron->c.mem_read8(0x449u);
-                video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
+                if (mda_video)
+                {
+                    video_mode = 0x07;
+                }
+                else
+                {
+                    video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
+                }
                 cga_3d9 = iron->c.mem_read8(0x466u);
             }
             return REX_OK;
@@ -1315,7 +1335,14 @@ rex_status dos_machine::step_one()
         /* Real BIOS INT 10h writes BDA 40:49; iron86 intercept is off on --bios. */
         {
             const uint8_t bda_mode = iron->c.mem_read8(0x449u);
-            video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
+            if (mda_video)
+            {
+                video_mode = 0x07;
+            }
+            else
+            {
+                video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
+            }
             cga_3d9 = iron->c.mem_read8(0x466u);
         }
         video_dirty = true;

@@ -65,6 +65,12 @@ public:
     void enable_fast_post();
 
     /**
+     * @brief SW1 video bits: MDA 80×25 (0x3D family) vs CGA 80×25 (0x2D).
+     * Call after wire_pc_hw. Keeps floppy-count bits.
+     */
+    void set_mda(bool on);
+
+    /**
      * @brief Host PC speaker (default on). CLI `--no-audio` passes false.
      * @param[in] on false: no BEL and no beep events.
      */

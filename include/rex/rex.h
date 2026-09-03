@@ -69,6 +69,9 @@ REX_API rex_status rex_session_load_floppy_uc(rex_session *s, const char *image)
 /** @brief Load IBM 5150 8K BIOS on iron86; CS=FFFF IP=0000. */
 REX_API rex_status rex_session_load_bios(rex_session *s, const char *path);
 
+/** @brief After --bios: MDA 80×25 DIP (BIOS mode 7, B000). Default CGA. */
+REX_API void rex_session_set_mda(rex_session *s, int on);
+
 /** @brief Attach a floppy image or host directory (FlopFS pack) as A:. */
 REX_API rex_status rex_session_attach_floppy(rex_session *s, const char *image);
 

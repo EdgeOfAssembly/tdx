@@ -92,6 +92,7 @@ struct dos_machine
     bool stop_req = false;
     int exit_code = 0;
     uint8_t video_mode = 0x03;
+    bool mda_video = false; /**< --mda: keep tdxview on B000 even if BDA is trash. */
     uint8_t cga_3da = 0; /**< CGA status (port 3DAh); toggled on each IN. */
     uint8_t cga_3d9 = 0x30; /**< CGA color-select (port 3D9h / BDA 0040:0066). */
     uint16_t cursor_x = 0;
@@ -172,6 +173,8 @@ struct dos_machine
     rex_status load_floppy_uc(const char *image);
     /** @brief IBM 5150 8K BIOS at FE000, reset FFFF:0000 (Py86). iron86 only. */
     rex_status load_bios_5150(const char *path);
+    /** @brief After BIOS load: MDA 80×25 DIP (0x3D family) vs CGA (0x2D). */
+    void set_mda(bool on);
     /** @brief Mount IMAGE or host DIR as A: on the iron86 FDC (PyFloppy). */
     rex_status attach_floppy_image(const char *image);
     /** @brief Mount IMAGE or host DIR as B: (FDC unit 1 / INT 13h DL=1). */

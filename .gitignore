@@ -37,9 +37,11 @@ compile_commands.json
 /subprojects/floppyos/build/
 /subprojects/floppyos/subprojects/py86/
 
-# Local Py86 copy + IBM ROM (copyrighted; not shipped)
+# Local Py86 copy + IBM ROM (copyrighted; not shipped to GitHub)
 /Py86/
 /Py86_index.txt
+/ROM/*.BIN
+/ROM/*.bin
 
 # Local Borland C++ 3.1 reference tree (copyrighted; not shipped)
 /BORLANDC/

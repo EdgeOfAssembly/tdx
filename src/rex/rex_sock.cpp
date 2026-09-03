@@ -747,6 +747,11 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             {
                 resp["b800_b64"] = b64_encode(b800, sizeof(b800));
             }
+            uint8_t b000[4000];
+            if (rex_session_read_mem(s, 0xB0000ull, b000, sizeof(b000)) == REX_OK)
+            {
+                resp["b000_b64"] = b64_encode(b000, sizeof(b000));
+            }
         }
         {
             uint8_t font[1024];

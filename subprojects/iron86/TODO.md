@@ -10,7 +10,7 @@ Gates 2/5 done: 256K PPI nibble (`io_nibble=0x06`), speaker `--no-audio`.
 - [x] Floppy **B:** (second 360K, INT 13 DL=1, `attach_floppy` unit 1 / `--floppy-b`)
 - [ ] Full 8237 HOLD/HLDA / DRAM refresh tick
 - [x] **CGA BIOS CRT_CHAR_GEN 8×8** (`F000:FA6E`, runtime from guest, tdxview 8×16 double-row)
-- [ ] **MDA 8K adapter character ROM** (9×14, not in 8K BIOS)
+- [x] **MDA 8K 5788005** + tdxview B000 (`tdx --mda`). BIN gitignored, not pushed.
 - [ ] MDA B000 live display in tdxview (DIP 0x3D)
 - [ ] **Hercules** 720×348 @ B000 after MDA text
 - [ ] CGA 3D9 palette vs Unicorn `dos_cga.c`

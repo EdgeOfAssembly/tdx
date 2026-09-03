@@ -199,6 +199,14 @@ rex_status rex_session_load_bios(rex_session *s, const char *path)
     return s->dos->load_bios_5150(path);
 }
 
+void rex_session_set_mda(rex_session *s, int on)
+{
+    if ((s != nullptr) && (s->dos))
+    {
+        s->dos->set_mda(on != 0);
+    }
+}
+
 rex_status rex_session_attach_floppy(rex_session *s, const char *image)
 {
     if ((s == nullptr) || (image == nullptr) || (!s->dos))

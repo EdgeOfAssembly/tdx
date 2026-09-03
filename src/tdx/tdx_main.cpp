@@ -118,6 +118,10 @@ int main(int argc, char **argv)
         {
             rc = (int)rex_session_attach_floppy_b(s, cli.floppy_b.c_str());
         }
+        if ((rc == (int)REX_OK) && cli.mda)
+        {
+            rex_session_set_mda(s, 1);
+        }
     }
     else if (!cli.uc_floppy.empty())
     {
