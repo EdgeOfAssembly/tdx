@@ -732,6 +732,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["w"] = DOS_CGA_WIDTH;
         resp["h"] = DOS_CGA_HEIGHT;
         resp["con"] = rex_session_con_out(s);
+        resp["guest"] = rex_session_guest(s);
         {
             uint8_t pal = 0x30;
             if (rex_session_read_mem(s, 0x466ull, &pal, 1) == REX_OK)
@@ -918,6 +919,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     resp["stop"] = (int)rex_session_stop_reason(s);
     resp["halted"] = rex_session_halted(s);
     resp["delay_ms"] = rex_session_run_delay_ms(s);
+    resp["guest"] = rex_session_guest(s);
     if (!resp.contains("regs"))
     {
         resp["ip"] = regs_json(s)["ip"];

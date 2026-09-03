@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 namespace
@@ -623,17 +624,27 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
         return 1;
     }
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-    ui.cpu_win = SDL_CreateWindow("TDX " TDX_VERSION_STRING, SDL_WINDOWPOS_UNDEFINED,
-                                 SDL_WINDOWPOS_UNDEFINED, cpu_w, cpu_h,
-                                 SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
+    {
+        char title[256];
+        std::snprintf(title, sizeof(title), "TDX %s %s PID:%d", TDX_VERSION_STRING,
+                      rex_session_guest(session), (int)getpid());
+        ui.cpu_win = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cpu_w,
+                                     cpu_h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
+    }
     ui.cpu_ren = SDL_CreateRenderer(ui.cpu_win, -1, SDL_RENDERER_ACCELERATED);
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                    k_cols * k_cw, cpu_tex_h());
     SDL_MaximizeWindow(ui.cpu_win);
     if ((cli != nullptr) && cli->game)
     {
-        ui.game_win = SDL_CreateWindow("TDX — User screen", SDL_WINDOWPOS_UNDEFINED,
-                                       SDL_WINDOWPOS_UNDEFINED, game_w, game_h, SDL_WINDOW_RESIZABLE);
+        {
+            char title[256];
+            std::snprintf(title, sizeof(title), "TDXView %s %s PID:%d", TDX_VERSION_STRING,
+                          rex_session_guest(session), (int)getpid());
+            ui.game_win =
+                SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, game_w,
+                                 game_h, SDL_WINDOW_RESIZABLE);
+        }
         ui.game_ren = SDL_CreateRenderer(ui.game_win, -1, SDL_RENDERER_ACCELERATED);
         ui.game_tex = SDL_CreateTexture(ui.game_ren, SDL_PIXELFORMAT_ARGB8888,
                                         SDL_TEXTUREACCESS_STREAMING, 320, 200);

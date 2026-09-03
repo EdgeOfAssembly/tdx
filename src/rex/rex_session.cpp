@@ -34,6 +34,7 @@ struct rex_session
     bool bios = false;
     std::string floppy_a;
     std::string floppy_b;
+    std::string guest;
     int ui_cmd = 0;
     uint32_t run_delay_ms = 0;
 };
@@ -47,6 +48,58 @@ constexpr uint32_t k_run_delay_max_ms = 200;
 const char *rex_version(void)
 {
     return REX_VERSION_STRING;
+}
+
+static std::string path_basename(const std::string &p)
+{
+    std::string s = p;
+    while ((!s.empty()) && ((s.back() == '/') || (s.back() == '\\')))
+    {
+        s.pop_back();
+    }
+    const auto n = s.find_last_of("/\\");
+    if (n != std::string::npos)
+    {
+        s = s.substr(n + 1);
+    }
+    return s.empty() ? std::string("-") : s;
+}
+
+static void refresh_guest(rex_session *s)
+{
+    if (s == nullptr)
+    {
+        return;
+    }
+    if (s->bios && (!s->floppy_b.empty()))
+    {
+        s->guest = path_basename(s->floppy_b);
+    }
+    else if ((!s->bios) && (!s->load_path.empty()))
+    {
+        s->guest = path_basename(s->load_path);
+    }
+    else if (!s->floppy_a.empty())
+    {
+        s->guest = path_basename(s->floppy_a);
+    }
+    else if (!s->load_path.empty())
+    {
+        s->guest = path_basename(s->load_path);
+    }
+    else
+    {
+        s->guest = "-";
+    }
+}
+
+const char *rex_session_guest(const rex_session *s)
+{
+    if ((s == nullptr) || s->guest.empty())
+    {
+        return "-";
+    }
+    return s->guest.c_str();
 }
 
 const char *rex_status_str(rex_status st)
@@ -98,6 +151,7 @@ rex_status rex_session_load(rex_session *s, const char *path, const char *cwd)
     s->arch = REX_ARCH_I8086;
     s->load_path = path;
     s->load_cwd = (cwd != nullptr) ? cwd : "";
+    refresh_guest(s);
     return s->dos->load_path(path, cwd);
 }
 
@@ -114,6 +168,7 @@ rex_status rex_session_load_floppy(rex_session *s, const char *image)
     s->floppy = true;
     s->floppy_uc = false;
     s->floppy_a = image;
+    refresh_guest(s);
     return s->dos->load_floppy(image);
 }
 
@@ -129,6 +184,7 @@ rex_status rex_session_load_floppy_uc(rex_session *s, const char *image)
     s->load_cwd.clear();
     s->floppy = false;
     s->floppy_uc = true;
+    refresh_guest(s);
     return s->dos->load_floppy_uc(image);
 }
 
@@ -145,6 +201,7 @@ rex_status rex_session_load_bios(rex_session *s, const char *path)
     s->floppy = false;
     s->floppy_uc = false;
     s->bios = true;
+    refresh_guest(s);
     return s->dos->load_bios_5150(path);
 }
 
@@ -155,6 +212,7 @@ rex_status rex_session_attach_floppy(rex_session *s, const char *image)
         return REX_ERR_ARG;
     }
     s->floppy_a = image;
+    refresh_guest(s);
     return s->dos->attach_floppy_image(image);
 }
 
@@ -165,6 +223,7 @@ rex_status rex_session_attach_floppy_b(rex_session *s, const char *image)
         return REX_ERR_ARG;
     }
     s->floppy_b = image;
+    refresh_guest(s);
     return s->dos->attach_floppy_image_b(image);
 }
 

@@ -316,6 +316,12 @@ REX_API rex_status rex_session_push_key(rex_session *s, uint8_t ascii, uint8_t s
 REX_API uint8_t rex_session_video_mode(const rex_session *s);
 
 /**
+ * @brief Short guest label for window titles (basename of EXE, B:, A:, or BIOS).
+ * @return Static for the session; never NULL (`"-"` if unknown).
+ */
+REX_API const char *rex_session_guest(const rex_session *s);
+
+/**
  * @brief Decode CGA mode-4/5 VRAM into 320×200 indices 0..3.
  * @param[out] px  64000 bytes.
  */

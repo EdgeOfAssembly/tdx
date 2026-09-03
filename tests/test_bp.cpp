@@ -136,9 +136,17 @@ TEST_CASE("BPM once auto-clears after the first guest write")
     rex_session_destroy(s);
 }
 
-TEST_CASE("rex_version is 0.12")
+TEST_CASE("rex_version is 0.13")
 {
-    REQUIRE(std::string(rex_version()) == "0.12");
+    REQUIRE(std::string(rex_version()) == "0.13");
+}
+
+TEST_CASE("guest label is EXE basename")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(std::string(rex_session_guest(s)) == "tiny.com");
+    rex_session_destroy(s);
 }
 
 TEST_CASE("F9 run delay nudges in 5ms steps and will not go below 0")

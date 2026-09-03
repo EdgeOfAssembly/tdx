@@ -592,8 +592,13 @@ int main(int argc, char **argv)
     }
     /* 80×25 CGA/VGA-ish text is 640×400 (8×16 cells). Graphics uses --scale
      * on 320×200 (default 2 → also 640×400). */
-    win = SDL_CreateWindow("TDX — User screen", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                           640, 400, SDL_WINDOW_RESIZABLE);
+    {
+        char title[256];
+        std::snprintf(title, sizeof(title), "TDXView %s - PID:%d", TDX_VERSION_STRING,
+                      (int)getpid());
+        win = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 400,
+                               SDL_WINDOW_RESIZABLE);
+    }
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 400);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
@@ -687,6 +692,14 @@ int main(int argc, char **argv)
                         b64_decode(j["pixels_b64"].get<std::string>(), &fb);
                     }
                     palreg = (uint8_t)j.value("cga3d9", 0x30);
+                    if (j.contains("guest") && win != nullptr)
+                    {
+                        char title[256];
+                        const std::string guest = j.value("guest", "-");
+                        std::snprintf(title, sizeof(title), "TDXView %s %s PID:%d",
+                                      TDX_VERSION_STRING, guest.c_str(), (int)getpid());
+                        SDL_SetWindowTitle(win, title);
+                    }
                 }
                 catch (const std::exception &)
                 {
