@@ -1172,6 +1172,60 @@ rex_status dos_machine::load_floppy_uc(const char *image)
     return REX_OK;
 }
 
+void dos_machine::note_exec_from_dsdx()
+{
+    const uint16_t ds = iron ? iron->c.ds() : reg16(UC_X86_REG_DS);
+    const uint16_t dx = iron ? iron->c.dx() : reg16(UC_X86_REG_DX);
+    char buf[128];
+    size_t n = 0;
+    for (; (n + 1u) < sizeof(buf); n++)
+    {
+        uint8_t b = 0;
+        const uint16_t off = static_cast<uint16_t>(dx + static_cast<uint16_t>(n));
+        if (iron)
+        {
+            b = iron->c.mem_read8(iron86::cpu::phys(ds, off));
+        }
+        else
+        {
+            uint8_t *p = ptr_segoff(ds, off);
+            b = (p != nullptr) ? *p : 0;
+        }
+        if ((b == 0) || (b == 0x0D) || (b == 0x0A))
+        {
+            break;
+        }
+        buf[n] = static_cast<char>(b);
+    }
+    buf[n] = '\0';
+    std::string s(buf);
+    if ((s.size() >= 2u) && (s[1] == ':'))
+    {
+        s = s.substr(2);
+    }
+    while ((!s.empty()) && ((s.front() == '\\') || (s.front() == '/')))
+    {
+        s.erase(s.begin());
+    }
+    const auto slash = s.find_last_of("/\\");
+    if (slash != std::string::npos)
+    {
+        s = s.substr(slash + 1);
+    }
+    for (char &c : s)
+    {
+        if ((c >= 'a') && (c <= 'z'))
+        {
+            c = static_cast<char>(c - 'a' + 'A');
+        }
+    }
+    if (!s.empty())
+    {
+        exec_name = s;
+        rex_logf(REX_LOG_INFO, "exec %s", exec_name.c_str());
+    }
+}
+
 rex_status dos_machine::step_one()
 {
     const uint64_t lin = linear_ip();
@@ -1235,6 +1289,14 @@ rex_status dos_machine::step_one()
         }
         skip_int_bp = false;
         at_break = false;
+        {
+            const uint32_t at = iron86::cpu::phys(iron->c.cs(), iron->c.ip());
+            if ((iron->c.mem_read8(at) == 0xCD) && (iron->c.mem_read8(at + 1u) == 0x21) &&
+                ((iron->c.ax() >> 8) == 0x4Bu))
+            {
+                note_exec_from_dsdx();
+            }
+        }
         if (!iron->c.step())
         {
             if (iron->c.halted())

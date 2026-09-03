@@ -594,7 +594,7 @@ int main(int argc, char **argv)
      * on 320×200 (default 2 → also 640×400). */
     {
         char title[256];
-        std::snprintf(title, sizeof(title), "TDXView %s - PID:%d", TDX_VERSION_STRING,
+        std::snprintf(title, sizeof(title), "TDXView %s PID:%d", TDX_VERSION_STRING,
                       (int)getpid());
         win = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 400,
                                SDL_WINDOW_RESIZABLE);
@@ -692,12 +692,20 @@ int main(int argc, char **argv)
                         b64_decode(j["pixels_b64"].get<std::string>(), &fb);
                     }
                     palreg = (uint8_t)j.value("cga3d9", 0x30);
-                    if (j.contains("guest") && win != nullptr)
+                    if (j.contains("guest") && (win != nullptr))
                     {
                         char title[256];
-                        const std::string guest = j.value("guest", "-");
-                        std::snprintf(title, sizeof(title), "TDXView %s %s PID:%d",
-                                      TDX_VERSION_STRING, guest.c_str(), (int)getpid());
+                        const std::string guest = j.value("guest", "");
+                        if (!guest.empty())
+                        {
+                            std::snprintf(title, sizeof(title), "TDXView %s %s PID:%d",
+                                          TDX_VERSION_STRING, guest.c_str(), (int)getpid());
+                        }
+                        else
+                        {
+                            std::snprintf(title, sizeof(title), "TDXView %s PID:%d",
+                                          TDX_VERSION_STRING, (int)getpid());
+                        }
                         SDL_SetWindowTitle(win, title);
                     }
                 }

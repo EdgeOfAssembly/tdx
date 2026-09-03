@@ -71,33 +71,23 @@ static void refresh_guest(rex_session *s)
     {
         return;
     }
-    if (s->bios && (!s->floppy_b.empty()))
+    if ((s->dos) && (!s->dos->exec_name.empty()))
     {
-        s->guest = path_basename(s->floppy_b);
+        s->guest = s->dos->exec_name;
+        return;
     }
-    else if ((!s->bios) && (!s->load_path.empty()))
-    {
-        s->guest = path_basename(s->load_path);
-    }
-    else if (!s->floppy_a.empty())
-    {
-        s->guest = path_basename(s->floppy_a);
-    }
-    else if (!s->load_path.empty())
-    {
-        s->guest = path_basename(s->load_path);
-    }
-    else
-    {
-        s->guest = "-";
-    }
+    s->guest.clear();
 }
 
 const char *rex_session_guest(const rex_session *s)
 {
-    if ((s == nullptr) || s->guest.empty())
+    if (s == nullptr)
     {
-        return "-";
+        return "";
+    }
+    if ((s->dos) && (!s->dos->exec_name.empty()))
+    {
+        return s->dos->exec_name.c_str();
     }
     return s->guest.c_str();
 }
@@ -151,6 +141,7 @@ rex_status rex_session_load(rex_session *s, const char *path, const char *cwd)
     s->arch = REX_ARCH_I8086;
     s->load_path = path;
     s->load_cwd = (cwd != nullptr) ? cwd : "";
+    s->dos->exec_name = path_basename(path);
     refresh_guest(s);
     return s->dos->load_path(path, cwd);
 }
@@ -168,6 +159,7 @@ rex_status rex_session_load_floppy(rex_session *s, const char *image)
     s->floppy = true;
     s->floppy_uc = false;
     s->floppy_a = image;
+    s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_floppy(image);
 }
@@ -184,6 +176,7 @@ rex_status rex_session_load_floppy_uc(rex_session *s, const char *image)
     s->load_cwd.clear();
     s->floppy = false;
     s->floppy_uc = true;
+    s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_floppy_uc(image);
 }
@@ -201,6 +194,7 @@ rex_status rex_session_load_bios(rex_session *s, const char *path)
     s->floppy = false;
     s->floppy_uc = false;
     s->bios = true;
+    s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_bios_5150(path);
 }

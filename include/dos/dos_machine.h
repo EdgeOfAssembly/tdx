@@ -79,6 +79,11 @@ struct dos_machine
     std::string image_path;
     std::string dos_cwd;
     std::string con_out;
+    /** Basename of the program last loaded/exec'd (INT 21h AH=4Bh or tdx file). */
+    std::string exec_name;
+
+    /** Record DS:DX ASCIIZ path from INT 21h AH=4Bh (BUSHIDO.EXE, M1.COM, …). */
+    void note_exec_from_dsdx();
 
     bool is_com = false;
     bool halted = false;

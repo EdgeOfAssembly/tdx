@@ -355,6 +355,11 @@ static void handle_int21(dos_machine *m)
              "INT21 AH=%02X AX=%04X BX=%04X CX=%04X DX=%04X DS=%04X ES=%04X @%04X:%04X", ah, ax, bx,
              cx, dx, ds, es, m->reg16(UC_X86_REG_CS), m->reg16(UC_X86_REG_IP));
 
+    if (ah == 0x4B)
+    {
+        m->note_exec_from_dsdx();
+    }
+
     switch (ah)
     {
     case 0x00:

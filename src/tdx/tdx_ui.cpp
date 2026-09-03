@@ -100,7 +100,20 @@ struct tdx_ui
     bool help = false;
     int bp_scroll = 0;
     cell grid[k_rows][k_cols]{};
+    std::string last_guest;
 };
+
+void format_win_title(char *buf, size_t n, const char *app, const char *guest, int pid)
+{
+    if ((guest != nullptr) && (guest[0] != '\0'))
+    {
+        std::snprintf(buf, n, "%s %s %s PID:%d", app, TDX_VERSION_STRING, guest, pid);
+    }
+    else
+    {
+        std::snprintf(buf, n, "%s %s PID:%d", app, TDX_VERSION_STRING, pid);
+    }
+}
 
 void vcr_pages(rex_session *s, bool fwd)
 {
@@ -626,8 +639,8 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     {
         char title[256];
-        std::snprintf(title, sizeof(title), "TDX %s %s PID:%d", TDX_VERSION_STRING,
-                      rex_session_guest(session), (int)getpid());
+        format_win_title(title, sizeof(title), "TDX", rex_session_guest(session), (int)getpid());
+        ui.last_guest = rex_session_guest(session);
         ui.cpu_win = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cpu_w,
                                      cpu_h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
     }
@@ -639,8 +652,8 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
     {
         {
             char title[256];
-            std::snprintf(title, sizeof(title), "TDXView %s %s PID:%d", TDX_VERSION_STRING,
-                          rex_session_guest(session), (int)getpid());
+            format_win_title(title, sizeof(title), "TDXView", rex_session_guest(session),
+                             (int)getpid());
             ui.game_win =
                 SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, game_w,
                                  game_h, SDL_WINDOW_RESIZABLE);
@@ -657,6 +670,21 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
 
     while (!ui.quit)
     {
+        {
+            const char *g = rex_session_guest(session);
+            if (ui.last_guest != g)
+            {
+                char title[256];
+                format_win_title(title, sizeof(title), "TDX", g, (int)getpid());
+                SDL_SetWindowTitle(ui.cpu_win, title);
+                if (ui.game_win != nullptr)
+                {
+                    format_win_title(title, sizeof(title), "TDXView", g, (int)getpid());
+                    SDL_SetWindowTitle(ui.game_win, title);
+                }
+                ui.last_guest = g;
+            }
+        }
         while (SDL_PollEvent(&ev))
         {
             if (ev.type == SDL_QUIT)
