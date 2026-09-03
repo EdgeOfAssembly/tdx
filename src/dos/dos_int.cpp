@@ -1258,7 +1258,10 @@ void dos_machine::handle_intr(uint32_t intno)
     {
         auto it = int_bps.find((uint8_t)intno);
         const bool armed = (it != int_bps.end());
-        if (armed && (!skip_int_bp))
+        /* INT 10h: only stop on AH=00 AL=04 (set CGA mode 4). BIOS TTY/get-mode
+         * would otherwise fire first (iron86 sat in FDC LOOP with "breakpoint"). */
+        const bool mode4 = ((intno != 0x10u) || (reg16(UC_X86_REG_AX) == 0x0004u));
+        if (armed && mode4 && (!skip_int_bp))
         {
             const uint16_t ip = reg16(UC_X86_REG_IP);
             set_reg16(UC_X86_REG_IP, (uint16_t)(ip - 2u));

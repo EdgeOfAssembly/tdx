@@ -1200,6 +1200,36 @@ rex_status dos_machine::step_one()
             last_stop = REX_STOP_BREAK;
             return REX_OK;
         }
+        if (!skip_int_bp)
+        {
+            const uint32_t at = iron86::cpu::phys(iron->c.cs(), iron->c.ip());
+            const uint8_t op = iron->c.mem_read8(at);
+            if (op == 0xCD)
+            {
+                const uint8_t n = iron->c.mem_read8(at + 1u);
+                const auto it = int_bps.find(n);
+                const uint16_t ax = iron->c.ax();
+                const bool mode4 = ((n != 0x10u) || (ax == 0x0004u));
+                if ((it != int_bps.end()) && mode4)
+                {
+                    at_break = true;
+                    skip_int_bp = true;
+                    last_stop = REX_STOP_BREAK;
+                    if (it->second == 1u)
+                    {
+                        int_bps.erase(it);
+                    }
+                    else if (it->second > 1u)
+                    {
+                        it->second--;
+                    }
+                    rex_logf(REX_LOG_INFO, "BPINT %02X AX=%04X @ %04X:%04X", (unsigned)n, ax,
+                             iron->c.cs(), iron->c.ip());
+                    return REX_OK;
+                }
+            }
+        }
+        skip_int_bp = false;
         at_break = false;
         if (!iron->c.step())
         {
