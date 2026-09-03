@@ -1017,24 +1017,26 @@ ex_mz:
         mov     [cs:ex_cs_rel], ax
         mov     ax, [cs:ex_hdr+24]
         mov     [cs:ex_lfarlc], ax
+        ; pages*512 in DX:AX (16-bit MUL truncated BUSHIDO to 6656).
         mov     ax, [cs:ex_hdr+4]
+        xor     dx, dx
         mov     bx, 512
         mul     bx
         mov     cx, [cs:ex_hdr+2]
-        test    cx, cx
-        jz      ex_fsz
+        jcxz    ex_fsz
         sub     ax, 512
+        sbb     dx, 0
         add     ax, cx
+        adc     dx, 0
 ex_fsz:
-        mov     [cs:ex_fsize], ax
-        mov     ax, [cs:ex_cparhdr]
+        mov     bx, [cs:ex_cparhdr]
         mov     cl, 4
-        shl     ax, cl
-        mov     [cs:ex_hdrbytes], ax
-        mov     bx, [cs:ex_fsize]
-        sub     bx, ax
-        mov     [cs:ex_loadsize], bx
-        mov     ax, bx
+        shl     bx, cl
+        mov     [cs:ex_hdrbytes], bx
+        sub     ax, bx
+        sbb     dx, 0
+        mov     [cs:ex_loadsize], ax
+        mov     [cs:ex_fsize], ax
         add     ax, 15
         mov     cl, 4
         shr     ax, cl
@@ -1065,10 +1067,18 @@ ex_fsz:
         mov     ax, [cs:ex_lfarlc]
         mov     [cs:bx+10], ax
         mov     word [cs:bx+12], 0
-        cmp     cx, 64
-        jbe     ex_rlc
+        ; Apply every MZ reloc in 64-entry chunks (ex_reloc is 256 bytes).
+        ; Bushido.EXE has 2456 relocs; a cap of 64 left far CS unfixed.
+ex_rel_more:
+        mov     ax, [cs:ex_crlc]
+        test    ax, ax
+        jz      ex_mz_ok
         mov     cx, 64
-ex_rlc:
+        cmp     ax, cx
+        ja      ex_rel_n
+        mov     cx, ax
+ex_rel_n:
+        sub     [cs:ex_crlc], cx
         mov     ax, cx
         shl     ax, 1
         shl     ax, 1
@@ -1096,6 +1106,7 @@ ex_rel_loop:
         add     [es:bx], ax
         pop     cx
         loop    ex_rel_loop
+        jmp     ex_rel_more
 ex_mz_ok:
         mov     bx, [cs:ex_handle]
         call    dos_close
@@ -1662,9 +1673,17 @@ dos_read:
         sub     ax, [cs:rd_got]
         jz      .rok
         mov     si, [cs:rd_hp]
+        ; remaining = size32 - pos32 (MS-DOS 1.25 FCB size is 32-bit;
+        ; 16-bit size stopped BUSHIDO.EXE at 6656 of 72192 bytes).
         mov     bx, [cs:si+6]
+        mov     cx, [cs:si+8]
         sub     bx, [cs:si+10]
+        sbb     cx, [cs:si+12]
+        mov     dx, cx
+        or      dx, bx
         jz      .rok
+        test    cx, cx
+        jnz     .n1
         cmp     ax, bx
         jbe     .n1
         mov     ax, bx
@@ -1675,6 +1694,10 @@ dos_read:
         mov     [cs:rd_off], bx
         mov     cl, 9
         shr     ax, cl
+        mov     dx, [cs:si+12]
+        mov     cl, 7
+        shl     dx, cl
+        add     ax, dx
         add     ax, [cs:si+2]
         mov     [cs:rd_lba], ax
         mov     ax, 512
@@ -1705,6 +1728,7 @@ dos_read:
         add     [cs:rd_got], ax
         mov     si, [cs:rd_hp]
         add     [cs:si+10], ax
+        adc     word [cs:si+12], 0
         jmp     .loop
 .rok:   mov     ax, [cs:rd_got]
         clc
