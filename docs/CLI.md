@@ -111,10 +111,10 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 **Directory pack (virtual floppy):** non-recursive, max **32** 8.3 names.
 Fits **360K** (40/2/9) if possible, else **720K** (80/2/9). **Fails** if the
 tree needs more than 720K or more than 32 files. **No 1.2M / 1.44M packer yet.**
-**No subdirectories.**
+**No subdirectories.** TODO: recursive tree, smallest standard size that fits.
 
 **Raw image CHS:** size **&lt; 300 000** bytes → 8 spt, 1 head; otherwise **9 spt,
 2 heads** (covers 360K and 720K). **1.2M (15 spt) and 1.44M (18 spt) are not
-auto-detected.**
+auto-detected.** TODO: detect all common IBM PC floppy sizes at runtime.
 
 **Next:** XT HDD as **C:** for trees larger than a floppy — see `docs/TODO.md`.

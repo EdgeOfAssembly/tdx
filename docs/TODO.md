@@ -84,9 +84,29 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 - [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
 - [ ] **FDC Format / Scan / Read ID** — after Write.
 - [x] **720K geometry** — FlopFS packer: 360K if it fits, else 720K 80/2/9
-  (Dragon Wars ~708K). **Not yet:** 1.2M (80/2/15) or 1.44M (80/2/18) packer or
-  CHS auto-detect. Raw images: &lt;300KB → 8/1, else 9/2. Pack is **non-recursive**,
-  **32** 8.3 names. Over 720K → fail (use HDD C: next).
+  (Dragon Wars ~708K). Over 720K → fail today (HDD C: next).
+
+**Floppy auto-size (answers 1–2, 2026-09-04) — not done yet**
+
+- [ ] **Raw image CHS at runtime** — pick geometry from file size, all common
+  IBM PC floppy formats, not only “&lt;300KB → 8/1 else 9/2”:
+  | Size | CHS | Notes |
+  |------|-----|--------|
+  | 160K / 180K | 40/1/8 or 40/1/9 | SS DD |
+  | 320K / 360K | 40/2/8 or 40/2/9 | DS DD (5150 INT 13) |
+  | 720K | 80/2/9 | DD (Dragon Wars B:) |
+  | 1.2M | 80/2/15 | 5.25" HD |
+  | 1.44M | 80/2/18 | 3.5" HD |
+  | 2.88M | 80/2/36 | optional later |
+  FDC + FloppyOS `disk_read` LBA→CHS must use the **per-unit** SPT/heads, not
+  drive 0’s 9/2 only.
+
+- [ ] **Directory → virtual floppy: smallest standard size that fits** —
+  measure the host tree (**recursive, subdirs included**), then pack FlopFS
+  into 360K → 720K → 1.2M → 1.44M (and 2.88M if we add it). Today: **one
+  directory, no subdirs, 32 8.3 names, 360K else 720K only.** A 1.3MB game
+  dir must become 1.44M, not fail. If even 1.44M is too small → HDD C: (item
+  above). Raise the 32-dirent cap when 1.2M/1.44M (or subdirs) need it.
 
 ### P2 — CPU / PC
 
@@ -125,7 +145,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 1. **XT HDD C:** auto-sized from a host dir that does not fit 720K (user: next Fri/Sat).
 2. FDC Write (saves / COPY / `AH=40`).
 3. FlopFS xxhash3/dedup.
-4. Optional 1.2M/1.44M floppy packer + CHS from image size.
+4. Raw-image CHS auto-detect (1.2M/1.44M) + dir pack smallest-fit including subdirs.
 5. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
 6. FAT12 and FDC Format/Scan last.
 
