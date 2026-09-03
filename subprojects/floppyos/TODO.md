@@ -634,5 +634,5 @@ Recorded 2026-07-26. **Do not block** boot/kernel/FlopFS work on these.
 These wait on purpose (2026-09-03 milestone `bios-flopfs-dir`):
 
 - [ ] **FAT12 / FAT16 / FAT32 / exFAT** foreign volumes (Track 5) — Py86 never shipped `fat12.py`; MS-DOS DIR is guest FAT. FloppyOS primary FS is FlopFS.
-- [ ] **iron86 FDC Format / Write Data / Scan / drive B:** — INT 19 boot and DIR only need Read. COPY/FCB write/format/second floppy later. See `subprojects/iron86/TODO.md`.
+- [ ] **iron86 FDC Format / Write Data / Scan** — B: is done. COPY/saves need Write. See `subprojects/iron86/TODO.md` and repo `docs/TODO.md`.
 - [ ] CGA **light pen**, cycle-exact 6845 snow/wait-states, dual MDA+CGA “burn the tube” — no PC game used these.
