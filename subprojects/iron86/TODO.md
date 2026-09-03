@@ -18,11 +18,10 @@ Gates 2/5 done: 256K PPI nibble (`io_nibble=0x06`), speaker `--no-audio`.
 - [ ] Cassette BASIC ROM map
 - [ ] 80186 helpers
 
-## Bottom of queue (no PC game used these)
+## Bottom of queue
 
-- [ ] CGA **light pen** (3DC/3DB, 6845 R16/R17 strobe)
-- [ ] MDA/CGA dual-adapter “wrong init burns the tube” hardware damage model
-- [ ] Cycle-exact 6845 (14.318 MHz, 553 ns glyph fetch, CGA snow / wait states)
-- [ ] Full 8K MDA character-generator ROM (duplicate of P1 CGA/MDA font — keep one task)
+- [ ] ~~CGA light pen~~ **WILLNOTFIX** (no light pen hardware here)
+- [ ] iron86 dual MDA+CGA in one guest — last; tdx/tdxview is the dual-head
+- [ ] Cycle-exact 6845 (snow / wait states)
 
 See also repo `docs/TODO.md`.

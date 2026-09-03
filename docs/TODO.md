@@ -25,13 +25,35 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 **Working:** 8086 dispatch (enough for POST + Bushido), packed PPI/PIT/PIC/DMA/FDC, two 6845s (MDA `3Bx` + CGA `3Dx`), LPT stub, 360K A:+B:, dir→FlopFS pack, XT keys IRQ1, BDA `40:49` → tdxview mode, speaker `--no-audio`, DAA/WAIT/ESC NOPs.
 
-### P1 — display authenticity
+### Fonts (complete for US IBM 5788005)
 
-- [x] **CGA BIOS CRT_CHAR_GEN 8×8** at `F000:FA6E` (128 glyphs) — tdxview doubles rows to 8×16 at 640×400. Loaded at runtime from guest BIOS (not committed). High 128 via INT 1Fh if set.
-- [x] **MDA 8K 5788005** + **B000 viewer** — `tdx --bios ROM --mda`, tdxview 720×350 mode 7. ROM loaded from `ROM/IBM_5788005_…BIN` (gitignored, not pushed).
-- [ ] **Hercules** 720×348 graphics page after MDA text.
-- [ ] **Hercules** — 720×348 page at `B000`, ports `3B4/3B5/3B8/3BA` extra bits, 32K/64K. Needs a viewer mode and tests (INT 10 is not enough; games talk to the 6845). After MDA text works.
-- [ ] **CGA 3D9** + remaining mode-4/5/6 palette quirks vs Unicorn `dos_cga.c`.
+The card ROM `ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN` (MAME SHA1 `c2a8b108…`, **not pushed**) is the real IBM MDA+CGA character generator: 256×8×14 MDA + 256×8×8 CGA thick (thin bank unused). BIOS `CRT_CHAR_GEN` (`F000:FA6E`) is the 128-glyph 8×8 used for graphics TTY. tdxview uses 5788005 when present, else BIOS 8×8. **US CP437 fonts are 100%.** (European 4733197 Ø/ø ROM is a different chip; ignore unless a game needs it.)
+
+### IBM video modes — implement when a game needs them
+
+| Mode | Hardware | tdxview now |
+|------|----------|-------------|
+| 0 | CGA 40×25 B&W text | **missing** (drawn as 80×25) |
+| 1 | CGA 40×25 16-color text | **missing** (drawn as 80×25) |
+| 2 | CGA 80×25 B&W text | ok (80×25) |
+| 3 | CGA 80×25 16-color text | ok (FloppyOS A>) |
+| 4 | CGA 320×200 4-color | ok (Bushido) |
+| 5 | CGA 320×200 4-color, burst off | treated as 4 |
+| 6 | CGA 640×200 2-color | listed as gfx; confirm 1bpp vs 4’s 2bpp when a game uses it |
+| 7 | **MDA 80×25 text only** (no graphics) | ok (`--mda`, B000, green 5151) |
+
+MDA has **no other modes**. Hercules graphics is a later card (mode-ish 8 / page at B000). **Do not implement 0/1/6/Hercules until there is a test game.**
+
+- [ ] CGA **mode 0 / 1** 40-column text — when a title needs it.
+- [ ] CGA **mode 6** 640×200 1bpp — verify decoder when a title needs it.
+- [ ] **CGA 3D9** palette (cyan/magenta vs red/green) if a game looks wrong.
+- [ ] **Hercules** 720×348 — after a Herc game shows up.
+
+tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MDA+CGA pair in one guest is **last**, not needed for this debugger.
+
+### WILLNOTFIX
+
+- [ ] ~~CGA **light pen** (`3DC`/`3DB`, 6845 R16/R17)~~ **WILLNOTFIX** — we do not have a light pen.
 
 ### P1 — storage
 
@@ -47,11 +69,10 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 - [ ] 256K already (`io_nibble=0x06`); more RAM via CMOS/extended is later.
 - [ ] COM1 8250 if FloppyOS UART print should be visible.
 
-### Bottom of queue (no PC game used these)
+### Bottom of queue
 
-- [ ] CGA **light pen** (`3DC`/`3DB`, 6845 R16/R17).
 - [ ] Cycle-exact 6845 (14.318 MHz, snow, wait states).
-- [ ] Dual MDA+CGA “burn the tube” damage model.
+- [ ] iron86 dual MDA+CGA in one guest (tdx/tdxview already is the dual-head). Last.
 - [ ] Cassette BASIC ROM map.
 - [ ] 8087 (WAIT/ESC already NOP).
 
@@ -74,11 +95,10 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 ## Suggested order
 
-1. CGA ROM font + tdxview MDA `B000` (text authenticity).
-2. Hercules after MDA text is visible.
-3. FDC Write (saves / COPY).
-4. Xebec HDD image + test.
-5. FlopFS xxhash3/dedup.
-6. FAT12 and FDC Format/Scan last.
+1. FDC Write (saves / COPY).
+2. Xebec HDD image + test.
+3. FlopFS xxhash3/dedup.
+4. CGA 40-col / mode 6 / Hercules **only with a game in hand**.
+5. FAT12 and FDC Format/Scan last.
 
 Py86 remains the chip-level reference (`/tmp/RetroCodeMess/Py86`). Unicorn remains the default **MZ EXE** debugger path.
