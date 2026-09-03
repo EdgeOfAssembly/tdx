@@ -1,0 +1,77 @@
+.TH IRON86 1 "2026-09-04" "iron86 0.13" "User Commands"
+.SH NAME
+iron86 \- chip-level 8086 IBM PC (no DOS)
+.SH SYNOPSIS
+.B iron86
+[\fIOPTIONS\fR]
+[\fIfile.com\fR]
+.P
+.B iron86
+.BI \-\-bios " BIOS.BIN"
+[\fB\-\-floppy\-a\fR \fIPATH\fR]
+[\fB\-\-floppy\-b\fR \fIPATH\fR]
+[\fB\-\-keys\fR \fISTRING\fR]
+.SH DESCRIPTION
+.B iron86
+is a C++23 8086 + IBM PC chip set (PPI, PIT, PIC, DMA, FDC, two 6845s).
+It does not implement DOS; FloppyOS or a BIOS INT 19 boot provides that.
+.P
+.B tdx \-\-bios
+embeds iron86.
+This binary is the standalone smoke tool.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version and exit.
+.TP
+.BI \-\-bios " FILE"
+Load IBM 5150 8K BIOS (FE000, reset FFFF:0000).
+.TP
+.B \-\-no\-fast\-post
+Cold POST (do not set BDA RESET_FLAG=1234h).
+.TP
+.B \-\-no\-audio
+Disable PC speaker BEL (default on).
+.TP
+.B \-\-mda
+MDA 80×25 (DIP 0x3D). Default CGA.
+.TP
+.BI \-\-floppy\-a " PATH"
+Drive 0: raw image or host directory packed as FlopFS
+(360K if it fits, else 720K 80/2/9).
+.TP
+.BI \-\-floppy\-b " PATH"
+Drive 1: same rules.
+.TP
+.BI \-\-floppy " PATH"
+Alias for
+.BR \-\-floppy\-a .
+.TP
+.BI \-\-keys " STRING"
+Type STRING as INT 16h keys.
+.TP
+.BI \-\-exec\-map " FILE"
+1 MiB executed-opcode map.
+.SH FLOPPY GEOMETRY
+Directory pack is non-recursive, max 32 8.3 names, 360K or 720K only.
+Raw images smaller than 300000 bytes use 8 spt / 1 head;
+larger use 9 spt / 2 heads (360K and 720K).
+1.2M and 1.44M are not auto-detected.
+.SH EXIT STATUS
+.TP
+.B 0
+Success (or guest halt).
+.TP
+.B 1
+Runtime error.
+.TP
+.B 2
+Bad command line.
+.SH SEE ALSO
+.BR tdx (1),
+.BR tdxview (1)
+.SH AUTHORS
+EdgeOfAssembly / iron86

@@ -1,0 +1,124 @@
+.TH TDX 1 "2026-09-04" "tdx 0.19" "User Commands"
+.SH NAME
+tdx \- native Linux debugger for DOS EXE/COM (Turbo Debugger X)
+.SH SYNOPSIS
+.B tdx
+[\fIOPTIONS\fR]
+[\fIfile.exe\fR|\fIfile.com\fR]
+.P
+.B tdx
+.BI \-\-bios " BIOS.BIN"
+[\fB\-\-floppy\-a\fR \fIA\fR]
+[\fB\-\-floppy\-b\fR \fIB\fR]
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B tdx
+is a DOS 16-bit debugger for Linux.
+Unicorn is the default engine for MZ EXE/COM.
+.B \-\-bios
+runs iron86 with an IBM 5150 8K BIOS (POST, INT 19, FloppyOS).
+The CPU window is SDL2.
+The guest CGA/MDA screen is
+.B tdxview (1)
+by default (UNIX sockets, not Xmux).
+.P
+Always run
+.B scripts/tdx\-kill.sh
+before starting a new tdx/tdxview pair.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version and exit.
+.TP
+.BI \-\-floppy\-a " PATH"
+Mount
+.I PATH
+as drive A: (raw 360K/720K image, or a host directory packed as FlopFS).
+.TP
+.BI \-\-floppy " PATH"
+Alias for
+.BR \-\-floppy\-a .
+.TP
+.BI \-\-floppy\-b " PATH"
+Drive B: (same rules). Directory pack uses 360K if it fits, else 720K.
+.TP
+.BI \-\-uc\-floppy " IMAGE"
+Boot the same image on Unicorn (not the iron86 BIOS path).
+.TP
+.BI \-\-bios " FILE"
+Load IBM 5150 8K BIOS on iron86 at F000:E000 / reset FFFF:0000.
+.TP
+.B \-\-mda
+MDA 80×25 (B000). Default is CGA (B800).
+.TP
+.B \-\-no\-ui
+Headless (no SDL).
+.TP
+.B \-\-game
+Also open CGA in this process. Default off; use tdxview.
+.TP
+.B \-\-no\-sock
+Do not listen on the agent UNIX socket.
+.TP
+.BI \-\-sock " PATH"
+Agent socket (default
+.IR /tmp/tdx.sock ).
+.TP
+.BI \-\-log\-file " PATH"
+Also write logs to
+.IR PATH .
+.TP
+.BI \-\-symbols " PATH"
+Load TSV/MAP symbols.
+.TP
+.B \-\-ghidra
+Run Ghidra headless export then load symbols.
+.TP
+.BI \-\-cwd " PATH"
+DOS current directory for INT 21h.
+.TP
+.B \-\-run
+After load, run until break or halt.
+.TP
+.B \-\-verbose
+Log every stepped instruction to stderr.
+.TP
+.BI \-\-exec\-map " FILE"
+Write a 1 MiB executed-opcode map (iron86). Unexecuted bytes stay 0.
+.TP
+.BI \-\-scale " N"
+CPU window integer scale (default 2).
+.SH KEYS
+CPU window: F7 trace, F8 step over, F9 run/pause, F2 breakpoint,
+Ctrl-F2 reset, Alt-X quit.
+.SH FILES
+.TP
+.I /tmp/tdx.sock
+Default agent socket.
+.TP
+.I scripts/tdx-kill.sh
+Stop leftover tdx/tdxview and remove sockets.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Runtime or load error.
+.TP
+.B 2
+Bad command line.
+.SH EXAMPLES
+BIOS + FloppyOS A: + game directory as 720K B:
+.RS
+.B tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b games/DRGNWARS
+.RE
+.SH SEE ALSO
+.BR tdxview (1),
+.BR tdxctl (1),
+.BR iron86 (1)
+.SH AUTHORS
+EdgeOfAssembly / TDX

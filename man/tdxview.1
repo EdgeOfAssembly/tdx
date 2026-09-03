@@ -1,0 +1,75 @@
+.TH TDXVIEW 1 "2026-09-04" "tdx 0.19" "User Commands"
+.SH NAME
+tdxview \- CGA/MDA user-screen viewer for tdx
+.SH SYNOPSIS
+.B tdxview
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B tdxview
+attaches to tdx's UNIX socket and shows the guest framebuffer
+(CGA B800 or MDA B000).
+It listens on
+.I /tmp/tdxview.sock
+so agents can screenshot and type without Xmux.
+.P
+No arguments still starts (needs tdx on
+.BR \-\-sock ).
+.P
+CGA graphics default to
+.B old-CGA NTSC composite
+(Reenigne/86Box). Mode 4 (PCBIOS M7 3D8=2Ah, burst on) is 320×200
+scaled ×2. Use
+.B \-\-no\-composite
+for RGBI (cyan/magenta on palette 1).
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version and exit.
+.TP
+.BI \-\-sock " PATH"
+tdx socket (default
+.IR /tmp/tdx.sock ).
+.TP
+.BI \-\-listen " PATH"
+Agent socket (default
+.IR /tmp/tdxview.sock ).
+.TP
+.B \-\-no\-listen
+Do not listen for agents.
+.TP
+.B \-\-no\-composite
+CGA gfx as RGBI. Default is old-CGA NTSC artifact color.
+.TP
+.BI \-\-scale " N"
+Graphics scale (default 2, 640 by 400). Text is always 640 by 400.
+.SH KEYS
+Alt-X quits.
+.SH FILES
+.TP
+.I /tmp/tdx.sock
+tdx control socket.
+.TP
+.I /tmp/tdxview.sock
+Agent socket for this window.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Connect or SDL error.
+.TP
+.B 2
+Bad command line.
+.SH EXAMPLES
+.RS
+.B tdxview --sock /tmp/tdx.sock --listen /tmp/tdxview.sock --scale 2
+.RE
+.SH SEE ALSO
+.BR tdx (1),
+.BR tdxctl (1)
+.SH AUTHORS
+EdgeOfAssembly / TDX

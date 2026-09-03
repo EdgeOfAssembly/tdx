@@ -32,6 +32,10 @@ tdx tests/fixtures/tiny.com --no-ui --no-sock
 tdx /mnt/bushido/bushido/BUSHIDO.EXE --cwd /mnt/bushido/bushido
 tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b /mnt/bushido/bushido
 tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b games/DRGNWARS   # 720K FlopFS if needed
+# CLI: docs/CLI.md · man/tdx.1 tdxview.1 tdxctl.1 iron86.1
+# Dragon Wars demo: docs/HOWTO_DRAGON_WARS.md
+# CLI: docs/CLI.md  man: man/tdx.1 tdxview.1 tdxctl.1 iron86.1
+# Dragon Wars demo: docs/HOWTO_DRAGON_WARS.md
 tdxview --sock /tmp/tdx.sock          # second process: CGA window
 ```
 

@@ -1,0 +1,123 @@
+.TH TDXCTL 1 "2026-09-04" "tdx 0.19" "User Commands"
+.SH NAME
+tdxctl \- talk to tdx or tdxview over a UNIX socket
+.SH SYNOPSIS
+.B tdxctl
+[\fIOPTIONS\fR]
+.I command
+[\fIargs\fR...]
+.SH DESCRIPTION
+.B tdxctl
+sends one JSON command per invocation (or a keep-alive pipeline with
+.BR \-\-ctl )
+to
+.B tdx (1)
+or
+.B tdxview (1).
+Stdout is product data (screenshot path, dump path, JSON).
+Stderr is errors.
+.P
+Prefer
+.B unpause
+over
+.B run
+(F9 toggles).
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version and exit.
+.TP
+.BI \-\-sock " PATH"
+Socket path. Default
+.I /tmp/tdx.sock
+, or
+.I /tmp/tdxview.sock
+with
+.BR \-\-view .
+.TP
+.B \-\-view
+Talk to tdxview (game window shots and keys).
+.TP
+.B \-\-ctl
+Keep-alive: commands on stdin, one connect.
+.SH COMMANDS
+.TP
+.B unpause
+Resume execution.
+.TP
+.B pause , stop
+Pause.
+.TP
+.B run
+Toggle F9 run/pause (same as the CPU key).
+.TP
+.BI delay " [N|+|-]"
+F9 slice park in milliseconds. 0 is fastest.
+.TP
+.B faster , slower
+Change delay by 5 ms.
+.TP
+.B step , step-in
+One instruction (into CALL/INT).
+.TP
+.B over , step-over
+Step over CALL, INT, REP, LOOP.
+.TP
+.B regs , status , cga , ping
+JSON status / CGA frame.
+.TP
+.BI "dump cga " [FILE]
+16 KiB from B800:0000 to
+.I SCREEN.CGA
+(default).
+.TP
+.BI "dump mda " [FILE]
+4 KiB from B000:0000 to
+.I SCREEN.MDA
+(default).
+.TP
+.BI "dump " "seg:off len [FILE]"
+Arbitrary range.
+.TP
+.BI "key " KEY
+Inject a DOS INT 16h key (starts run).
+.TP
+.BI "shot " [path]
+Screenshot; stdout is the versioned path.
+.TP
+.B bp , bpint , bpinsn , bpm , bpdel , bplist
+Breakpoints (see
+.B tdxctl \-h
+for full forms).
+.TP
+.B quit
+Ask tdx to exit.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Socket or protocol error.
+.TP
+.B 2
+Bad command line.
+.SH EXAMPLES
+Dump CGA VRAM:
+.RS
+.B tdxctl dump cga
+.RE
+Unpause at 0 ms delay:
+.RS
+.B tdxctl delay 0
+.br
+.B tdxctl unpause
+.RE
+.SH SEE ALSO
+.BR tdx (1),
+.BR tdxview (1)
+.SH AUTHORS
+EdgeOfAssembly / TDX

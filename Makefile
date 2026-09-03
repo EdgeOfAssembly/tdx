@@ -175,6 +175,9 @@ test: tdx tdxview tests/run_tests fixtures
 	$(PY) scripts/tdxctl.py -h | grep -q bpm
 	$(PY) scripts/tdxctl.py -h | grep -q step-over
 	$(PY) scripts/tdxctl.py -v
+	@if command -v mandoc >/dev/null 2>&1; then \
+	  mandoc -T lint man/tdx.1 man/tdxview.1 man/tdxctl.1 man/iron86.1; \
+	fi
 	@rm -f /tmp/tdx-test.sock
 	./tdx --no-ui tests/fixtures/tiny.com --sock /tmp/tdx-test.sock >/tmp/tdx-test.log 2>&1 & \
 	  echo $$! > /tmp/tdx-test.pid; \

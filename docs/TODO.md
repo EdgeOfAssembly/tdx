@@ -1,7 +1,12 @@
 # TDX / iron86 / FloppyOS — what next
 
-**Milestone:** `milestone/bushido-iron86-cga` @ `37e2226` plus titles `2a258c2`.  
-**Proven:** 5150 BIOS POST on iron86; FloppyOS A>; B: dir-as-FlopFS; `BUSHIDO.EXE` via INT 21h AH=4Bh; CGA 04 title/courtyard; Unicorn MZ still default for `tdx file.exe`.
+**Milestone (2026-09-04): CGA COMPOSITE WORKS** — tag `milestone/cga-composite-works`,
+commit `a66b0aa` + docs. Dragon Wars on B: (720K FlopFS), FloppyOS `AH=42` LSEEK,
+tdxview old-CGA NTSC (Reenigne/86Box). B800 dump **byte-identical** to DOSBox
+`games/SCREEN.CGA`. How-to: `docs/HOWTO_DRAGON_WARS.md`. CLI: `docs/CLI.md` + `man/*.1`.
+
+**Earlier:** 5150 BIOS POST; FloppyOS A>; B: dir-as-FlopFS; Bushido INT 21h 4Bh;
+Unicorn MZ still default for `tdx file.exe`.
 
 Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` before a new tdx/tdxview pair.
 
@@ -52,7 +57,9 @@ Still missing — **case-by-case when a game needs it** (composite artifact alre
 - [ ] **3D9 palette** — full color-select (background, cyan/magenta vs red/green vs intense, burst).
 - [x] **Mode 6** 640×200 1bpp (tdxview; not mode 4’s 2bpp).
 - [ ] **Modes 0 / 1** 40-column text (0 ≈ B&W, 1 = 16-color).
-- [x] **Composite artifact color** — old-CGA 4-bit NTSC from mode 6; Dragon Wars B: test.
+- [x] **Composite artifact color** — Reenigne/86Box old-CGA NTSC. Mode 4 320×200
+  (Dragon Wars, 3D8=2Ah burst on) and mode 6 640×200. `--no-composite` = RGBI.
+  Gold: `games/SCREEN.CGA` (not pushed).
 - [ ] **Snow / wait-states** — CGA VRAM contention (cycle-exact 6845). Low priority unless that game shows it.
 
 **MDA**
@@ -70,16 +77,22 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ### P1 — storage
 
-- [ ] **XT hard disk (Xebec / WD1002-ish)** — ports `320h–323h`, DMA3, IRQ5, option ROM `C800:0` if we ship a ROM. Py86 `hdc_xebec.py` is the reference (Phase B tested there). Attach a raw image (`--hdc FILE`). Boot FloppyOS or a DOS HDD later.
+- [ ] **XT hard disk (Xebec / WD1002-ish) as C:** — ports `320h–323h`, DMA3, IRQ5,
+  option ROM `C800:0` if we ship a ROM. Py86 `hdc_xebec.py` is the reference.
+  **Next session (Fri/Sat):** `--hdc FILE` **and** auto-size a virtual HDD from a
+  host directory that does not fit any floppy (e.g. 1.3MB tree → C: image).
 - [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
 - [ ] **FDC Format / Scan / Read ID** — after Write.
-- [x] **720K geometry** — FlopFS packer uses 80/2/9 when the dir does not fit 360K (Dragon Wars ~708K). 1.44M later. 5150 BIOS INT 13 still 360K for A: boot; B: is FloppyOS LBA→CHS (same 9/2, extra cylinders) + iron86 FDC.
+- [x] **720K geometry** — FlopFS packer: 360K if it fits, else 720K 80/2/9
+  (Dragon Wars ~708K). **Not yet:** 1.2M (80/2/15) or 1.44M (80/2/18) packer or
+  CHS auto-detect. Raw images: &lt;300KB → 8/1, else 9/2. Pack is **non-recursive**,
+  **32** 8.3 names. Over 720K → fail (use HDD C: next).
 
 ### P2 — CPU / PC
 
 - [ ] **80186 helpers** if a real code path needs them (`PUSHA`/`POPA`/`IMUL imm`/`PUSH imm`/`INS`/`OUTS`/`ENTER`/`LEAVE`). Bushido halt on `0x69` was **unrelocated garbage**, not a 186 requirement. Add when a proven CS:IP in the EXE uses them.
 - [ ] Full 8237 HOLD/HLDA / DRAM refresh.
-- [ ] 256K already (`io_nibble=0x06`); more RAM via CMOS/extended is later.
+- [x] Conventional RAM **544K** (PPI nibble `0x0F`, 24-APR-81 BIOS max). 640K needs Oct-82 BIOS.
 - [ ] COM1 8250 if FloppyOS UART print should be visible.
 
 ### Bottom of queue
@@ -97,7 +110,8 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 - [ ] **AH=4Ch** — return to COMMAND and tell tdx to retitle `COMMAND.COM`.
 - [ ] **FCB write / create / find** (AH=16/17/11–13/15/22).
-- [ ] **Handle API** AH=3C/3D/3F/40/41/42 where games need it (Pascal often FCB; others don’t).
+- [x] **AH=42 LSEEK** — Dragon Wars `DATA1` (SET then 3F). HELLO.COM SEEK OK.
+- [ ] **Handle API** AH=3C/40/41 (create/write/unlink). 3D/3E/3F/42 exist. `AH=40` needed for `dragon -s` persist.
 - [ ] **FlopFS v0.5 integrity** — XXH3-64 on `size>0` files; dirs not hashed; **size-0 skip hash**; pack-time dedup (hardlink-like); refcount before free. Spec: `subprojects/floppyos/docs/flopfs-spec.md`.
 - [ ] Remaining **double-push** clones if any path besides `fill_dta` still unbalanced (`run_init_com` was fixed).
 - [ ] **FAT12/16/32/exFAT** foreign volumes — **bottom of queue**. Primary FS stays FlopFS. Py86 never shipped `fat12.py`.
@@ -108,10 +122,13 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ## Suggested order
 
-1. FDC Write (saves / COPY).
-2. Xebec HDD image + test.
+1. **XT HDD C:** auto-sized from a host dir that does not fit 720K (user: next Fri/Sat).
+2. FDC Write (saves / COPY / `AH=40`).
 3. FlopFS xxhash3/dedup.
-4. CGA 40-col / 3D9 / Hercules **only with a title in hand**. Mode 6 + composite: Dragon Wars.
-5. FAT12 and FDC Format/Scan last.
+4. Optional 1.2M/1.44M floppy packer + CHS from image size.
+5. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
+6. FAT12 and FDC Format/Scan last.
+
+**Docs:** `docs/CLI.md`, `docs/HOWTO_DRAGON_WARS.md`, `docs/MILESTONE_CGA_COMPOSITE.md`, `man/*.1`. Keep this file in sync.
 
 Py86 remains the chip-level reference (`/tmp/RetroCodeMess/Py86`). Unicorn remains the default **MZ EXE** debugger path.
