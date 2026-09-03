@@ -317,7 +317,8 @@ void pc::type_keys(const char *s)
 
 uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
 {
-    /* 360K: 2 heads, 9 spt, 40 cyl. sec is 1-based. Small images: 8/1. */
+    /* 360K 40/2/9 or 720K 80/2/9 (same SPT/heads). sec is 1-based.
+     * Tiny images (<300K): 8 spt, 1 head (single-sided 8-sector). */
     if (sec == 0)
     {
         return UINT32_MAX;
@@ -562,7 +563,10 @@ void pc::wire_pc_hw()
     hw_.ppi.control = 0x99;
     hw_.ppi.dip = 0x2D; /* CGA 80×25, 64K planar, 1 FDD, IPL (not Py86 MDA 0x3D) */
     sync_fdd_dip();
-    hw_.ppi.io_nibble = 0x06; /* 64K + 6*32K = 256K (Py86 io_channel_size_nibble) */
+    /* Py86 ppi8255 / PCBIOS.ASM TEST.11: planar 64K (SW1 bits 3–2) plus
+     * I/O-channel nibble*32K. 1981 BIOS max is 544K (nibble 0xF), not 640K
+     * (SW2 bit 5 is ignored until the 27-OCT-82 BIOS). 0x6 was 256K. */
+    hw_.ppi.io_nibble = 0x0F;
     hw_.pic.imr = 0xFF;
     hw_.pic.vector_base = 8;
     hw_.pic.read_isr = 1;

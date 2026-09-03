@@ -46,7 +46,7 @@ REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp sr
 TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_ui.cpp \
 	src/tdx/tdx_main.cpp src/tdx/tdx_shot.cpp
 VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_shot.cpp \
-	src/tdx/tdx_agent_sock.cpp
+	src/tdx/tdx_agent_sock.cpp src/dos/dos_cga.c
 TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
 	tests/test_shot.cpp tests/test_int10.cpp tests/test_fault.cpp tests/test_bios.cpp \
 	tests/test_pit.cpp tests/test_floppy.cpp tests/test_ibm_font.cpp
@@ -162,6 +162,10 @@ test: tdx tdxview tests/run_tests fixtures
 	./tdx -v
 	./tdx --no-ui --no-sock tests/fixtures/tiny.com >/dev/null
 	./tdxview -h >/dev/null
+	./tdxview -h | grep -q -- --no-composite
+	./tdx -h | grep -q -- --exec-map
+	./tdx -h >/dev/null
+	$(PY) scripts/tdxctl.py -h | grep -q dump
 	./tdxview -v
 	$(PY) scripts/tdxctl.py -h >/dev/null
 	$(PY) scripts/tdxctl.py -h | grep -q pause
@@ -177,6 +181,7 @@ test: tdx tdxview tests/run_tests fixtures
 	  sleep 0.3; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q pixels_b64; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q b800_b64; \
+	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q vram_b64; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q '"mode"'; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock cga | grep -q cga3d9; \
 	  $(PY) scripts/tdxctl.py --sock /tmp/tdx-test.sock delay | grep -q delay_ms; \

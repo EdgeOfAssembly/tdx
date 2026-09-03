@@ -28,6 +28,7 @@ struct tdx_cli
     std::string floppy_b;  /**< B: image or dir (--floppy-b). */
     std::string uc_floppy; /**< Same image on Unicorn (A/B vs iron86). */
     std::string bios;      /**< IBM 5150 8K BIOS (iron86, Py86 mapping). */
+    std::string exec_map;  /**< 1 MiB executed-opcode map (iron86). */
     bool mda = false;      /**< SW1 MDA 80×25 (B000, mode 7). Default CGA. */
     int scale = 2;
 };

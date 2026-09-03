@@ -49,6 +49,7 @@ struct view_cli
     std::string sock_path = "/tmp/tdx.sock";
     std::string listen_path = "/tmp/tdxview.sock";
     bool no_listen = false;
+    bool no_composite = false; /**< Mode 6 RGB B/W; default is NTSC artifact. */
     int scale = 2; /**< Graphics only; text is always 640×400. */
 };
 
@@ -68,6 +69,7 @@ void print_usage(FILE *fp)
         "      --sock PATH      tdx socket (default: /tmp/tdx.sock)\n"
         "      --listen PATH    agent socket (default: /tmp/tdxview.sock)\n"
         "      --no-listen      Do not listen for agents\n"
+        "      --no-composite   CGA gfx as RGBI (default: old-CGA NTSC artifact)\n"
         "      --scale N        Graphics scale (default: 2 → 640×400). Text is 640×400.\n"
         "\n"
         "tdxview " TDX_VERSION_STRING "\n",
@@ -122,6 +124,10 @@ bool parse_cli(int argc, char **argv, view_cli *out)
         else if (std::strcmp(a, "--no-listen") == 0)
         {
             out->no_listen = true;
+        }
+        else if (std::strcmp(a, "--no-composite") == 0)
+        {
+            out->no_composite = true;
         }
         else if (std::strcmp(a, "--scale") == 0)
         {
@@ -564,8 +570,10 @@ int main(int argc, char **argv)
     int wait_ticks = 0;
     uint8_t last_mode = 0xFF;
     bool tex_gfx = false; /* start as 640×400 text */
-    uint8_t tex_kind = 0xFF; /* 0=CGA text 1=gfx 2=MDA */
+    uint8_t tex_kind = 0xFF; /* 0=CGA text 1=gfx320 2=MDA 3=mode6 640 */
     std::vector<uint8_t> fb;
+    std::vector<uint8_t> vram;
+    std::vector<uint32_t> comp;
     std::vector<uint8_t> b800;
     std::vector<uint8_t> ibm8;
     std::vector<uint8_t> ibm8hi;
@@ -635,6 +643,7 @@ int main(int argc, char **argv)
         int x = 0;
         uint8_t mode = 0;
         uint8_t palreg = 0x30;
+        uint8_t cga3d8 = 0x2A; /* PCBIOS M7 mode 4 */
 
         while (SDL_PollEvent(&ev))
         {
@@ -697,7 +706,13 @@ int main(int argc, char **argv)
                     {
                         b64_decode(j["pixels_b64"].get<std::string>(), &fb);
                     }
+                    if (j.contains("vram_b64"))
+                    {
+                        b64_decode(j["vram_b64"].get<std::string>(), &vram);
+                    }
                     palreg = (uint8_t)j.value("cga3d9", 0x30);
+                    /* PCBIOS M7: mode 4 = 2Ah (burst on, 320). bit2=0 burst. */
+                    cga3d8 = (uint8_t)j.value("cga3d8", 0x2A);
                     if (j.contains("font8_b64"))
                     {
                         b64_decode(j["font8_b64"].get<std::string>(), &ibm8);
@@ -737,17 +752,19 @@ int main(int argc, char **argv)
 
         {
             const bool mda = (last_mode == 0x07);
-            const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || (last_mode == 0x06) ||
+            const bool hires = (last_mode == 0x06);
+            const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || hires ||
                              (last_mode == 0x13);
-            const uint8_t kind = gfx ? 1u : (mda ? 2u : 0u);
+            const uint8_t kind = hires ? 3u : (gfx ? 1u : (mda ? 2u : 0u));
             if (kind != tex_kind)
             {
-                const int tw = gfx ? DOS_CGA_WIDTH : (mda ? 720 : 640);
-                const int th = gfx ? DOS_CGA_HEIGHT : (mda ? 350 : 400);
+                const int tw = hires ? DOS_CGA_HIRES_WIDTH : (gfx ? DOS_CGA_WIDTH : (mda ? 720 : 640));
+                const int th = (gfx || hires) ? DOS_CGA_HEIGHT : (mda ? 350 : 400);
                 SDL_DestroyTexture(tex);
                 tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                         tw, th);
-                SDL_SetWindowSize(win, gfx ? (tw * cli.scale) : tw, gfx ? (th * cli.scale) : th);
+                SDL_SetWindowSize(win, (gfx || hires) ? (tw * cli.scale) : tw,
+                                  (gfx || hires) ? (th * cli.scale) : th);
                 vst.tex = tex;
                 tex_gfx = gfx;
                 tex_kind = kind;
@@ -818,6 +835,62 @@ int main(int argc, char **argv)
                                     dst[gx] = fg;
                                 }
                             }
+                        }
+                    }
+                }
+            }
+            /* PCBIOS M7 → 3D8: bit1 graphics, bit2=0 burst (composite color),
+             * bit4=1 → 640×200. Mode 4 is 2Ah (Dragon Wars). */
+            else if ((!cli.no_composite) && ((cga3d8 & 0x02u) != 0) && ((cga3d8 & 0x04u) == 0) &&
+                     ((cga3d8 & 0x10u) != 0) && (vram.size() >= (size_t)DOS_CGA_VRAM))
+            {
+                if (comp.size() != (size_t)DOS_CGA_HIRES_PIXELS)
+                {
+                    comp.assign((size_t)DOS_CGA_HIRES_PIXELS, 0);
+                }
+                if (dos_cga_composite_argb(vram.data(), comp.data(), comp.size(), cga3d8, palreg) ==
+                    0)
+                {
+                    for (y = 0; y < DOS_CGA_HEIGHT; y++)
+                    {
+                        uint32_t *dst = pix + y * pitch_px;
+                        std::memcpy(dst, comp.data() + (size_t)y * (size_t)DOS_CGA_HIRES_WIDTH,
+                                    (size_t)DOS_CGA_HIRES_WIDTH * sizeof(uint32_t));
+                    }
+                }
+            }
+            else if ((!cli.no_composite) && ((cga3d8 & 0x02u) != 0) && ((cga3d8 & 0x04u) == 0) &&
+                     ((cga3d8 & 0x10u) == 0) && (vram.size() >= (size_t)DOS_CGA_VRAM))
+            {
+                if (comp.size() != (size_t)DOS_CGA_PIXELS)
+                {
+                    comp.assign((size_t)DOS_CGA_PIXELS, 0);
+                }
+                if (dos_cga_composite_argb320(vram.data(), comp.data(), comp.size(), cga3d8,
+                                              palreg) == 0)
+                {
+                    for (y = 0; y < DOS_CGA_HEIGHT; y++)
+                    {
+                        uint32_t *dst = pix + y * pitch_px;
+                        std::memcpy(dst, comp.data() + (size_t)y * (size_t)DOS_CGA_WIDTH,
+                                    (size_t)DOS_CGA_WIDTH * sizeof(uint32_t));
+                    }
+                }
+            }
+            else if ((last_mode == 0x06) && (vram.size() >= (size_t)DOS_CGA_VRAM))
+            {
+                std::vector<uint8_t> hi;
+                hi.assign((size_t)DOS_CGA_HIRES_PIXELS, 0);
+                if (dos_cga_decode_hires(vram.data(), hi.data(), hi.size()) == 0)
+                {
+                    for (y = 0; y < DOS_CGA_HEIGHT; y++)
+                    {
+                        uint32_t *dst = pix + y * pitch_px;
+                        for (x = 0; x < DOS_CGA_HIRES_WIDTH; x++)
+                        {
+                            dst[x] = hi[(size_t)y * (size_t)DOS_CGA_HIRES_WIDTH + (size_t)x]
+                                         ? 0xFFFFFFFFu
+                                         : 0xFF000000u;
                         }
                     }
                 }

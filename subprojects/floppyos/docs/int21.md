@@ -22,13 +22,14 @@
 | 3D | Open | AL=0 read-only, DS:DX ASCIIZ 8.3 (`B:FILE.COM`) → AX=handle (5–8) |
 | 3E | Close | BX=handle |
 | 3F | Read | BX=handle, CX=bytes, DS:DX buf → AX=count |
+| **42** | LSEEK | AL=0/1/2 SET/CUR/END, BX=handle, CX:DX offset → DX:AX pos |
 | **1A** | Set DTA | DS:DX = disk transfer area |
 | **4E** | Find first | CX=attr, DS:DX filespec (`*.*`, `B:*.*`) |
 | **4F** | Find next | continue search |
 | **4B** | Exec | AL=0 load+run **COM or MZ EXE**; relocs; ES:BX EPB (minimal) |
 | **48** | Allocate | BX=paragraphs → AX=segment; fail CF AX=8 BX=largest free |
 | **49** | Free | ES=block (payload segment) |
-| **4A** | Resize | ES=block, BX=new paragraphs (shrink/grow if coalesced) |
+| **4A** | Resize | ES=block, BX=new paragraphs (shrink/grow if coalesced). Coalesce keeps `'M'` on owned blocks (do not mark COM as `'Z'`). |
 | 4C | Terminate | return to parent if AH=4B active; else halt |
 
 ## MCB arena (M8)

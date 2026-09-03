@@ -72,6 +72,12 @@ REX_API rex_status rex_session_load_bios(rex_session *s, const char *path);
 /** @brief After --bios: MDA 80×25 DIP (BIOS mode 7, B000). Default CGA. */
 REX_API void rex_session_set_mda(rex_session *s, int on);
 
+/**
+ * @brief 1 MiB executed-opcode map (iron86). Same linear layout as RAM; zeros
+ *        where nothing was fetched. Enable-only; default off.
+ */
+REX_API rex_status rex_session_set_exec_map(rex_session *s, const char *path);
+
 /** @brief Attach a floppy image or host directory (FlopFS pack) as A:. */
 REX_API rex_status rex_session_attach_floppy(rex_session *s, const char *image);
 

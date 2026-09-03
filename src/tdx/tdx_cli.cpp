@@ -29,7 +29,7 @@ void tdx_print_usage(FILE *fp)
         "  -v, --version         Show version and exit\n"
         "      --floppy-a PATH   A: raw image or host directory (FlopFS pack)\n"
         "      --floppy PATH     Alias for --floppy-a\n"
-        "      --floppy-b PATH   B: raw image or host directory (FlopFS pack)\n"
+        "      --floppy-b PATH   B: image or host dir (FlopFS 360K, or 720K if needed)\n"
         "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
         "      --bios FILE       IBM 5150 8K BIOS on iron86 (FFFF:0000, Py86 map)\n"
         "                        with --floppy-a: PyFloppy uPD765 A: for INT 19h\n"
@@ -44,6 +44,7 @@ void tdx_print_usage(FILE *fp)
         "      --cwd PATH        DOS current directory for INT 21 (default: file dir)\n"
         "      --run             After load, run until break/halt (headless-friendly)\n"
         "      --verbose         Log every stepped instruction to stderr\n"
+        "      --exec-map FILE   1 MiB executed-opcode map (iron86; same linear addrs)\n"
         "      --scale N         CPU window integer scale (default: 2)\n"
         "\n"
         "Keys (CPU window): F7 trace, F8 step over, F9 run/pause, F2 breakpoint,\n"
@@ -150,6 +151,19 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         else if (std::strcmp(a, "--no-sock") == 0)
         {
             out->no_sock = true;
+        }
+        else if (std::strcmp(a, "--exec-map") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->exec_map = argv[++i];
+        }
+        else if (std::strncmp(a, "--exec-map=", 11) == 0)
+        {
+            out->exec_map = a + 11;
         }
         else if (std::strcmp(a, "--run") == 0)
         {

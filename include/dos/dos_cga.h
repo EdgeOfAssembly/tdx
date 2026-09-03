@@ -26,7 +26,9 @@ enum
     DOS_CGA_WIDTH = 320,
     DOS_CGA_HEIGHT = 200,
     DOS_CGA_PIXELS = 320 * 200,
-    DOS_CGA_VRAM = 16384
+    DOS_CGA_VRAM = 16384,
+    DOS_CGA_HIRES_WIDTH = 640,
+    DOS_CGA_HIRES_PIXELS = 640 * 200
 };
 
 /**
@@ -46,6 +48,38 @@ int dos_cga_decode(const uint8_t *vram, uint8_t *px, size_t px_size);
  * @brief Inverse of @c dos_cga_decode (for tests).
  */
 int dos_cga_encode(const uint8_t *px, size_t px_size, uint8_t *vram, size_t vram_size);
+
+/**
+ * @brief Decode CGA mode 6 (640×200 1bpp) into 0/1 bytes.
+ *
+ * Same even/odd 8K banks as mode 4, 80 bytes/line, 1 bit/pixel MSB first.
+ *
+ * @param[in]  vram     At least 16 KiB (B800:0000).
+ * @param[out] px       640*200 bytes, each 0 or 1.
+ * @param[in]  px_size  Must be >= DOS_CGA_HIRES_PIXELS.
+ *
+ * @return 0 on success, -1 on bad args.
+ */
+int dos_cga_decode_hires(const uint8_t *vram, uint8_t *px, size_t px_size);
+
+/**
+ * @brief Old-CGA NTSC (Reenigne / 86Box Composite_Process) from mode-6 VRAM.
+ *
+ * @param cga3d8  Mode-set (PCBIOS M7; mode 6 = 1Eh). 0 → 1Eh.
+ * @param cga3d9  Color-select. 0 → 0Fh (white fg).
+ */
+int dos_cga_composite_argb(const uint8_t *vram, uint32_t *argb, size_t n_pixels,
+                           uint8_t cga3d8, uint8_t cga3d9);
+
+/**
+ * @brief Old-CGA NTSC from mode 4/5 VRAM (320×200 2bpp).
+ *
+ * PCBIOS M7 mode 4 = 3D8 2Ah (burst on). Gold: games/SCREEN.CGA (Dragon Wars).
+ *
+ * @param cga3d8  0 → 2Ah. @param cga3d9  0 → 30h (pal1 + intensity).
+ */
+int dos_cga_composite_argb320(const uint8_t *vram, uint32_t *argb, size_t n_pixels,
+                              uint8_t cga3d8, uint8_t cga3d9);
 
 /**
  * @brief Map CGA color-select (port 3D9h / BDA 0040:0066) to four ARGB colors.

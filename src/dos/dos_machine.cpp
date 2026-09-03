@@ -1084,6 +1084,24 @@ rex_status dos_machine::load_bios_5150(const char *path)
     return REX_OK;
 }
 
+rex_status dos_machine::set_exec_map(const char *path)
+{
+    if ((path == nullptr) || (path[0] == '\0'))
+    {
+        return REX_ERR_ARG;
+    }
+    if (!iron)
+    {
+        iron = std::make_unique<iron86::pc>();
+    }
+    if (!iron->c.open_exec_map(path))
+    {
+        return REX_ERR_IO;
+    }
+    rex_logf(REX_LOG_INFO, "iron86 exec-map %s (1 MiB)", path);
+    return REX_OK;
+}
+
 void dos_machine::set_mda(bool on)
 {
     mda_video = on;
@@ -1432,6 +1450,8 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         rex_status st = REX_OK;
         stop_req = false;
         wait_key = false;
+        /* Continue past BPINT/BP: skip_* flags still suppress the same insn. */
+        at_break = false;
         while ((left > 0) && (!halted) && (!at_break) && (!wait_key) && (!stop_req))
         {
             st = step_one();

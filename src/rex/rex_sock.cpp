@@ -339,6 +339,114 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             }
         }
     }
+    else if (cmd == "dump")
+    {
+        /* Agent: dump cga → SCREEN.CGA (16 KiB B800); dump mda → SCREEN.MDA. */
+        std::string kind = req.value("kind", "");
+        std::string file = req.value("file", "");
+        std::string addr = req.value("addr", "");
+        size_t len = req.value("len", 0);
+        uint64_t lin = 0;
+        if (kind.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            std::string a;
+            std::string b;
+            std::string c;
+            is >> a >> b >> c;
+            if ((a == "cga") || (a == "mda"))
+            {
+                kind = a;
+                if (!b.empty())
+                {
+                    file = b;
+                }
+            }
+            else
+            {
+                addr = a;
+                if (!b.empty())
+                {
+                    len = static_cast<size_t>(std::strtoul(b.c_str(), nullptr, 0));
+                }
+                if (!c.empty())
+                {
+                    file = c;
+                }
+            }
+        }
+        if (kind == "cga")
+        {
+            lin = 0xB8000ull;
+            if (len == 0)
+            {
+                len = 16384;
+            }
+            if (file.empty())
+            {
+                file = "SCREEN.CGA";
+            }
+        }
+        else if (kind == "mda")
+        {
+            lin = 0xB0000ull;
+            if (len == 0)
+            {
+                len = 4096;
+            }
+            if (file.empty())
+            {
+                file = "SCREEN.MDA";
+            }
+        }
+        else if (parse_addr(addr, &lin))
+        {
+            if (len == 0)
+            {
+                len = 256;
+            }
+            if (file.empty())
+            {
+                file = "SCREEN.BIN";
+            }
+        }
+        else
+        {
+            resp["ok"] = false;
+            resp["error"] = "dump cga|mda|<seg:off> [len] [file]";
+        }
+        if (resp.value("ok", true) && (len > 0) && (len <= 65536) && !file.empty())
+        {
+            std::vector<uint8_t> buf(len);
+            FILE *fp = nullptr;
+            if (rex_session_read_mem(s, lin, buf.data(), len) != REX_OK)
+            {
+                resp["ok"] = false;
+                resp["error"] = "read";
+            }
+            else
+            {
+                fp = std::fopen(file.c_str(), "wb");
+                if ((fp == nullptr) || (std::fwrite(buf.data(), 1, len, fp) != len))
+                {
+                    resp["ok"] = false;
+                    resp["error"] = "write";
+                }
+                else
+                {
+                    resp["ok"] = true;
+                    resp["file"] = file;
+                    resp["linear"] = lin;
+                    resp["len"] = len;
+                }
+                if (fp != nullptr)
+                {
+                    std::fclose(fp);
+                    fp = nullptr;
+                }
+            }
+        }
+    }
     else if ((cmd == "bp") || (cmd == "bp_set"))
     {
         std::string addr = req.value("addr", "");
@@ -736,16 +844,26 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["guest"] = rex_session_guest(s);
         {
             uint8_t pal = 0x30;
+            uint8_t mode_set = 0x2A; /* PCBIOS M7 mode 4: burst on, 320×200 */
             if (rex_session_read_mem(s, 0x466ull, &pal, 1) == REX_OK)
             {
                 resp["cga3d9"] = pal;
             }
+            if (rex_session_read_mem(s, 0x465ull, &mode_set, 1) == REX_OK)
+            {
+                resp["cga3d8"] = mode_set;
+            }
         }
         {
             uint8_t b800[4000];
+            uint8_t vram[DOS_CGA_VRAM];
             if (rex_session_read_mem(s, 0xB8000ull, b800, sizeof(b800)) == REX_OK)
             {
                 resp["b800_b64"] = b64_encode(b800, sizeof(b800));
+            }
+            if (rex_session_read_mem(s, 0xB8000ull, vram, sizeof(vram)) == REX_OK)
+            {
+                resp["vram_b64"] = b64_encode(vram, sizeof(vram));
             }
             uint8_t b000[4000];
             if (rex_session_read_mem(s, 0xB0000ull, b000, sizeof(b000)) == REX_OK)
@@ -937,7 +1055,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem bp bpint bpinsn bpm bpdel bplist shot key nav status cga ping quit";
+            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem dump bp bpint bpinsn bpm bpdel bplist shot key nav status cga ping quit";
     }
     else
     {

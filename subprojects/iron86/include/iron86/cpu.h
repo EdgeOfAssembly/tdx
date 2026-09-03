@@ -38,9 +38,27 @@ class cpu
 {
 public:
     cpu();
+    ~cpu();
+    cpu(const cpu &) = delete;
+    cpu &operator=(const cpu &) = delete;
 
     /** @brief Power-on reset. */
     void reset();
+
+    /**
+     * @brief 1 MiB executed-opcode map at the same linear addresses as RAM.
+     *
+     * File is created/truncated to 1048576 bytes and mmap'd. Each instruction
+     * fetch writes those bytes into the file at CS:IP (20-bit wrap). Unexecuted
+     * addresses stay 0 — a binary listing of what actually ran.
+     *
+     * @return false if PATH cannot be created or mmap'd.
+     */
+    bool open_exec_map(const char *path);
+    /** @brief msync + munmap. Safe if no map is open. */
+    void close_exec_map();
+    /** @brief Pointer to the 1 MiB map, or null. */
+    const uint8_t *exec_map() const { return exec_map_; }
 
     /**
      * @brief Linear address (seg<<4)+off, 20-bit wrap.
@@ -301,6 +319,8 @@ private:
     uint16_t seg_ov_ = 0xFFFF; /**< 0xFFFF = none */
     uint8_t rep_ = 0;
     std::unique_ptr<uint8_t[]> mem_;
+    uint8_t *exec_map_ = nullptr;
+    int exec_map_fd_ = -1;
     modrm mr_{};
     uint16_t ax_ = 0;
     uint16_t cx_ = 0;

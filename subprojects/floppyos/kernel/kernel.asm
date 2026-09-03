@@ -5,7 +5,7 @@
         org  0
         %include "debug.inc"
 
-SPT             equ 9                  ; 360K 5.25"
+SPT             equ 9                  ; 360K 40/2/9 or 720K 80/2/9 (same CHS)
 HEADS           equ 2
 SB_SEG          equ 0x0900
 MAX_HANDLES     equ 4
@@ -161,8 +161,14 @@ mcb_coalesce_es:
         add     [es:3], bx
         cmp     cl, 'Z'
         jne     .co
+        ; Absorbed the terminal Z — stop (do not walk into 0xA000).
+        ; Keep 'M' on an owned block; only a free block becomes 'Z'.
+        ; (Marking owned COM as 'Z' made the next AH=48 stop at that MCB:
+        ;  Dragon Wars SETBLOCK then ALLOC → "Out of memory".)
+        cmp     word [es:1], 0
+        jne     .cdone
         mov     byte [es:0], 'Z'
-        jmp     .co
+        jmp     .cdone
 .cno:   pop     es
 .cdone: pop     es
         pop     cx
@@ -694,6 +700,8 @@ int21_handler:
         je      i3e
         cmp     ah, 0x3F
         je      i3f
+        cmp     ah, 0x42
+        je      i42
         cmp     ah, 0x4E
         je      i4e
         cmp     ah, 0x4F
@@ -710,7 +718,7 @@ int21_handler:
         je      i4c
         mov     ax, 1
         stc
-        iret
+        jmp     iret_cf
 i01:    call    con_getkey
         call    putc                    ; echo
         clc
@@ -826,6 +834,8 @@ i3d:
 i3e:    call    dos_close
         jmp     iret_cf
 i3f:    call    dos_read
+        jmp     iret_cf
+i42:    call    dos_lseek
         jmp     iret_cf
 i4e:    call    dos_findfirst
         jmp     iret_cf
@@ -1641,6 +1651,56 @@ dos_close:
 .e:     mov     ax, 6
         stc
 .d:     pop     si
+        pop     bx
+        ret
+
+; AH=42: AL=origin 0/1/2, BX=handle, CX:DX offset (CX high).
+; Return DX:AX = new 32-bit position. Dragon Wars DATA1 uses SEEK_SET then 3F.
+dos_lseek:
+        push    bx
+        push    si
+        push    di
+        mov     si, ax              ; SI = origin (AL)
+        and     si, 0x00FF
+        mov     di, bx
+        sub     di, HANDLE_BASE
+        cmp     di, MAX_HANDLES
+        jae     .le
+        shl     di, 1
+        shl     di, 1
+        shl     di, 1
+        shl     di, 1               ; *16, keep CX = offset high
+        add     di, handles
+        cmp     byte [cs:di], 0
+        je      .le
+        cmp     si, 0
+        je      .set
+        cmp     si, 1
+        je      .cur
+        cmp     si, 2
+        je      .end
+        jmp     .le
+.set:   mov     [cs:di+10], dx
+        mov     [cs:di+12], cx
+        jmp     .ok
+.cur:   add     [cs:di+10], dx
+        adc     [cs:di+12], cx
+        jmp     .ok
+.end:   mov     ax, [cs:di+6]
+        add     ax, dx
+        mov     [cs:di+10], ax
+        mov     ax, [cs:di+8]
+        adc     ax, cx
+        mov     [cs:di+12], ax
+.ok:    mov     ax, [cs:di+10]
+        mov     dx, [cs:di+12]
+        clc
+        jmp     .out
+.le:    mov     ax, 6
+        xor     dx, dx
+        stc
+.out:   pop     di
+        pop     si
         pop     bx
         ret
 

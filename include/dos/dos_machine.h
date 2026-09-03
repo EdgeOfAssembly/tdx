@@ -175,6 +175,8 @@ struct dos_machine
     rex_status load_bios_5150(const char *path);
     /** @brief After BIOS load: MDA 80×25 DIP (0x3D family) vs CGA (0x2D). */
     void set_mda(bool on);
+    /** @brief mmap a 1 MiB executed-opcode map (iron86). */
+    rex_status set_exec_map(const char *path);
     /** @brief Mount IMAGE or host DIR as A: on the iron86 FDC (PyFloppy). */
     rex_status attach_floppy_image(const char *image);
     /** @brief Mount IMAGE or host DIR as B: (FDC unit 1 / INT 13h DL=1). */

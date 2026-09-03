@@ -11,7 +11,11 @@ Gates 2/5 done: 256K PPI nibble (`io_nibble=0x06`), speaker `--no-audio`.
 - [ ] Full 8237 HOLD/HLDA / DRAM refresh tick
 - [x] **CGA BIOS CRT_CHAR_GEN 8×8** (`F000:FA6E`, runtime from guest, tdxview 8×16 double-row)
 - [x] **MDA 8K 5788005** + tdxview B000 (`tdx --mda`). BIN gitignored, not pushed.
-- [ ] CGA **3D9** palette; **mode 6** 640×200 1bpp; **40-col** modes 0/1; **composite artifact** (test game exists)
+- [ ] CGA **3D9** palette; **40-col** modes 0/1
+- [x] **mode 6** 640×200 1bpp + composite in tdxview (Dragon Wars)
+- [x] **720K** FlopFS pack when a host dir does not fit 360K (`--floppy-b`)
+- [x] PPI I/O nibble **0x0F = 544K** (24-APR-81 BIOS max; not 640K / not EMS)
+- [x] **`--exec-map FILE`** — 1 MiB executed-opcode map (same linear addrs as RAM)
 - [ ] MDA **blink**; exact 720×350 timing
 - [ ] **Hercules** 720×348 gfx (not MDA — HGC is MDA text + extra graphics)
 - [ ] XT Xebec HDC (`--hdc`, 320h, DMA3, IRQ5) — test with a raw image

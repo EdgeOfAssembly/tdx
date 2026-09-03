@@ -39,7 +39,7 @@ The card ROM `ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN` (MAME SHA1 `c2a8b108
 | 3 | CGA 80×25 16-color text | ok (FloppyOS A>) |
 | 4 | CGA 320×200 4-color | ok (Bushido) |
 | 5 | CGA 320×200 4-color, burst off | treated as 4 |
-| 6 | CGA 640×200 2-color | listed as gfx; confirm 1bpp vs 4’s 2bpp when a game uses it |
+| 6 | CGA 640×200 2-color | **ok** 1bpp + old-CGA composite in tdxview (Dragon Wars) |
 | 7 | **MDA 80×25 text only** (no graphics) | ok (`--mda`, B000, green 5151) |
 
 **MDA (IBM 5151)** has **only mode 7** (80×25 text, no bitmap). Green-on-black is the 5151 P39 phosphor.
@@ -50,9 +50,9 @@ Still missing — **case-by-case when a game needs it** (composite artifact alre
 
 **CGA**
 - [ ] **3D9 palette** — full color-select (background, cyan/magenta vs red/green vs intense, burst).
-- [ ] **Mode 6** 640×200 1bpp polish (not the same decoder as mode 4’s 2bpp).
+- [x] **Mode 6** 640×200 1bpp (tdxview; not mode 4’s 2bpp).
 - [ ] **Modes 0 / 1** 40-column text (0 ≈ B&W, 1 = 16-color).
-- [ ] **Composite artifact color** — NTSC chroma from 640×200 / 80-col; **have a game to test**.
+- [x] **Composite artifact color** — old-CGA 4-bit NTSC from mode 6; Dragon Wars B: test.
 - [ ] **Snow / wait-states** — CGA VRAM contention (cycle-exact 6845). Low priority unless that game shows it.
 
 **MDA**
@@ -73,7 +73,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 - [ ] **XT hard disk (Xebec / WD1002-ish)** — ports `320h–323h`, DMA3, IRQ5, option ROM `C800:0` if we ship a ROM. Py86 `hdc_xebec.py` is the reference (Phase B tested there). Attach a raw image (`--hdc FILE`). Boot FloppyOS or a DOS HDD later.
 - [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
 - [ ] **FDC Format / Scan / Read ID** — after Write.
-- [ ] **720K / 1.44M geometry** — 5150 BIOS INT 13 is 360K; larger needs a DOS or custom INT 13, not stock 1981 POST.
+- [x] **720K geometry** — FlopFS packer uses 80/2/9 when the dir does not fit 360K (Dragon Wars ~708K). 1.44M later. 5150 BIOS INT 13 still 360K for A: boot; B: is FloppyOS LBA→CHS (same 9/2, extra cylinders) + iron86 FDC.
 
 ### P2 — CPU / PC
 
@@ -111,7 +111,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 1. FDC Write (saves / COPY).
 2. Xebec HDD image + test.
 3. FlopFS xxhash3/dedup.
-4. CGA 40-col / mode 6 / 3D9 / **composite artifact** (game in hand) / Hercules **only with a title in hand**.
+4. CGA 40-col / 3D9 / Hercules **only with a title in hand**. Mode 6 + composite: Dragon Wars.
 5. FAT12 and FDC Format/Scan last.
 
 Py86 remains the chip-level reference (`/tmp/RetroCodeMess/Py86`). Unicorn remains the default **MZ EXE** debugger path.

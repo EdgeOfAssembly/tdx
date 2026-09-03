@@ -6,6 +6,9 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 namespace iron86
 {
@@ -14,6 +17,59 @@ cpu::cpu()
 {
     fill_dispatch();
     reset();
+}
+
+cpu::~cpu()
+{
+    close_exec_map();
+}
+
+bool cpu::open_exec_map(const char *path)
+{
+    uint8_t *p = nullptr;
+    int fd = -1;
+
+    close_exec_map();
+    if ((path == nullptr) || (path[0] == '\0'))
+    {
+        return false;
+    }
+    fd = ::open(path, O_RDWR | O_CREAT, 0644);
+    if (fd < 0)
+    {
+        return false;
+    }
+    if (::ftruncate(fd, static_cast<off_t>(k_mem_size)) != 0)
+    {
+        ::close(fd);
+        return false;
+    }
+    p = static_cast<uint8_t *>(
+        ::mmap(nullptr, k_mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+    if (p == MAP_FAILED)
+    {
+        ::close(fd);
+        return false;
+    }
+    std::memset(p, 0, k_mem_size);
+    exec_map_ = p;
+    exec_map_fd_ = fd;
+    return true;
+}
+
+void cpu::close_exec_map()
+{
+    if (exec_map_ != nullptr)
+    {
+        ::msync(exec_map_, k_mem_size, MS_SYNC);
+        ::munmap(exec_map_, k_mem_size);
+        exec_map_ = nullptr;
+    }
+    if (exec_map_fd_ >= 0)
+    {
+        ::close(exec_map_fd_);
+        exec_map_fd_ = -1;
+    }
 }
 
 void cpu::reset()
@@ -76,7 +132,12 @@ void cpu::mem_write16(uint32_t lin, uint16_t v)
 
 uint8_t cpu::fetch8()
 {
-    const uint8_t b = mem_read8(phys(cs_, ip_));
+    const uint32_t lin = phys(cs_, ip_);
+    const uint8_t b = mem_read8(lin);
+    if (exec_map_ != nullptr)
+    {
+        exec_map_[lin] = b;
+    }
     ip_ = static_cast<uint16_t>(ip_ + 1u);
     return b;
 }

@@ -35,7 +35,7 @@ constexpr int k_list_w = 66; /**< Leave a narrow Break box on the right. */
  * cells. Short slices + a default 5 ms park also give tdxctl more SHOT slots.
  * +/- and tdxctl delay/faster/slower change the park at runtime (floor 0).
  * Tests use --no-ui and never hit this loop. */
-constexpr uint64_t k_run_slice_insns = 4000;
+constexpr uint64_t k_run_slice_insns = 32000;
 constexpr uint32_t k_run_delay_default_ms = 5;
 #else
 constexpr uint64_t k_run_slice_insns = 8000;

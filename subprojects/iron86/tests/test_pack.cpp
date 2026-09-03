@@ -1,6 +1,6 @@
 /**
  * @file test_pack.cpp
- * @brief 360K FlopFS directory packer (no kernel on the image).
+ * @brief 360K/720K FlopFS directory packer (no kernel on the image).
  */
 #include "iron86/flopfs_pack.h"
 
@@ -122,6 +122,43 @@ int main()
                 expect(write_file(std::filesystem::path(dir) / name, "x", 1), "write 33");
             }
             expect(!iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 33 fails");
+            std::filesystem::remove_all(dir);
+        }
+    }
+    {
+        const std::string dir = make_temp_dir();
+        expect(!dir.empty(), "mkdtemp 720k");
+        if (!dir.empty())
+        {
+            std::vector<uint8_t> body(400u * 1024u, 0x5A);
+            std::vector<uint8_t> img;
+            uint16_t sc = 0;
+            expect(write_file(std::filesystem::path(dir) / "DATA1", body.data(), body.size()),
+                   "write 400k");
+            expect(write_file(std::filesystem::path(dir) / "dosbox-x.conf", "x", 1),
+                   "write host conf");
+            expect(iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 400k → 720k");
+            expect(img.size() == iron86::FLOPFS_BYTES_720K, "pack 720k size");
+            if (img.size() == iron86::FLOPFS_BYTES_720K)
+            {
+                std::memcpy(&sc, img.data() + 512 + 14, 2);
+                expect(sc == iron86::FLOPFS_SECS_720K, "sector_count 1440");
+                expect(std::memcmp(img.data() + 3 * 512, "DATA1      ", 11) == 0, "only DATA1");
+                expect(img[5 * 512] == 0x5A, "400k payload");
+            }
+            std::filesystem::remove_all(dir);
+        }
+    }
+    {
+        const std::string dir = make_temp_dir();
+        expect(!dir.empty(), "mkdtemp overflow");
+        if (!dir.empty())
+        {
+            std::vector<uint8_t> body(800u * 1024u, 0x11);
+            std::vector<uint8_t> img;
+            expect(write_file(std::filesystem::path(dir) / "HUGE.DAT", body.data(), body.size()),
+                   "write 800k");
+            expect(!iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 800k fails");
             std::filesystem::remove_all(dir);
         }
     }

@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.16"
+VERSION = "0.19"
 
 
 def usage() -> None:
@@ -26,6 +26,9 @@ def usage() -> None:
 Commands:
   step | step-in | over | step-over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | quit | help
   mem <seg:off> [len]
+  dump cga [FILE]    16 KiB B800 → SCREEN.CGA (default)
+  dump mda [FILE]    4 KiB B000 → SCREEN.MDA (default)
+  dump <seg:off> <len> [FILE]
   bp <seg:off> [once|every|N]
                      exec BP at CS:IP; once = first hit only
   bp <seg:off> <seg:off> [once|every]
@@ -77,6 +80,20 @@ def build_line(cmd: str, rest: list[str]) -> str:
         obj: dict[str, object] = {"cmd": "mem", "addr": rest[0]}
         if len(rest) > 1:
             obj["len"] = int(rest[1], 0)
+        return json.dumps(obj)
+    if cmd == "dump" and rest:
+        obj = {"cmd": "dump"}
+        low = rest[0].lower()
+        if low in {"cga", "mda"}:
+            obj["kind"] = low
+            if len(rest) > 1:
+                obj["file"] = rest[1]
+        else:
+            obj["addr"] = rest[0]
+            if len(rest) > 1:
+                obj["len"] = int(rest[1], 0)
+            if len(rest) > 2:
+                obj["file"] = rest[2]
         return json.dumps(obj)
     if cmd in {"bp", "bp_set"} and rest:
         obj: dict[str, object] = {"cmd": "bp", "addr": rest[0]}
@@ -164,6 +181,18 @@ class KeepAlive:
 
 def emit_reply(cmd: str, reply: str) -> None:
     """shot: stdout = versioned path; other cmds: JSON."""
+    if cmd == "dump":
+        try:
+            obj = json.loads(reply)
+        except json.JSONDecodeError:
+            sys.stdout.write(reply)
+            return
+        path = obj.get("file")
+        if isinstance(path, str) and path and obj.get("ok", True):
+            sys.stdout.write(path + "\n")
+            return
+        sys.stdout.write(reply)
+        return
     if cmd != "shot":
         sys.stdout.write(reply)
         return

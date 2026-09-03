@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.11";
+static const char *k_version = "0.13";
 
 static void usage(FILE *out)
 {
@@ -27,7 +27,8 @@ static void usage(FILE *out)
         "  --bios: IBM 5150 8K at FE000, reset FFFF:0000 (Py86 load_bios_5150_8k).\n"
         "  PPI/PIT/PIC/DMA/FDC (PyFloppy uPD765) for 1981 POST + INT 19h.\n"
         "  Fast-post (BDA 1234h) is default. PC speaker BEL is default.\n"
-        "  Floppy PATH is a 360K image file or a directory packed as 360K FlopFS.\n"
+        "  Floppy PATH is a 360K/720K image or a directory packed as FlopFS\n"
+        "  (360K if it fits, else 720K 80/2/9).\n"
         "  Options and operands may be interleaved.\n"
         "\n"
         "Options:\n"
@@ -41,6 +42,7 @@ static void usage(FILE *out)
         "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
         "  --floppy PATH        Alias for --floppy-a\n"
         "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
+        "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
         "\n",
         out);
     std::fprintf(out, "iron86 %s\n", k_version);
@@ -108,6 +110,7 @@ int main(int argc, char **argv)
     const char *floppy_b = nullptr;
     const char *keys = nullptr;
     const char *bios = nullptr;
+    const char *exec_map = nullptr;
     bool no_fast_post = false;
     bool no_audio = false;
     bool mda = false;
@@ -181,6 +184,16 @@ int main(int argc, char **argv)
             mda = true;
             continue;
         }
+        t = take_path_opt(a, "--exec-map", &exec_map, &i, argc, argv);
+        if (t != 0)
+        {
+            if (t < 0)
+            {
+                std::fputs("iron86: --exec-map needs FILE\n", stderr);
+                return 2;
+            }
+            continue;
+        }
         t = take_path_opt(a, "--keys", &keys, &i, argc, argv);
         if (t != 0)
         {
@@ -214,6 +227,11 @@ int main(int argc, char **argv)
             return 1;
         }
         iron86::pc p;
+        if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
+        {
+            std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
+            return 1;
+        }
         if (no_audio)
         {
             p.enable_audio(false);
@@ -285,6 +303,11 @@ int main(int argc, char **argv)
     if ((floppy_a != nullptr) || (floppy_b != nullptr))
     {
         iron86::pc p;
+        if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
+        {
+            std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
+            return 1;
+        }
         if (no_audio)
         {
             p.enable_audio(false);
@@ -349,6 +372,11 @@ int main(int argc, char **argv)
         return 1;
     }
     iron86::cpu c;
+    if ((exec_map != nullptr) && !c.open_exec_map(exec_map))
+    {
+        std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
+        return 1;
+    }
     c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xF4);
     c.set_ivt(0x20, 0xF000, 0x0000);
     c.set_ivt(0x21, 0xF000, 0x0000);

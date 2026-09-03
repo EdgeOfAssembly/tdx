@@ -23,7 +23,8 @@ Opcode dispatch is a **256-entry handler table** (same idea as Py86
 
 Boot FloppyOS with `./iron86 --floppy-a ../floppyos/build/floppyos.img`.
 `--floppy` is an alias for `--floppy-a`. `--floppy-b PATH` mounts drive B:
-(image file or a host directory packed as a 360K FlopFS data disk).
+(image file or a host directory packed as FlopFS: 360K if it fits, else 720K
+80/2/9).
 Genuine IBM 5150 8K BIOS (Py86 `load_bios_5150_8k`): image at `FE000`,
 reset vector at `FFFF0`, CPU `FFFF:0000`. Do not commit the ROM.
 
@@ -31,8 +32,9 @@ reset vector at `FFFF0`, CPU `FFFF:0000`. Do not commit the ROM.
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.10** — dual floppy A:/B: (`--floppy-a` / `--floppy-b`, directory
-packs 360K FlopFS), 256K PPI I/O nibble (Py86 `0x06`), PC speaker BEL
+Version **0.12** — dual floppy A:/B: (`--floppy-a` / `--floppy-b`, directory
+packs 360K or 720K FlopFS), 544K PPI I/O nibble (Py86 `0x0F`, 1981 BIOS max),
+PC speaker BEL
 (PIT ch2 + PPI 61h bits 0+1; `--no-audio` only). Fast-post
 (BDA `RESET_FLAG=1234h`) is the `--bios` default; `--no-fast-post` for cold.
 

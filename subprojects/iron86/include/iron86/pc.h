@@ -1,6 +1,6 @@
 /**
  * @file pc.h
- * @brief Tiny IBM PC: 360K floppy + INT 10h/13h/16h + INT 1Ah ticks.
+ * @brief Tiny IBM PC: 360K/720K floppy + INT 10h/13h/16h + INT 1Ah ticks.
  */
 #ifndef IRON86_PC_H
 #define IRON86_PC_H
@@ -97,7 +97,7 @@ public:
     bool attach_floppy(uint8_t unit, const uint8_t *img, size_t n);
 
     /**
-     * @brief Mount PATH as unit 0/1: directory packs 360K FlopFS, file is raw.
+     * @brief Mount PATH as unit 0/1: directory packs 360K/720K FlopFS, file is raw.
      * @param[in] unit 0 or 1.
      * @param[in] path Host file or directory (non-recursive 8.3 pack).
      * @return false on missing path, pack failure, or short image.

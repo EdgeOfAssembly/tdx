@@ -499,6 +499,25 @@ int main()
         expect_eq(c.cs(), 0xF000, "bios target cs");
         expect_eq(c.ip(), 0xE05B, "bios target ip");
     }
+    {
+        /* 1 MiB exec-map: NOP+HLT at 1000:0100 land at linear 10100h. */
+        iron86::cpu c;
+        const uint8_t com[] = {0x90, 0xF4};
+        const char *path = "/tmp/iron86-exec-map-test.bin";
+        expect(c.open_exec_map(path), "exec-map open");
+        c.load_com(com, sizeof(com), 0x1000);
+        run(c, 8);
+        expect(c.exec_map() != nullptr, "exec-map ptr");
+        if (c.exec_map() != nullptr)
+        {
+            const uint32_t lin = iron86::cpu::phys(0x1000, 0x0100);
+            expect(c.exec_map()[lin] == 0x90, "exec-map nop");
+            expect(c.exec_map()[lin + 1u] == 0xF4, "exec-map hlt");
+            expect(c.exec_map()[0] == 0, "exec-map unexec 0");
+        }
+        c.close_exec_map();
+        std::remove(path);
+    }
 
     if (g_fail != 0)
     {

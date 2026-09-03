@@ -1,6 +1,6 @@
 /**
  * @file flopfs_pack.cpp
- * @brief Pack a host directory into a 360K FlopFS data disk (B:).
+ * @brief Pack a host directory into a 360K or 720K FlopFS data disk (B:).
  */
 #include "iron86/flopfs_pack.h"
 
@@ -20,8 +20,6 @@ namespace
 {
 
 constexpr uint32_t k_sec = 512;
-constexpr uint32_t k_secs = 720;
-constexpr uint32_t k_bytes = k_sec * k_secs;
 constexpr uint32_t k_root_ents = 32;
 constexpr uint32_t k_dirent = 32;
 constexpr uint32_t k_root_secs = 2;
@@ -80,11 +78,70 @@ struct packed_file
     uint32_t lba = 0;
 };
 
+/**
+ * @brief True if BASE is already a DOS 8.3 name (one optional dot).
+ *
+ * Host junk (dosbox-x.conf, Unicode names) is skipped rather than truncated
+ * into a colliding FCB.
+ */
+bool is_dos_83(const char *base)
+{
+    size_t name_len = 0;
+    size_t ext_len = 0;
+    bool dot = false;
+    size_t i = 0;
+
+    if ((base == nullptr) || (base[0] == '\0') || (base[0] == '.'))
+    {
+        return false;
+    }
+    for (i = 0; base[i] != '\0'; i++)
+    {
+        const unsigned char c = static_cast<unsigned char>(base[i]);
+        const char u = static_cast<char>(std::toupper(c));
+        const bool ok = ((u >= 'A') && (u <= 'Z')) || ((u >= '0') && (u <= '9')) ||
+                        (u == '$') || (u == '%') || (u == '\'') || (u == '-') ||
+                        (u == '_') || (u == '@') || (u == '~') || (u == '`') ||
+                        (u == '!') || (u == '(') || (u == ')') || (u == '{') ||
+                        (u == '}') || (u == '^') || (u == '#') || (u == '&');
+        if (base[i] == '.')
+        {
+            if (dot)
+            {
+                return false;
+            }
+            dot = true;
+            continue;
+        }
+        if (!ok)
+        {
+            return false;
+        }
+        if (!dot)
+        {
+            name_len++;
+            if (name_len > 8u)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            ext_len++;
+            if (ext_len > 3u)
+            {
+                return false;
+            }
+        }
+    }
+    return name_len >= 1u;
+}
+
 bool path_to_fcb(const char *base, char out[11])
 {
     char tmp[32];
     size_t n = 0;
-    if ((base == nullptr) || (base[0] == '\0') || (base[0] == '.'))
+    if (!is_dos_83(base))
     {
         return false;
     }
@@ -185,7 +242,8 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         packed_file pf{};
         struct stat st{};
         std::string path;
-        if ((ent->d_name[0] == '.') || (!path_to_fcb(ent->d_name, pf.fcb)))
+        if ((ent->d_name[0] == '.') || (!is_dos_83(ent->d_name)) ||
+            (!path_to_fcb(ent->d_name, pf.fcb)))
         {
             continue;
         }
@@ -235,12 +293,17 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         files[i].lba = next;
         next += files[i].sectors;
     }
-    if (next > k_secs)
+    uint32_t secs = FLOPFS_SECS_360K;
+    if (next > FLOPFS_SECS_360K)
+    {
+        secs = FLOPFS_SECS_720K;
+    }
+    if (next > secs)
     {
         return false;
     }
 
-    out->assign(k_bytes, 0);
+    out->assign(secs * k_sec, 0);
     (*out)[510] = 0x55;
     (*out)[511] = 0xAA;
 
@@ -249,7 +312,7 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
     sb.version_major = 0;
     sb.version_minor = 4;
     sb.sector_size = static_cast<uint16_t>(k_sec);
-    sb.sector_count = static_cast<uint16_t>(k_secs);
+    sb.sector_count = static_cast<uint16_t>(secs);
     sb.flags = 1;
     sb.generation = 4;
     std::memset(sb.label, ' ', sizeof(sb.label));

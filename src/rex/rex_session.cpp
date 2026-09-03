@@ -207,6 +207,15 @@ void rex_session_set_mda(rex_session *s, int on)
     }
 }
 
+rex_status rex_session_set_exec_map(rex_session *s, const char *path)
+{
+    if ((s == nullptr) || (path == nullptr) || (!s->dos))
+    {
+        return REX_ERR_ARG;
+    }
+    return s->dos->set_exec_map(path);
+}
+
 rex_status rex_session_attach_floppy(rex_session *s, const char *image)
 {
     if ((s == nullptr) || (image == nullptr) || (!s->dos))

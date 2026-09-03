@@ -31,6 +31,7 @@ tdx -v
 tdx tests/fixtures/tiny.com --no-ui --no-sock
 tdx /mnt/bushido/bushido/BUSHIDO.EXE --cwd /mnt/bushido/bushido
 tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b /mnt/bushido/bushido
+tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b games/DRGNWARS   # 720K FlopFS if needed
 tdxview --sock /tmp/tdx.sock          # second process: CGA window
 ```
 

@@ -108,13 +108,13 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "ppi dip 2d");
     }
     {
-        /* Port C low nibble 0x06 → 64K + 6*32K = 256K (Py86). */
+        /* Port C low nibble 0x0F → 64K + 15*32K = 544K (1981 BIOS max). */
         iron86::pc p;
         p.wire_pc_hw();
         const uint8_t prog[] = {0xE4, 0x62, 0xF4}; /* IN AL,62h; HLT */
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 8);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 6, "ppi io nibble 6");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 0x0F, "ppi io nibble f");
     }
     {
         /* PIT ch1 mode 2 LSB count 0: after ticks, latch LSB is not stuck at 00. */
@@ -395,6 +395,26 @@ int main()
         p.c.load_com(dip, sizeof(dip), 0x1000);
         run(p.c, 16);
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6D, "path B dip 6d");
+    }
+    {
+        /* 720K B: last sector cyl 79 head 1 sec 9 = LBA 1439. */
+        std::vector<uint8_t> img(iron86::FLOPFS_BYTES_720K, 0);
+        img[1439u * 512u] = 0x7E;
+        img[510] = 0x55;
+        img[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(1, img.data(), img.size()), "attach 720k B");
+        p.boot();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0,             /* MOV AX,CS; MOV ES,AX */
+            0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02, /* AX=0201 BX=0200 */
+            0xB9, 0x09, 0x4F, 0xBA, 0x01, 0x01, /* CX=4F09 (cyl79 sec9) DX=head1 drv1 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "int13 720k AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0x7E, "int13 720k last sec");
     }
 
     if (g_fail != 0)
