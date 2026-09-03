@@ -1190,7 +1190,11 @@ rex_status dos_machine::step_one()
             wait_key = true;
             last_stop = REX_STOP_WAIT_KEY;
             con_out = iron->tty();
-            video_mode = iron->video_mode();
+            {
+                const uint8_t bda_mode = iron->c.mem_read8(0x449u);
+                video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
+                cga_3d9 = iron->c.mem_read8(0x466u);
+            }
             return REX_OK;
         }
         if ((bps.find(lin) != bps.end()) && (!skip_bp))
@@ -1246,7 +1250,12 @@ rex_status dos_machine::step_one()
             return REX_ERR_CPU;
         }
         con_out = iron->tty();
-        video_mode = iron->video_mode();
+        /* Real BIOS INT 10h writes BDA 40:49; iron86 intercept is off on --bios. */
+        {
+            const uint8_t bda_mode = iron->c.mem_read8(0x449u);
+            video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
+            cga_3d9 = iron->c.mem_read8(0x466u);
+        }
         video_dirty = true;
         if (iron->waiting_key())
         {
