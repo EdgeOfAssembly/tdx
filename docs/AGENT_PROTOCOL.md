@@ -21,6 +21,9 @@ Line-oriented. Either a JSON object or a bare command word.
 {"cmd":"regs"}
 {"cmd":"disasm"}
 {"cmd":"mem","addr":"B800:0000","len":64}
+{"cmd":"poke","addr":"0000:0004","hex":"90CF"}
+{"cmd":"setip","addr":"3001:0153"}
+{"cmd":"type","text":"B:\\nTANK\\n"}
 {"cmd":"bp","addr":"1010:001A"}
 {"cmd":"bp","addr":"1970:4969","hits":1}
 {"cmd":"bp","addr":"1970:0100","end":"1970:0200"}
@@ -68,7 +71,7 @@ key Space
 nav Down
 ```
 
-Bare words: `step`, `step-in`, `over`, `step-over`, `regs`, `cga`, `mem B800:0000 64`, `bp 1000:0100`.
+Bare words: `step`, `step-in`, `over`, `step-over`, `regs`, `cga`, `mem B800:0000 64`, `poke 0000:0004 90 CF`, `setip 3001:0153`, `type B:\\nTANK\\n`, `bp 1000:0100`.
 
 `step` / `step-in` / `F7` = one instruction (into CALL). `over` / `step-over` / `F8` = over CALL/INT/REP/LOOP.
 

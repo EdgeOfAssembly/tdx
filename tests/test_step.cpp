@@ -19,6 +19,18 @@ static void step_until_halt(rex_session *s, int max_steps)
     REQUIRE(rex_session_halted(s));
 }
 
+TEST_CASE("write_mem poke then read_mem")
+{
+    rex_session *s = rex_session_create();
+    uint8_t got = 0;
+    const uint8_t put = 0x90;
+    REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
+    REQUIRE(rex_session_write_mem(s, 0x10100ull, &put, 1) == REX_OK);
+    REQUIRE(rex_session_read_mem(s, 0x10100ull, &got, 1) == REX_OK);
+    REQUIRE(got == 0x90);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("PSP word at offset 2 is 640K conventional end")
 {
     rex_session *s = rex_session_create();

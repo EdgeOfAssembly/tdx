@@ -113,6 +113,42 @@ static bool parse_addr(const std::string &s, uint64_t *lin, uint16_t *oseg = nul
     return false;
 }
 
+/** Hex bytes: `90CF`, `90 CF`, commas/spaces ignored. */
+static bool parse_hex_bytes(const std::string &s, std::vector<uint8_t> &out)
+{
+    std::string d;
+    size_t i = 0;
+    d.reserve(s.size());
+    for (unsigned char c : s)
+    {
+        if ((c == ' ') || (c == '\t') || (c == ',') || (c == ':'))
+        {
+            continue;
+        }
+        if (std::isxdigit(c) == 0)
+        {
+            return false;
+        }
+        d.push_back(static_cast<char>(std::tolower(c)));
+    }
+    if (d.empty() || ((d.size() % 2u) != 0u))
+    {
+        return false;
+    }
+    out.clear();
+    out.reserve(d.size() / 2u);
+    for (i = 0; i < d.size(); i += 2u)
+    {
+        unsigned v = 0;
+        if (std::sscanf(d.c_str() + static_cast<std::ptrdiff_t>(i), "%2x", &v) != 1)
+        {
+            return false;
+        }
+        out.push_back(static_cast<uint8_t>(v));
+    }
+    return true;
+}
+
 static bool send_all(int fd, const std::string &s)
 {
     const char *p = s.c_str();
@@ -336,6 +372,77 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
                 }
                 resp.erase("hex");
                 resp["data"] = hex;
+            }
+        }
+    }
+    else if ((cmd == "poke") || (cmd == "write") || (cmd == "memw"))
+    {
+        std::string addr = req.value("addr", "");
+        std::string hex = req.value("hex", req.value("data", ""));
+        uint64_t lin = 0;
+        std::vector<uint8_t> buf;
+        if (addr.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            is >> addr;
+            std::string rest;
+            std::getline(is, rest);
+            if (hex.empty())
+            {
+                hex = rest;
+            }
+        }
+        if (!parse_addr(addr, &lin) || !parse_hex_bytes(hex, buf) || buf.empty())
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad poke (addr hexbytes)";
+        }
+        else if (buf.size() > 4096u)
+        {
+            resp["ok"] = false;
+            resp["error"] = "too long";
+        }
+        else if (rex_session_write_mem(s, lin, buf.data(), buf.size()) != REX_OK)
+        {
+            resp["ok"] = false;
+            resp["error"] = "write";
+        }
+        else
+        {
+            resp["linear"] = lin;
+            resp["n"] = buf.size();
+        }
+    }
+    else if ((cmd == "setip") || (cmd == "ip"))
+    {
+        std::string addr = req.value("addr", "");
+        uint64_t lin = 0;
+        uint16_t seg = 0;
+        uint16_t off = 0;
+        rex_regs_i8086 r{};
+        if (addr.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            is >> addr;
+        }
+        if (!parse_addr(addr, &lin, &seg, &off))
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad addr";
+        }
+        else if (rex_session_get_regs_i8086(s, &r) != REX_OK)
+        {
+            resp["ok"] = false;
+            resp["error"] = "regs";
+        }
+        else
+        {
+            r.cs = seg;
+            r.ip = off;
+            if (rex_session_set_regs_i8086(s, &r) != REX_OK)
+            {
+                resp["ok"] = false;
+                resp["error"] = "setregs";
             }
         }
     }
@@ -988,6 +1095,53 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         rex_session_post_ui_cmd(s, REX_UI_START_RUN);
         resp["key"] = k;
     }
+    else if ((cmd == "type") || (cmd == "str") || (cmd == "string"))
+    {
+        std::string t = req.value("text", "");
+        size_t i = 0;
+        if (t.empty() && req.contains("_rest"))
+        {
+            t = req["_rest"].get<std::string>();
+            while ((!t.empty()) && ((t.front() == ' ') || (t.front() == '\t')))
+            {
+                t.erase(t.begin());
+            }
+        }
+        for (i = 0; i < t.size(); i++)
+        {
+            const unsigned char ch = static_cast<unsigned char>(t[i]);
+            if ((ch == '\\') && ((i + 1u) < t.size()))
+            {
+                const char n = t[i + 1u];
+                if ((n == 'n') || (n == 'r'))
+                {
+                    rex_session_push_key(s, 13, 0x1C);
+                    i++;
+                    continue;
+                }
+                if (n == 't')
+                {
+                    rex_session_push_key(s, 9, 0x0F);
+                    i++;
+                    continue;
+                }
+            }
+            if ((ch == '\n') || (ch == '\r'))
+            {
+                rex_session_push_key(s, 13, 0x1C);
+            }
+            else if (ch == '\t')
+            {
+                rex_session_push_key(s, 9, 0x0F);
+            }
+            else
+            {
+                rex_session_push_key(s, ch, 0);
+            }
+        }
+        resp["n"] = t.size();
+        rex_session_post_ui_cmd(s, REX_UI_START_RUN);
+    }
     else if (cmd == "nav")
     {
         std::string k = req.value("key", "");
@@ -1055,7 +1209,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem dump bp bpint bpinsn bpm bpdel bplist shot key nav status cga ping quit";
+            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem poke setip dump bp bpint bpinsn bpm bpdel bplist shot key type nav status cga ping quit";
     }
     else
     {
