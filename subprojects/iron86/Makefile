@@ -4,14 +4,21 @@ MAKEFLAGS += --no-print-directory
 
 CXXFLAGS_COMMON := -std=gnu++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
 	-Iinclude
+CXXFLAGS_OPTIMIZED := -O3 -march=x86-64 -mtune=generic -fno-omit-frame-pointer
 CXXFLAGS_DEBUG := $(CXXFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined \
 	-fno-omit-frame-pointer
 LDFLAGS_DEBUG := -fsanitize=address,undefined
+CXXFLAGS_RELEASE := $(CXXFLAGS_COMMON) -DNDEBUG $(CXXFLAGS_OPTIMIZED)
+LDFLAGS_RELEASE :=
+CXXFLAGS_PROFILE := $(CXXFLAGS_COMMON) -DNDEBUG $(CXXFLAGS_OPTIMIZED) -g -pg -fno-inline
+LDFLAGS_PROFILE := -pg
 
 CXXFLAGS ?= $(CXXFLAGS_DEBUG)
 LDFLAGS ?= $(LDFLAGS_DEBUG)
 
-.PHONY: all test tests verify clean
+.PHONY: all test tests verify clean release profile
+
+BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
 all: iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack
 
@@ -60,5 +67,14 @@ floppy: iron86
 verify: test
 	@echo "iron86: no CBMC model yet; opcode CPU is Catch-free snippet tests"
 
+release:
+	$(MAKE) $(BUILD_FLAGS) clean CXXFLAGS="$(CXXFLAGS_RELEASE)" \
+		LDFLAGS="$(LDFLAGS_RELEASE)" all
+
+profile:
+	$(MAKE) $(BUILD_FLAGS) clean CXXFLAGS="$(CXXFLAGS_PROFILE)" \
+		LDFLAGS="$(LDFLAGS_PROFILE)" all
+	@echo "Profile binary: ./iron86  (run, then gprof ./iron86 gmon.out)"
+
 clean:
-	rm -f iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack
+	rm -f iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack gmon.out

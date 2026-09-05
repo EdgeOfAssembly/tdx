@@ -30,6 +30,16 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 **Working:** 8086 dispatch (enough for POST + Bushido), packed PPI/PIT/PIC/DMA/FDC, two 6845s (MDA `3Bx` + CGA `3Dx`), LPT stub, 360K A:+B:, dir→FlopFS pack, XT keys IRQ1, BDA `40:49` → tdxview mode, speaker `--no-audio`, DAA/WAIT/ESC NOPs.
 
+### BIOS policy (2026-09-06)
+
+**Default: load official ROS** (`tdx --floppy-a` → 5150 8K unless `--no-bios`). Fast-post is warm-boot (`40:72` + `BX=1234h`, `CS:IP=F000:E199`). Do **not** grow the C++ INT 10/13/16 clone as the main path.
+
+- [ ] **Profile POST** — `make profile` (gprof `-pg`), then speed warm-boot without patching ROS (checksum ERR01). PIT/CGA status waits, tdx F9 slice.
+- [ ] **`--no-bios` fallback** — keep working when the user has no ROM. Today: enough INT 10/13/16 for FloppyOS + SETUP. **Do not expand this until last.**
+- [ ] **Full reimplemented BIOS (LAST)** — PC → XT → AT → 386/486/Pentium. For each machine, read the **official ROS** and reimplement hot paths in **Intel syntax** (`-masm=intel` / `.intel_syntax noprefix` inline asm), not a second C++ BIOS. Massive; after HDD/FDC/FlopFS.
+
+Still intercept INT 13h on `--bios` (720K vs 40-track 5150 INT 13) and INT 16h for `tdxctl type` until PPI/IRQ1 + ROM INT 16 is proven.
+
 ### Fonts (complete for US IBM 5788005)
 
 The card ROM `ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN` (MAME SHA1 `c2a8b108…`, **not pushed**) is the real IBM MDA+CGA character generator: 256×8×14 MDA + 256×8×8 CGA thick (thin bank unused). BIOS `CRT_CHAR_GEN` (`F000:FA6E`) is the 128-glyph 8×8 used for graphics TTY. tdxview uses 5788005 when present, else BIOS 8×8. **US CP437 fonts are 100%.** (European 4733197 Ø/ø ROM is a different chip; ignore unless a game needs it.)
@@ -142,12 +152,14 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ## Suggested order
 
-1. **XT HDD C:** auto-sized from a host dir that does not fit 720K (user: next Fri/Sat).
-2. FDC Write (saves / COPY / `AH=40`).
-3. FlopFS xxhash3/dedup.
-4. Raw-image CHS auto-detect (1.2M/1.44M) + dir pack smallest-fit including subdirs.
-5. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
-6. FAT12 and FDC Format/Scan last.
+1. **Profile 5150 POST** (`make profile` + gprof) — make `--bios` the normal play path.
+2. **XT HDD C:** auto-sized from a host dir that does not fit 720K (user: next Fri/Sat).
+3. FDC Write (saves / COPY / `AH=40`).
+4. FlopFS xxhash3/dedup.
+5. Raw-image CHS auto-detect (1.2M/1.44M) + dir pack smallest-fit including subdirs.
+6. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
+7. FAT12 and FDC Format/Scan.
+8. **Full C++/Intel-asm BIOS clone (PC/XT/AT/Pentium) — last.** `--no-bios` until then.
 
 **Docs:** `docs/CLI.md`, `docs/HOWTO_DRAGON_WARS.md`, `docs/MILESTONE_CGA_COMPOSITE.md`, `man/*.1`. Keep this file in sync.
 
