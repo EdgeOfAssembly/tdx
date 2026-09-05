@@ -31,6 +31,33 @@
 
 using json = nlohmann::json;
 
+/**
+ * Guest CON/tty is CP437 (SETUP.TNK uses 0xCD box draw). nlohmann dump()
+ * throws type_error.316 on invalid UTF-8 and used to abort tdx.
+ */
+static std::string json_latin1(const char *s)
+{
+    std::string out;
+    if (s == nullptr)
+    {
+        return out;
+    }
+    out.reserve(std::strlen(s));
+    for (const unsigned char *p = reinterpret_cast<const unsigned char *>(s); *p != 0; ++p)
+    {
+        if (*p < 0x80u)
+        {
+            out.push_back(static_cast<char>(*p));
+        }
+        else
+        {
+            out.push_back(static_cast<char>(0xC0u | (*p >> 6)));
+            out.push_back(static_cast<char>(0x80u | (*p & 0x3Fu)));
+        }
+    }
+    return out;
+}
+
 struct rex_client
 {
     int fd = -1;
@@ -320,7 +347,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             e["linear"] = ins[i].linear;
             e["seg"] = ins[i].seg;
             e["off"] = ins[i].off;
-            e["text"] = ins[i].text;
+            e["text"] = json_latin1(ins[i].text);
             e["size"] = ins[i].size;
             arr.push_back(e);
         }
@@ -947,8 +974,8 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["mode"] = mode;
         resp["w"] = DOS_CGA_WIDTH;
         resp["h"] = DOS_CGA_HEIGHT;
-        resp["con"] = rex_session_con_out(s);
-        resp["guest"] = rex_session_guest(s);
+        resp["con"] = json_latin1(rex_session_con_out(s));
+        resp["guest"] = json_latin1(rex_session_guest(s));
         {
             uint8_t pal = 0x30;
             uint8_t mode_set = 0x2A; /* PCBIOS M7 mode 4: burst on, 320×200 */
@@ -1191,7 +1218,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["halted"] = rex_session_halted(s);
         resp["stop"] = (int)rex_session_stop_reason(s);
         resp["regs"] = regs_json(s);
-        resp["con"] = rex_session_con_out(s);
+        resp["con"] = json_latin1(rex_session_con_out(s));
     }
     else if (cmd == "reset")
     {
@@ -1220,13 +1247,24 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     resp["stop"] = (int)rex_session_stop_reason(s);
     resp["halted"] = rex_session_halted(s);
     resp["delay_ms"] = rex_session_run_delay_ms(s);
-    resp["guest"] = rex_session_guest(s);
+    resp["guest"] = json_latin1(rex_session_guest(s));
     if (!resp.contains("regs"))
     {
         resp["ip"] = regs_json(s)["ip"];
         resp["cs"] = regs_json(s)["cs"];
     }
-    return resp.dump() + "\n";
+    try
+    {
+        return resp.dump() + "\n";
+    }
+    catch (const json::exception &ex)
+    {
+        json err;
+        err["ok"] = false;
+        err["error"] = "json";
+        err["what"] = ex.what();
+        return err.dump() + "\n";
+    }
 }
 
 rex_sock *rex_sock_listen(const char *path)
