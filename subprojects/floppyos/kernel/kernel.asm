@@ -1026,9 +1026,12 @@ ex_com_rd:
         jmp     ex_run
 
 ex_mz:
-        mov     bx, [cs:ex_hptr]
-        mov     word [cs:bx+10], 0
-        mov     word [cs:bx+12], 0
+        xor     cx, cx
+        xor     dx, dx
+        xor     al, al                  ; SEEK_SET 0 (do not poke handle pos)
+        mov     bx, [cs:ex_handle]
+        call    dos_lseek
+        jc      ex_bad
         push    cs
         pop     ds
         mov     dx, ex_hdr
@@ -1036,7 +1039,13 @@ ex_mz:
         mov     bx, [cs:ex_handle]
         call    dos_read
         jc      ex_bad
-        mov     ax, [cs:ex_hdr+8]
+        cmp     ax, 32
+        jne     ex_bad
+        cmp     word [cs:ex_hdr], 0x5A4D
+        je      .mz2
+        cmp     word [cs:ex_hdr], 0x4D5A
+        jne     ex_bad
+.mz2:   mov     ax, [cs:ex_hdr+8]
         mov     [cs:ex_cparhdr], ax
         mov     ax, [cs:ex_hdr+6]
         mov     [cs:ex_crlc], ax
@@ -1072,6 +1081,10 @@ ex_fsz:
         sbb     dx, 0
         mov     [cs:ex_loadsize], ax
         mov     [cs:ex_fsize], ax
+        cmp     word [cs:ex_cparhdr], 0
+        je      ex_bad
+        cmp     ax, 0
+        je      ex_bad                  ; empty payload → CS:IP zeros
         add     ax, 15
         mov     cl, 4
         shr     ax, cl
@@ -1085,10 +1098,12 @@ ex_fsz:
         mov     ax, [cs:child_psp]
         add     ax, 0x10
         mov     [cs:ex_loadseg], ax
-        mov     bx, [cs:ex_hptr]
-        mov     ax, [cs:ex_hdrbytes]
-        mov     [cs:bx+10], ax
-        mov     word [cs:bx+12], 0
+        xor     cx, cx
+        mov     dx, [cs:ex_hdrbytes]
+        xor     al, al
+        mov     bx, [cs:ex_handle]
+        call    dos_lseek
+        jc      ex_fail_free
         mov     ax, [cs:ex_loadseg]
         mov     ds, ax
         xor     dx, dx
