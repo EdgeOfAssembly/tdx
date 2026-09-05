@@ -26,7 +26,7 @@
 | 3F | Read | BX=handle, CX=bytes, DS:DX buf → AX=count |
 | **42** | LSEEK | AL=0/1/2 SET/CUR/END, BX=handle, CX:DX offset → DX:AX pos |
 | **1A** | Set DTA | DS:DX = disk transfer area |
-| **1B** | Get FAT (cur) | AL=spc (2), CX=512, DX=clusters (354), DS:BX → media `FDh` (stub; no FAT) |
+| **1B** | Get FAT (cur) | AL=spc (2), CX=512, DX=clusters (354), DS:BX → media `F8h` (HDD stub; no FAT). TANK.COM uses `[bx]==F8` to skip key-disk INT 13 on the current floppy. |
 | **1C** | Get FAT (DL) | Same stub as 1B (DL ignored) |
 | **4E** | Find first | CX=attr, DS:DX filespec (`*.*`, `B:*.*`) |
 | **4F** | Find next | continue search |

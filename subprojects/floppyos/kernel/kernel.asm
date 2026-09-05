@@ -829,15 +829,16 @@ i1a:    mov     [cs:dta_seg], ds
         mov     [cs:dta_off], dx
         clc
         jmp     iret_cf
-; AH=1B/1C GET FAT: DS:BX -> media ID (MS-DOS GETFATPT). No real FAT;
-; TANK.COM cmp [bx],0xF8 (HDD skip). 360K floppy media 0xFD.
+; AH=1B/1C GET FAT: DS:BX -> media ID (MS-DOS GETFATPT). No real FAT.
+; Media 0xF8 (HDD): M1 Tank Platoon cmp [bx],0xF8 then skips using the
+; current floppy as a key disk (INT 13 on 720K B: hangs 5150 BIOS).
 i1b:    xor     dl, dl
 i1c:    push    cs
         pop     ds
         mov     bx, fat_id
         mov     al, 2                   ; sectors/cluster
         mov     cx, 512
-        mov     dx, 354                 ; 360K FAT12 cluster count
+        mov     dx, 354
         clc
         jmp     iret_cf
 i3d:
@@ -2615,7 +2616,7 @@ find_idx:     dw 0
 find_kind:    db 0                      ; 0=AH=4E ASCIIZ DTA, 1=AH=11 FCB DTA
 fcb_ext:      db 0                      ; 1 = extended FCB (0xFF prefix)
 fcb_sattr:    db 0                      ; extended FCB search attribute
-fat_id:       db 0xFD                   ; AH=1B media (360K floppy)
+fat_id:       db 0xF8                   ; AH=1B media (HDD; no FAT on FlopFS)
 exec_active:  db 0
         align 2
 parent_psp:   dw 0
