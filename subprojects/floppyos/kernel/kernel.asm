@@ -658,6 +658,7 @@ install_int21:
 
 int21_handler:
         sti
+        cld                             ; TANK.COM / MSC leave DF=1; movsb must go forward
         cmp     ah, 0x01
         je      i01
         cmp     ah, 0x02
@@ -1863,6 +1864,7 @@ dos_read:
         mov     si, sec_buf
         add     si, [cs:rd_off]
         mov     cx, [cs:rd_chunk]
+        cld
         rep     movsb
         push    cs
         pop     ds
