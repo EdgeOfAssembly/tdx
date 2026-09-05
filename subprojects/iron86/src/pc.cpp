@@ -1,6 +1,6 @@
 /**
  * @file pc.cpp
- * @brief INT 10h AH=0Eh, INT 13h AH=00/02, INT 16h AH=00/01, INT 1Ah ticks.
+ * @brief INT 10h (tty/cursor/scroll), INT 13h AH=00/02, INT 16h, INT 1Ah.
  */
 #include "iron86/pc.h"
 #include "iron86/crtc.h"
@@ -13,6 +13,70 @@
 
 namespace iron86
 {
+
+static void text_fill(cpu &c, unsigned r0, unsigned c0, unsigned r1, unsigned c1, uint8_t ch,
+                      uint8_t at)
+{
+    if (r1 > 24u)
+    {
+        r1 = 24u;
+    }
+    if (c1 > 79u)
+    {
+        c1 = 79u;
+    }
+    if ((r0 > r1) || (c0 > c1))
+    {
+        return;
+    }
+    unsigned r = r0;
+    for (; r <= r1; r++)
+    {
+        unsigned col = c0;
+        for (; col <= c1; col++)
+        {
+            const uint32_t off = (r * 80u + col) * 2u;
+            c.mem_write8(0xB8000u + off, ch);
+            c.mem_write8(0xB8000u + off + 1u, at);
+        }
+    }
+}
+
+static void text_scroll_up(cpu &c, unsigned n, unsigned r0, unsigned c0, unsigned r1, unsigned c1,
+                           uint8_t at)
+{
+    if (r1 > 24u)
+    {
+        r1 = 24u;
+    }
+    if (c1 > 79u)
+    {
+        c1 = 79u;
+    }
+    if ((r0 > r1) || (c0 > c1))
+    {
+        return;
+    }
+    const unsigned h = r1 - r0 + 1u;
+    if ((n == 0u) || (n >= h))
+    {
+        text_fill(c, r0, c0, r1, c1, static_cast<uint8_t>(' '), at);
+        return;
+    }
+    unsigned r = r0;
+    for (; r + n <= r1; r++)
+    {
+        unsigned col = c0;
+        for (; col <= c1; col++)
+        {
+            const uint32_t d = (r * 80u + col) * 2u;
+            const uint32_t s = ((r + n) * 80u + col) * 2u;
+            c.mem_write8(0xB8000u + d, c.mem_read8(0xB8000u + s));
+            c.mem_write8(0xB8000u + d + 1u, c.mem_read8(0xB8000u + s + 1u));
+        }
+    }
+    text_fill(c, r1 - n + 1u, c0, r1, c1, static_cast<uint8_t>(' '), at);
+}
 
 const std::vector<uint8_t> *pc::floppy_media(uint8_t drv) const
 {
@@ -504,6 +568,26 @@ bool pc::int10()
         video_mode_ = static_cast<uint8_t>(al & 0x7Fu);
         cur_x_ = 0;
         cur_y_ = 0;
+        text_fill(c, 0, 0, 24, 79, static_cast<uint8_t>(' '), 0x07);
+        c.set_cf(false);
+        return true;
+    }
+    if ((ah == 0x06) || (ah == 0x07)) /* scroll; AL=0 clears the window */
+    {
+        const uint8_t at = static_cast<uint8_t>(c.bx() >> 8); /* BH */
+        const uint8_t cl = static_cast<uint8_t>(c.cx());
+        const uint8_t ch = static_cast<uint8_t>(c.cx() >> 8);
+        const uint8_t dl = static_cast<uint8_t>(c.dx());
+        const uint8_t dh = static_cast<uint8_t>(c.dx() >> 8);
+        if ((al == 0) || (ah == 0x06))
+        {
+            text_scroll_up(c, al, ch, cl, dh, dl, at);
+        }
+        else
+        {
+            /* AH=07 scroll down: treat as fill when AL=0 (already handled). */
+            text_scroll_up(c, al, ch, cl, dh, dl, at);
+        }
         c.set_cf(false);
         return true;
     }

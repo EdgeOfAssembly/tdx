@@ -466,6 +466,21 @@ int main()
         expect_eq(p.c.mem_read8(0xB8000u + (5u * 80u + 10u) * 2u), 0x41, "int10 AH=9 char");
         expect_eq(p.c.mem_read8(0xB8000u + (5u * 80u + 10u) * 2u + 1u), 0x1E, "int10 AH=9 attr");
     }
+    {
+        /* SETUP.TNK cls: INT 10h AX=0600h BH=0 CX=0 DX=184Fh (full 80×25). */
+        iron86::pc p;
+        p.boot();
+        p.c.mem_write8(0xB8000u, static_cast<uint8_t>('X'));
+        p.c.mem_write8(0xB8000u + 1u, 0x07);
+        const uint8_t prog[] = {
+            0xB8, 0x00, 0x06, 0xB7, 0x07, 0xB9, 0x00, 0x00, 0xBA, 0x4F, 0x18, 0xCD, 0x10,
+            0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 20);
+        expect_eq(p.c.mem_read8(0xB8000u), static_cast<uint16_t>(' '), "int10 AH=6 clear");
+        expect_eq(p.c.mem_read8(0xB8000u + 1u), 0x07, "int10 AH=6 attr");
+    }
 
     if (g_fail != 0)
     {
