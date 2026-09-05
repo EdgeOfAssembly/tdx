@@ -51,7 +51,7 @@ TEST_CASE("version string matches header")
     REQUIRE(std::string(TDX_VERSION_STRING) == "0.20");
 }
 
-TEST_CASE("bios is opt-in iron86 5150 POST")
+TEST_CASE("bios is default with floppy-a; --no-bios opts out")
 {
     auto a = parse({"game.exe"});
     REQUIRE(a.bios.empty());
@@ -63,14 +63,21 @@ TEST_CASE("bios is opt-in iron86 5150 POST")
     auto d = parse({"--bios", "rom.bin", "--floppy", "disk.img"});
     REQUIRE(d.bios == "rom.bin");
     REQUIRE(d.floppy == "disk.img");
+    auto e = parse({"--floppy-a", "a.img"});
+    REQUIRE_FALSE(e.bios.empty());
+    REQUIRE_FALSE(e.no_bios);
+    auto f = parse({"--floppy-a", "a.img", "--no-bios"});
+    REQUIRE(f.no_bios);
+    REQUIRE(f.bios.empty());
 }
 
 TEST_CASE("floppy is opt-in iron86 boot")
 {
     auto a = parse({"game.exe"});
     REQUIRE(a.floppy.empty());
-    auto b = parse({"--floppy", "disk.img"});
+    auto b = parse({"--floppy", "disk.img", "--no-bios"});
     REQUIRE(b.floppy == "disk.img");
+    REQUIRE(b.bios.empty());
     auto c = parse({"--floppy=disk.img", "--no-ui"});
     REQUIRE(c.floppy == "disk.img");
     REQUIRE(c.no_ui);
@@ -92,9 +99,10 @@ TEST_CASE("floppy-a and floppy-b")
     REQUIRE(c.bios == "rom.bin");
     REQUIRE(c.floppy.empty());
     REQUIRE(c.floppy_b == "/mnt/bushido/bushido");
-    auto d = parse({"--floppy", "a.img"});
+    auto d = parse({"--floppy", "a.img", "--no-bios"});
     REQUIRE(d.floppy == "a.img");
     REQUIRE(d.floppy_b.empty());
+    REQUIRE(d.bios.empty());
 }
 
 TEST_CASE("in-process game window is opt-in")

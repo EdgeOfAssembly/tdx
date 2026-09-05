@@ -31,8 +31,8 @@ void tdx_print_usage(FILE *fp)
         "      --floppy PATH     Alias for --floppy-a\n"
         "      --floppy-b PATH   B: image or host dir (FlopFS 360K, or 720K if needed)\n"
         "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
-        "      --bios FILE       IBM 5150 8K BIOS on iron86 (FFFF:0000, Py86 map)\n"
-        "                        with --floppy-a: PyFloppy uPD765 A: for INT 19h\n"
+        "      --bios FILE       IBM 5150 8K BIOS (default with --floppy-a)\n"
+        "      --no-bios         Do not load ROM; iron86 C++ INT 10/13/16\n"
         "      --mda             MDA 80×25 (B000, DIP 0x3D). Default CGA B800\n"
         "      --no-ui           Headless (no SDL windows)\n"
         "      --game            Also open CGA in this process (default: use tdxview)\n"
@@ -148,6 +148,10 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         {
             out->bios = a + 7;
         }
+        else if (std::strcmp(a, "--no-bios") == 0)
+        {
+            out->no_bios = true;
+        }
         else if (std::strcmp(a, "--no-sock") == 0)
         {
             out->no_sock = true;
@@ -258,6 +262,11 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
             }
             out->input = a;
         }
+    }
+    if (!out->no_bios && out->bios.empty() && !out->floppy.empty())
+    {
+        out->bios =
+            "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN";
     }
     return true;
 }

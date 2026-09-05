@@ -765,9 +765,14 @@ void pc::wire_pc_hw()
 
 void pc::enable_fast_post()
 {
-    /* Py86 enable_fast_post: BDA 0040:0072 = 1234h. */
+    /* Warm boot: BDA 40:72 and BX = 1234h (ROS mov [72],bx / cmp at E1AE).
+     * CS:IP = F000:E199 — after 64K fill, before 8259 ICW. jz E1F2 then
+     * skips expansion STGTST. Do not start at E1F2 (that skips ICW). */
     c.mem_write8(0x472u, 0x34);
     c.mem_write8(0x473u, 0x12);
+    c.set_bx(0x1234);
+    c.set_cs(0xF000);
+    c.set_ip(0xE199);
 }
 
 void pc::enable_audio(bool on)

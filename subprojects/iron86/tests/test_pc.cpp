@@ -254,6 +254,9 @@ int main()
             expect(p.c.load_bios_5150_8k(rom.data(), rom.size()), "bios load");
             p.wire_pc_hw();
             p.enable_fast_post();
+            expect_eq(p.c.bx(), 0x1234, "fast-post BX=1234");
+            expect_eq(p.c.cs(), 0xF000, "fast-post CS");
+            expect_eq(p.c.ip(), 0xE199, "fast-post IP");
             uint64_t n = 0;
             while ((!p.c.halted()) && (n < 4000000ull))
             {

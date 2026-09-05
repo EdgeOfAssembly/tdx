@@ -15,6 +15,7 @@ Man pages: `man/tdx.1`, `man/tdxview.1`, `man/tdxctl.1`, `man/iron86.1`
 tdx [options] [file.exe|file.com]
 tdx --floppy-a image.img [options]
 tdx --bios BIOS.BIN [--floppy-a A] [--floppy-b B] [options]
+tdx --floppy-a image.img --no-bios [options]
 ```
 
 | Switch | Meaning |
@@ -25,7 +26,8 @@ tdx --bios BIOS.BIN [--floppy-a A] [--floppy-b B] [options]
 | `--floppy PATH` | Alias for `--floppy-a` |
 | `--floppy-b PATH` | B: image or host dir (FlopFS **360K** if it fits, else **720K**) |
 | `--uc-floppy IMAGE` | Same boot on Unicorn (not the iron86 `--bios` path) |
-| `--bios FILE` | IBM 5150 8K BIOS on iron86 (`FFFF:0000`) |
+| `--bios FILE` | IBM 5150 8K BIOS (`FFFF:0000`). **Default** with `--floppy-a` |
+| `--no-bios` | Skip ROM; iron86 C++ INT 10/13/16 (FloppyOS smoke) |
 | `--mda` | MDA 80×25 (B000). Default CGA |
 | `--no-ui` | Headless |
 | `--game` | Also open CGA in this process (default: use **tdxview**) |

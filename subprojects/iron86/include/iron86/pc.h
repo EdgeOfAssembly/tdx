@@ -72,7 +72,8 @@ public:
     void wire_pc_hw();
 
     /**
-     * @brief BDA RESET_FLAG=1234h (Py86 --fast-post). Skips long STGTST.
+     * @brief Warm-boot POST: 40:72=BX=1234h and CS:IP=F000:E199.
+     * Skips PIT/DMA/64K fill; still runs 8259 ICW and real INT 10h/19h.
      */
     void enable_fast_post();
 
