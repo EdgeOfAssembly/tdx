@@ -339,6 +339,16 @@ uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
 
 bool pc::bios_int(uint8_t vector)
 {
+    if (c.rom_bios())
+    {
+        /* 5150 8K ROM owns video/keyboard/timer. Its INT 13h is 40-track
+         * 360K only; FlopFS 720K B: (cyl 40–79) must stay on iron86. */
+        if (vector == 0x13)
+        {
+            return int13();
+        }
+        return false;
+    }
     if (vector == 0x10)
     {
         return int10();
@@ -589,6 +599,7 @@ void pc::wire_pc_hw()
     c.set_io([this](uint16_t p) { return in_port(p); },
              [this](uint16_t p, uint8_t v) { out_port(p, v); });
     c.set_after_step([this]() { after_insn(); });
+    c.set_bios([this](cpu &, uint8_t v) { return bios_int(v); });
 }
 
 void pc::enable_fast_post()

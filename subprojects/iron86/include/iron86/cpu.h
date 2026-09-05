@@ -116,10 +116,20 @@ public:
      * Image at FE000h (high 8K of the F000 block). Five-byte reset vector
      * from file offset -16 copied to FFFF0h (JMP F000:E05B on 5700051).
      * Does not touch the IVT. Leaves CS=FFFF IP=0000 (8086 reset).
+     * Sets rom_bios(); does not clear the BIOS intercept — pc::bios_int
+     * still services INT 13h (720K CHS). 5150 ROM INT 13 is 40-track only.
      *
      * @return false if @p data is null or empty.
      */
     bool load_bios_5150_8k(const uint8_t *data, size_t n);
+
+    /**
+     * @brief True after a successful load_bios_5150_8k.
+     */
+    bool rom_bios() const
+    {
+        return rom_bios_;
+    }
 
     /**
      * @brief Load a .COM image at CS:0100 (PSP-style). Does not build a PSP.
@@ -338,6 +348,7 @@ private:
     uint16_t flags_ = k_flags_reset;
     bool halted_ = false;
     uint8_t last_op_ = 0;
+    bool rom_bios_ = false;
 };
 
 } // namespace iron86

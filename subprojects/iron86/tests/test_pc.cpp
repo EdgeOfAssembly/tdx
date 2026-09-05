@@ -312,6 +312,40 @@ int main()
         expect_eq(p.c.mem_read8(0x10200u), 0xBB, "int13 DL=1");
     }
     {
+        /* 720K CHS cyl 50 after 5150 ROM load: ROM INT 13 is 40-track. */
+        std::vector<uint8_t> img(500000, 0);
+        img[900u * 512u] = 0x5A;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "720k attach");
+        const char *rom_path =
+            "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN";
+        std::ifstream rin(rom_path, std::ios::binary);
+        if (!rin)
+        {
+            rom_path =
+                "/mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN";
+            rin.open(rom_path, std::ios::binary);
+        }
+        if (rin)
+        {
+            std::vector<uint8_t> rom((std::istreambuf_iterator<char>(rin)),
+                                     std::istreambuf_iterator<char>());
+            expect(p.c.load_bios_5150_8k(rom.data(), rom.size()), "rom int13");
+            expect(p.c.rom_bios(), "rom_bios");
+        }
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0,             /* MOV AX,CS; MOV ES,AX */
+            0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02, /* AX=0201 BX=0200 */
+            0xB9, 0x01, 0x32, 0xBA, 0x00, 0x00, /* CX=3201 (cyl 50 sec 1) DX=0 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "int13 cyl50 AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0x5A, "int13 cyl50 data");
+    }
+    {
         uint8_t bimg[512];
         std::memset(bimg, 0x11, sizeof(bimg));
         bimg[510] = 0x55;

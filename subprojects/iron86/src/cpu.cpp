@@ -284,7 +284,9 @@ bool cpu::load_bios_5150_8k(const uint8_t *data, size_t n)
     flags_ = k_flags_reset;
     halted_ = false;
     last_op_ = 0;
-    bios_ = {}; /* real BIOS owns INT 10/13/16 */
+    rom_bios_ = true;
+    /* Keep bios_ intercept. pc::bios_int yields INT 10/16/1A to the ROM
+     * and still handles INT 13 (5150 ROM is 40-cylinder / 360K only). */
     return true;
 }
 

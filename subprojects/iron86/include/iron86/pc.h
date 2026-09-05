@@ -52,10 +52,15 @@ public:
     /** @brief BIOS video mode (INT 10h AH=00). Default 03h text. */
     uint8_t video_mode() const { return video_mode_; }
 
+    /**
+     * @brief Optional INT intercept. With rom_bios(), only INT 13h is
+     *        handled here (720K CHS); INT 10/16/1A go to the 5150 ROM.
+     */
     bool bios_int(uint8_t vector);
 
     /**
-     * @brief Wire PPI/PIT/PIC/DMA I/O (Py86). Call after load_bios_5150_8k.
+     * @brief Wire PPI/PIT/PIC/DMA I/O and INT intercept (Py86).
+     *        Call after load_bios_5150_8k so INT 13h stays on iron86.
      */
     void wire_pc_hw();
 
