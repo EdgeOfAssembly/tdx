@@ -78,7 +78,8 @@ void cpu::reset()
     {
         mem_ = std::make_unique<uint8_t[]>(k_mem_size);
     }
-    std::memset(mem_.get(), 0, k_mem_size);
+    ram_ = mem_.get();
+    std::memset(ram_, 0, k_mem_size);
     ax_ = 0;
     cx_ = 0;
     dx_ = 0;
@@ -100,34 +101,6 @@ void cpu::reset()
     mr_ = {};
     intr_pending_ = false;
     intr_vec_ = 0;
-}
-
-uint32_t cpu::phys(uint16_t seg, uint16_t off)
-{
-    return ((static_cast<uint32_t>(seg) << 4) + off) & 0xFFFFFu;
-}
-
-uint8_t cpu::mem_read8(uint32_t lin) const
-{
-    return mem_[lin & 0xFFFFFu];
-}
-
-uint16_t cpu::mem_read16(uint32_t lin) const
-{
-    const uint32_t a = lin & 0xFFFFFu;
-    const uint32_t b = (lin + 1u) & 0xFFFFFu;
-    return static_cast<uint16_t>(mem_[a] | (static_cast<uint16_t>(mem_[b]) << 8));
-}
-
-void cpu::mem_write8(uint32_t lin, uint8_t v)
-{
-    mem_[lin & 0xFFFFFu] = v;
-}
-
-void cpu::mem_write16(uint32_t lin, uint16_t v)
-{
-    mem_[lin & 0xFFFFFu] = static_cast<uint8_t>(v);
-    mem_[(lin + 1u) & 0xFFFFFu] = static_cast<uint8_t>(v >> 8);
 }
 
 uint8_t cpu::fetch8()
@@ -162,8 +135,19 @@ uint16_t cpu::pop16()
     return v;
 }
 
+void cpu::set_pc_hooks(void *ctx, void (*after)(void *), bool (*bios)(void *, cpu &, uint8_t))
+{
+    hook_ctx_ = ctx;
+    after_fn_ = after;
+    bios_fn_ = bios;
+}
+
 void cpu::do_int(uint8_t vector)
 {
+    if ((bios_fn_ != nullptr) && bios_fn_(hook_ctx_, *this, vector))
+    {
+        return;
+    }
     if (bios_ && bios_(*this, vector))
     {
         return;
@@ -262,18 +246,20 @@ bool cpu::load_bios_5150_8k(const uint8_t *data, size_t n)
     if (!mem_)
     {
         mem_ = std::make_unique<uint8_t[]>(k_mem_size);
-        std::memset(mem_.get(), 0, k_mem_size);
+        ram_ = mem_.get();
+        std::memset(ram_, 0, k_mem_size);
     }
+    ram_ = mem_.get();
     const size_t copy = std::min(n, static_cast<size_t>(8192));
-    std::memcpy(mem_.get() + 0xFE000u, data, copy);
+    std::memcpy(ram_ + 0xFE000u, data, copy);
     /* Py86: file[-16:-11] → FFFF0 (EA 5B E0 00 F0 on 5700051). */
     if (n >= 16u)
     {
-        std::memcpy(mem_.get() + 0xFFFF0u, data + (n - 16u), 5u);
+        std::memcpy(ram_ + 0xFFFF0u, data + (n - 16u), 5u);
     }
     else if (n >= 5u)
     {
-        std::memcpy(mem_.get() + 0xFFFF0u, data + (n - 5u), 5u);
+        std::memcpy(ram_ + 0xFFFF0u, data + (n - 5u), 5u);
     }
     cs_ = 0xFFFF;
     ip_ = 0;
@@ -304,7 +290,7 @@ void cpu::load_com(const uint8_t *bytes, size_t n, uint16_t cs)
     if ((bytes != nullptr) && (copy > 0))
     {
         const uint32_t dst = phys(cs, 0x0100);
-        std::memcpy(mem_.get() + dst, bytes, copy);
+        std::memcpy(ram_ + dst, bytes, copy);
     }
 }
 
@@ -1678,7 +1664,11 @@ bool cpu::step()
         (this->*dispatch_[last_op_])();
     } while (prefix_more_ && !halted_);
 
-    if (after_step_)
+    if (after_fn_ != nullptr)
+    {
+        after_fn_(hook_ctx_);
+    }
+    else if (after_step_)
     {
         after_step_();
     }

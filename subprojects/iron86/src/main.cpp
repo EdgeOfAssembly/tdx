@@ -42,6 +42,7 @@ static void usage(FILE *out)
         "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
         "  --floppy PATH        Alias for --floppy-a\n"
         "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
+        "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
         "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
         "\n",
         out);
@@ -103,6 +104,21 @@ static bool mount_floppy(iron86::pc *p, uint8_t unit, const char *path)
     return true;
 }
 
+/** @brief True if B800 80×25 text contains "A>". */
+static bool b800_has_prompt(const iron86::cpu &c)
+{
+    uint32_t i = 0;
+    for (; i + 1u < 80u * 25u; i++)
+    {
+        if ((c.mem_read8(0xB8000u + i * 2u) == static_cast<uint8_t>('A')) &&
+            (c.mem_read8(0xB8000u + (i + 1u) * 2u) == static_cast<uint8_t>('>')))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 int main(int argc, char **argv)
 {
     const char *path = nullptr;
@@ -114,6 +130,7 @@ int main(int argc, char **argv)
     bool no_fast_post = false;
     bool no_audio = false;
     bool mda = false;
+    bool until_prompt = false;
     int i = 1;
     for (i = 1; i < argc; i++)
     {
@@ -182,6 +199,11 @@ int main(int argc, char **argv)
         if (std::strcmp(a, "--mda") == 0)
         {
             mda = true;
+            continue;
+        }
+        if (std::strcmp(a, "--until-prompt") == 0)
+        {
+            until_prompt = true;
             continue;
         }
         t = take_path_opt(a, "--exec-map", &exec_map, &i, argc, argv);
@@ -276,6 +298,10 @@ int main(int argc, char **argv)
                 break;
             }
             n++;
+            if (until_prompt && ((n & 8191ull) == 0ull) && b800_has_prompt(p.c))
+            {
+                break;
+            }
         }
         {
             char line[81];
@@ -343,6 +369,10 @@ int main(int argc, char **argv)
                 break;
             }
             n++;
+            if (until_prompt && ((n & 8191ull) == 0ull) && b800_has_prompt(p.c))
+            {
+                break;
+            }
             if ((n & 0x3FFFu) == 0)
             {
                 const std::string &t = p.tty();

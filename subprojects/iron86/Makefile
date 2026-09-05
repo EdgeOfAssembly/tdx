@@ -57,6 +57,7 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack iron86
 	grep -q -- --floppy-b /tmp/iron86-usage.txt
 	./iron86 -h | grep -q -- --floppy-b
 	./iron86 -h | grep -q -- --floppy-a
+	./iron86 -h | grep -q -- --until-prompt
 
 tests: test
 
@@ -75,6 +76,15 @@ profile:
 	$(MAKE) $(BUILD_FLAGS) clean CXXFLAGS="$(CXXFLAGS_PROFILE)" \
 		LDFLAGS="$(LDFLAGS_PROFILE)" all
 	@echo "Profile binary: ./iron86  (run, then gprof ./iron86 gmon.out)"
+
+.PHONY: bench-boot
+bench-boot:
+	$(MAKE) $(BUILD_FLAGS) CXXFLAGS="$(CXXFLAGS_RELEASE)" \
+		LDFLAGS="$(LDFLAGS_RELEASE)" iron86
+	@echo "=== bench-boot 5150+FloppyOS until A> ==="
+	@/usr/bin/time -f 'real %e sec user %U steps-see-stderr' \
+		./iron86 --bios /mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN \
+		--floppy-a ../floppyos/build/floppyos.img --until-prompt --no-audio
 
 clean:
 	rm -f iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack gmon.out

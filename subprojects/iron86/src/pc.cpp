@@ -759,8 +759,10 @@ void pc::wire_pc_hw()
     }
     c.set_io([this](uint16_t p) { return in_port(p); },
              [this](uint16_t p, uint8_t v) { out_port(p, v); });
-    c.set_after_step([this]() { after_insn(); });
-    c.set_bios([this](cpu &, uint8_t v) { return bios_int(v); });
+    c.set_pc_hooks(
+        this,
+        [](void *p) { static_cast<pc *>(p)->after_insn(); },
+        [](void *p, cpu &, uint8_t v) { return static_cast<pc *>(p)->bios_int(v); });
 }
 
 void pc::enable_fast_post()
@@ -1246,9 +1248,12 @@ uint8_t pc::dma_in(uint16_t port)
 
 void pc::after_insn()
 {
-    crtc_tick(&mda_);
-    crtc_tick(&cga_);
     hw_.pit_div = static_cast<uint8_t>(hw_.pit_div + 1u);
+    if ((hw_.pit_div & 3u) == 0)
+    {
+        crtc_tick(&mda_);
+        crtc_tick(&cga_);
+    }
     if ((hw_.pit_div & 1u) == 0)
     {
         pit_tick();

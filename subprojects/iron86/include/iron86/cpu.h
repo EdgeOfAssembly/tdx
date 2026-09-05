@@ -63,12 +63,30 @@ public:
     /**
      * @brief Linear address (seg<<4)+off, 20-bit wrap.
      */
-    static uint32_t phys(uint16_t seg, uint16_t off);
+    static uint32_t phys(uint16_t seg, uint16_t off)
+    {
+        return ((static_cast<uint32_t>(seg) << 4) + off) & 0xFFFFFu;
+    }
 
-    uint8_t mem_read8(uint32_t lin) const;
-    uint16_t mem_read16(uint32_t lin) const;
-    void mem_write8(uint32_t lin, uint8_t v);
-    void mem_write16(uint32_t lin, uint16_t v);
+    uint8_t mem_read8(uint32_t lin) const
+    {
+        return ram_[lin & 0xFFFFFu];
+    }
+    uint16_t mem_read16(uint32_t lin) const
+    {
+        const uint32_t a = lin & 0xFFFFFu;
+        const uint32_t b = (lin + 1u) & 0xFFFFFu;
+        return static_cast<uint16_t>(ram_[a] | (static_cast<uint16_t>(ram_[b]) << 8));
+    }
+    void mem_write8(uint32_t lin, uint8_t v)
+    {
+        ram_[lin & 0xFFFFFu] = v;
+    }
+    void mem_write16(uint32_t lin, uint16_t v)
+    {
+        ram_[lin & 0xFFFFFu] = static_cast<uint8_t>(v);
+        ram_[(lin + 1u) & 0xFFFFFu] = static_cast<uint8_t>(v >> 8);
+    }
 
     uint16_t ax() const { return ax_; }
     uint16_t cx() const { return cx_; }
@@ -149,6 +167,13 @@ public:
      *        (IP already past CD nn; set CF in FLAGS as the BIOS would).
      */
     void set_bios(std::function<bool(cpu &, uint8_t)> fn);
+
+    /**
+     * @brief Hot-path hooks without std::function (boot bench).
+     * @p after is called after each insn; @p bios like set_bios.
+     */
+    void set_pc_hooks(void *ctx, void (*after)(void *),
+                      bool (*bios)(void *, cpu &, uint8_t));
 
     /** @brief Optional port I/O (PPI/PIT/PIC). Default IN=FFh, OUT=nop. */
     void set_io(std::function<uint8_t(uint16_t)> in, std::function<void(uint16_t, uint8_t)> out);
@@ -324,11 +349,15 @@ private:
     std::function<uint8_t(uint16_t)> io_in_{};
     std::function<void(uint16_t, uint8_t)> io_out_{};
     std::function<void()> after_step_{};
+    void *hook_ctx_ = nullptr;
+    void (*after_fn_)(void *) = nullptr;
+    bool (*bios_fn_)(void *, cpu &, uint8_t) = nullptr;
     bool intr_pending_ = false;
     uint8_t intr_vec_ = 0;
     uint16_t seg_ov_ = 0xFFFF; /**< 0xFFFF = none */
     uint8_t rep_ = 0;
     std::unique_ptr<uint8_t[]> mem_;
+    uint8_t *ram_ = nullptr; /**< mem_.get(); hot path avoids unique_ptr[] */
     uint8_t *exec_map_ = nullptr;
     int exec_map_fd_ = -1;
     modrm mr_{};
