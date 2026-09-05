@@ -40,6 +40,13 @@ public:
     /** @brief Queue one XT set-1 make + break (IRQ1 / INT 9). */
     void type_scan(uint8_t make);
 
+    /**
+     * @brief Queue one ASCII key (INT 16h + XT make/break) without stepping.
+     * tdx agent `type` must not pump the CPU from the socket thread (ASAN race
+     * with the UI loop). Headless `--keys` still uses type_keys() + pump.
+     */
+    void feed_ascii(uint8_t ch);
+
     /** @brief True when the INT 16h type-ahead buffer is empty. */
     bool keys_empty() const { return kbd_.empty(); }
 

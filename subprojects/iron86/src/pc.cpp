@@ -268,6 +268,27 @@ void pc::type_scan(uint8_t make)
     queue_scan(static_cast<uint8_t>(m | 0x80u));
 }
 
+void pc::feed_ascii(uint8_t ch)
+{
+    kbd_.push_back(ch);
+    waiting_key_ = false;
+    const uint8_t mk = ascii_make(ch);
+    if (mk == 0)
+    {
+        return;
+    }
+    if (ascii_needs_shift(ch))
+    {
+        queue_scan(0x2A);
+    }
+    queue_scan(mk);
+    queue_scan(static_cast<uint8_t>(mk | 0x80u));
+    if (ascii_needs_shift(ch))
+    {
+        queue_scan(0xAA);
+    }
+}
+
 void pc::type_keys(const char *s)
 {
     if (s == nullptr)

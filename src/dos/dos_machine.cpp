@@ -1606,8 +1606,7 @@ void dos_machine::push_key(uint8_t ascii, uint8_t scan)
     {
         if (ascii != 0)
         {
-            const char one[2] = {static_cast<char>(ascii), 0};
-            iron->type_keys(one);
+            iron->feed_ascii(ascii);
         }
         else if (scan != 0)
         {
