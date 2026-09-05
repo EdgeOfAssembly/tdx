@@ -4,6 +4,7 @@
         cpu     8086
         bits    16
         org     0x100
+        std                             ; INT 21 must CLD (M1TP TANK.COM / MSC)
         mov     ah, 0x1A
         mov     dx, dta
         int     0x21
@@ -36,7 +37,6 @@
         cmp     word [fcb + 0x21], 1
         jne     fail_rr27
         ; AH=11 exact name, miss, AH=12 wildcard, AH=1B media
-        std                             ; INT 21 must CLD (M1TP TANK.COM)
         mov     ah, 0x1A
         mov     dx, find_dta
         int     0x21

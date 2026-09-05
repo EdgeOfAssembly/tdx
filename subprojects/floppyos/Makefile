@@ -51,6 +51,10 @@ $(BUILD_DIR)/hello.exe: tools/mkhello_exe.py | $(BUILD_DIR)
 	python3 tools/mkhello_exe.py
 	cp -a programs/hello.exe $@
 
+$(BUILD_DIR)/mzfar.exe: tools/mkmzfar_exe.py | $(BUILD_DIR)
+	python3 tools/mkmzfar_exe.py
+	cp -a programs/mzfar.exe $@
+
 $(BUILD_DIR)/mkimg: tools/mkimg.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
@@ -69,12 +73,14 @@ image: $(BUILD_DIR)/floppyos.img
 
 $(BUILD_DIR)/floppyos.img: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/stage1_5.bin \
 		$(BUILD_DIR)/kernel.bin $(BUILD_DIR)/hello.com $(BUILD_DIR)/command.com \
-		$(BUILD_DIR)/hello.exe $(BUILD_DIR)/tiny.com $(BUILD_DIR)/fcbtest.com \
+		$(BUILD_DIR)/hello.exe $(BUILD_DIR)/mzfar.exe $(BUILD_DIR)/tiny.com \
+		$(BUILD_DIR)/fcbtest.com \
 		$(BUILD_DIR)/mkimg $(BUILD_DIR)/mkflopfs
 	$(BUILD_DIR)/mkimg -s 360 -o $@ -b $(BUILD_DIR)/boot.bin
 	$(BUILD_DIR)/mkflopfs -i $@ -s $(BUILD_DIR)/stage1_5.bin \
 		-k $(BUILD_DIR)/kernel.bin -c $(BUILD_DIR)/command.com \
 		-f $(BUILD_DIR)/hello.com -f $(BUILD_DIR)/hello.exe \
+		-f $(BUILD_DIR)/mzfar.exe \
 		-f $(BUILD_DIR)/tiny.com -f $(BUILD_DIR)/fcbtest.com
 	@test $$(wc -c < $@) -eq 368640
 
@@ -84,9 +90,10 @@ smoke: smoke-iron86
 
 smoke-iron86: image
 	@test -x $(IRON86) || $(MAKE) -s -C ../iron86
-	$(IRON86) --floppy $(BUILD_DIR)/floppyos.img --keys $$'B:\rA:\rFCBTEST\r' \
+	$(IRON86) --floppy $(BUILD_DIR)/floppyos.img --keys $$'B:\rA:\rFCBTEST\rMZFAR.EXE\r' \
 		| tee $(BUILD_DIR)/smoke-iron86.log
 	grep -q "FCB OK" $(BUILD_DIR)/smoke-iron86.log
+	grep -q "MZFAR OK" $(BUILD_DIR)/smoke-iron86.log
 	grep -q "A>" $(BUILD_DIR)/smoke-iron86.log
 	grep -q "B>" $(BUILD_DIR)/smoke-iron86.log
 

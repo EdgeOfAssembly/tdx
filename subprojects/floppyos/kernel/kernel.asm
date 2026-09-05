@@ -872,8 +872,8 @@ i49:    call    dos_free
         jmp     iret_cf
 i4a:    call    dos_realloc
         jmp     iret_cf
-i4b:    cmp     al, 0
-        jne     .i4b_bad
+i4b:    cmp     al, 3                   ; 0 load+run, 1 load, 3 overlay
+        ja      .i4b_bad
 %ifdef DEBUG
         push    ax
         mov     ah, 0x4B
@@ -1096,6 +1096,8 @@ ex_fsz:
         mov     bx, [cs:ex_handle]
         call    dos_read
         jc      ex_fail_free
+        cmp     ax, [cs:ex_loadsize]    ; partial read → zeros at CS:IP (SETUP.TNK)
+        jne     ex_fail_free
         mov     cx, [cs:ex_crlc]
         jcxz    ex_mz_ok
         mov     bx, [cs:ex_hptr]
