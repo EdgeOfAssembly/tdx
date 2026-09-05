@@ -341,11 +341,16 @@ bool pc::bios_int(uint8_t vector)
 {
     if (c.rom_bios())
     {
-        /* 5150 8K ROM owns video/keyboard/timer. Its INT 13h is 40-track
-         * 360K only; FlopFS 720K B: (cyl 40–79) must stay on iron86. */
+        /* 5150 8K ROM owns video/timer. INT 13h stays here (ROM is 40-track
+         * 360K; FlopFS 720K B: uses cyl 40–79). INT 16h too: tdxctl type
+         * fills iron86's key queue, which ROM INT 16h never reads. */
         if (vector == 0x13)
         {
             return int13();
+        }
+        if (vector == 0x16)
+        {
+            return int16();
         }
         return false;
     }

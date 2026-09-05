@@ -53,8 +53,8 @@ public:
     uint8_t video_mode() const { return video_mode_; }
 
     /**
-     * @brief Optional INT intercept. With rom_bios(), only INT 13h is
-     *        handled here (720K CHS); INT 10/16/1A go to the 5150 ROM.
+     * @brief Optional INT intercept. With rom_bios(), INT 13h (720K CHS)
+     *        and INT 16h (tdxctl type queue). INT 10/1A go to the 5150 ROM.
      */
     bool bios_int(uint8_t vector);
 
