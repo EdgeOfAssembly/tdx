@@ -678,6 +678,10 @@ int21_handler:
         je      i0f
         cmp     ah, 0x10
         je      i10
+        cmp     ah, 0x11
+        je      i11
+        cmp     ah, 0x12
+        je      i12
         cmp     ah, 0x14
         je      i14
         cmp     ah, 0x21
@@ -694,6 +698,10 @@ int21_handler:
         je      i19
         cmp     ah, 0x1A
         je      i1a
+        cmp     ah, 0x1B
+        je      i1b
+        cmp     ah, 0x1C
+        je      i1c
         cmp     ah, 0x3D
         je      i3d
         cmp     ah, 0x3E
@@ -798,6 +806,10 @@ i0f:    call    fcb_open
         jmp     iret_cf
 i10:    call    fcb_close
         jmp     iret_cf
+i11:    call    fcb_findfirst
+        jmp     iret_cf
+i12:    call    fcb_findnext
+        jmp     iret_cf
 i14:    mov     word [cs:fcb_nrec], 1
         mov     byte [cs:fcb_mode], 0        ; sequential
         call    fcb_read
@@ -815,6 +827,17 @@ i19:    mov     al, [cs:cur_drive]
         iret
 i1a:    mov     [cs:dta_seg], ds
         mov     [cs:dta_off], dx
+        clc
+        jmp     iret_cf
+; AH=1B/1C GET FAT: DS:BX -> media ID (MS-DOS GETFATPT). No real FAT;
+; TANK.COM cmp [bx],0xF8 (HDD skip). 360K floppy media 0xFD.
+i1b:    xor     dl, dl
+i1c:    push    cs
+        pop     ds
+        mov     bx, fat_id
+        mov     al, 2                   ; sectors/cluster
+        mov     cx, 512
+        mov     dx, 354                 ; 360K FAT12 cluster count
         clc
         jmp     iret_cf
 i3d:
@@ -1234,6 +1257,7 @@ dos_findfirst:
         mov     cx, 11
         rep     movsb
         mov     word [cs:find_idx], 0
+        mov     byte [cs:find_kind], 0
         call    find_scan
         jmp     .ffo
 .ffe:   mov     ax, 18
@@ -1301,8 +1325,12 @@ find_scan:
         inc     di
         loop    .fsm
         pop     di
-        call    fill_dta                ; di = dirent
-        clc
+        cmp     byte [cs:find_kind], 1
+        jne     .asz
+        call    fill_fcb_dta            ; di = dirent; FCB DTA (AH=11/12)
+        jmp     .fok
+.asz:   call    fill_dta                ; di = dirent
+.fok:   clc
         jmp     .fsd
 .fsx:   pop     di
         jmp     .fsl
@@ -1376,6 +1404,60 @@ fill_dta:
         pop     bp
         pop     bx
         pop     dx
+        pop     cx
+        pop     ax
+        ret
+
+; FCB search DTA from cs:di dirent (MS-DOS 1.25 SAVPLCE).
+; Extended: 7-byte prefix + drive + 32-byte FAT dirent. Normal: drive + 32.
+fill_fcb_dta:
+        push    ax
+        push    cx
+        push    si
+        push    di
+        push    es
+        push    bx
+        mov     [cs:fd_di], di
+        mov     ax, [cs:dta_seg]
+        mov     es, ax
+        mov     di, [cs:dta_off]
+        cld
+        cmp     byte [cs:fcb_ext], 1
+        jne     .drv
+        mov     ax, 0x00FF
+        stosw                           ; FF 00
+        xor     ax, ax
+        stosw
+        stosw                           ; 00 00 00 00
+        mov     al, [cs:fcb_sattr]
+        stosb
+.drv:   mov     al, [cs:io_drive]
+        inc     al                      ; 1-based drive
+        stosb
+        mov     si, [cs:fd_di]
+        mov     cx, 11
+.n:     mov     al, [cs:si]
+        inc     si
+        stosb
+        loop    .n
+        mov     al, 0x20                ; archive
+        stosb
+        xor     ax, ax
+        mov     cx, 5
+        rep     stosw                   ; 10 reserved
+        stosw                           ; time
+        stosw                           ; date
+        inc     ax
+        stosw                           ; cluster 1
+        mov     si, [cs:fd_di]
+        mov     ax, [cs:si+16]
+        stosw
+        mov     ax, [cs:si+18]
+        stosw
+        pop     bx
+        pop     es
+        pop     di
+        pop     si
         pop     cx
         pop     ax
         ret
@@ -1900,6 +1982,91 @@ fcb_close:
 .fc_fail:
         mov     al, 0xFF
         clc
+        pop     bx
+        ret
+
+; AH=11 FCB find first. DS:DX unopened FCB (or extended FF+attr).
+; AL=00 found / FF none. DTA = unopened FCB (1.25 SAVPLCE). CF clear.
+fcb_findfirst:
+        push    bx
+        push    cx
+        push    si
+        push    di
+        push    es
+        push    ds
+        mov     [cs:fcb_ds], ds
+        mov     [cs:fcb_dx], dx
+        mov     byte [cs:find_kind], 1
+        mov     byte [cs:fcb_ext], 0
+        mov     byte [cs:fcb_sattr], 0
+        mov     bx, dx
+        cmp     byte [bx], 0xFF
+        jne     .std
+        mov     al, [bx+6]
+        mov     [cs:fcb_sattr], al
+        mov     byte [cs:fcb_ext], 1
+        add     bx, 7
+.std:   mov     al, [bx]                ; 0=default, 1=A, 2=B
+        test    al, al
+        jnz     .d1
+        mov     al, [cs:cur_drive]
+        jmp     .ds
+.d1:    dec     al
+        cmp     al, 1
+        ja      .fail
+.ds:    mov     [cs:io_drive], al
+        lea     si, [bx+1]
+        push    cs
+        pop     es
+        mov     di, find_pat
+        mov     cx, 11
+        cld
+        rep     movsb
+        test    byte [cs:fcb_sattr], 0x08
+        jnz     .fail                   ; volume label: FlopFS has none
+        call    fs_init
+        cmp     byte [cs:fs_ok], 1
+        jne     .fail
+        mov     word [cs:find_idx], 0
+        call    find_scan
+        jc      .fail
+        xor     al, al
+        clc
+        jmp     .out
+.fail:  mov     al, 0xFF
+        clc
+.out:   pop     ds
+        pop     es
+        pop     di
+        pop     si
+        pop     cx
+        pop     bx
+        ret
+
+; AH=12 FCB find next. Continues kernel find_idx from last AH=11.
+fcb_findnext:
+        push    bx
+        push    cx
+        push    si
+        push    di
+        push    es
+        push    ds
+        cmp     byte [cs:find_kind], 1
+        jne     .nf
+        cmp     byte [cs:fs_ok], 1
+        jne     .nf
+        call    find_scan
+        jc      .nf
+        xor     al, al
+        clc
+        jmp     .no
+.nf:    mov     al, 0xFF
+        clc
+.no:    pop     ds
+        pop     es
+        pop     di
+        pop     si
+        pop     cx
         pop     bx
         ret
 
@@ -2445,6 +2612,10 @@ fs_ok:        db 0
 dta_seg:      dw 0
 dta_off:      dw 0
 find_idx:     dw 0
+find_kind:    db 0                      ; 0=AH=4E ASCIIZ DTA, 1=AH=11 FCB DTA
+fcb_ext:      db 0                      ; 1 = extended FCB (0xFF prefix)
+fcb_sattr:    db 0                      ; extended FCB search attribute
+fat_id:       db 0xFD                   ; AH=1B media (360K floppy)
 exec_active:  db 0
         align 2
 parent_psp:   dw 0

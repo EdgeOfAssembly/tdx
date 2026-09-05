@@ -16,6 +16,8 @@
 | 35 | Get vector | AL=int → ES:BX |
 | **0F** | FCB open | DS:DX FCB; AL=00h ok / FFh fail. RECSIZ=128 (MS-DOS 1.25). |
 | **10** | FCB close | DS:DX FCB; AL=00h/FFh |
+| **11** | FCB find first | DS:DX unopened FCB (`?` wildcards; extended `FFh`+attr). AL=00h/FFh. DTA = drive + 32-byte FAT dirent (extended: 7-byte prefix first). Volume attr `08h` → none (no labels). |
+| **12** | FCB find next | Continue AH=11. AL=00h/FFh |
 | **14** | FCB sequential read | DTA; AL=0 full / 1 EOF / 3 partial |
 | **21** | FCB random read | RR; does not increment RR |
 | **27** | FCB random block | CX=records; RR = last+1 |
@@ -24,6 +26,8 @@
 | 3F | Read | BX=handle, CX=bytes, DS:DX buf → AX=count |
 | **42** | LSEEK | AL=0/1/2 SET/CUR/END, BX=handle, CX:DX offset → DX:AX pos |
 | **1A** | Set DTA | DS:DX = disk transfer area |
+| **1B** | Get FAT (cur) | AL=spc (2), CX=512, DX=clusters (354), DS:BX → media `FDh` (stub; no FAT) |
+| **1C** | Get FAT (DL) | Same stub as 1B (DL ignored) |
 | **4E** | Find first | CX=attr, DS:DX filespec (`*.*`, `B:*.*`) |
 | **4F** | Find next | continue search |
 | **4B** | Exec | AL=0 load+run **COM or MZ EXE**; relocs; ES:BX EPB (minimal) |

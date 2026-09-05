@@ -1,4 +1,5 @@
 ; fcbtest.com — FCB open TINY.COM, recsize after open, AH=21 then AH=27
+; plus AH=11/12 find and AH=1B FAT media.
 ; Matches MS-DOS 1.25 COMMAND TYPE (OPEN, RECLEN=1, RR=0, RDBLK) plus AH=21.
         cpu     8086
         bits    16
@@ -34,6 +35,41 @@
         jne     fail_ah27
         cmp     word [fcb + 0x21], 1
         jne     fail_rr27
+        ; AH=11 exact name, miss, AH=12 wildcard, AH=1B media
+        mov     ah, 0x1A
+        mov     dx, find_dta
+        int     0x21
+        mov     ah, 0x11
+        mov     dx, fcb_find
+        int     0x21
+        cmp     al, 0
+        jne     fail_find
+        cmp     byte [find_dta+1], 'T'
+        jne     fail_find
+        mov     ah, 0x11
+        mov     dx, fcb_miss
+        int     0x21
+        cmp     al, 0xFF
+        jne     fail_find
+        mov     ah, 0x11
+        mov     dx, fcb_wild
+        int     0x21
+        cmp     al, 0
+        jne     fail_find
+        mov     ah, 0x12
+        mov     dx, fcb_wild
+        int     0x21
+        cmp     al, 0
+        jne     fail_find
+        push    ds
+        mov     ah, 0x1B
+        int     0x21
+        mov     cl, [bx]                ; media ID (DS=kernel)
+        pop     ds
+        test    al, al                  ; sectors/cluster
+        jz      fail_fat
+        test    cl, cl
+        jz      fail_fat
         mov     dx, msg_ok
         mov     ah, 0x09
         int     0x21
@@ -67,6 +103,12 @@ fail_ah27:
         jmp     fail_out
 fail_rr27:
         mov     dx, m_rr27
+        jmp     fail_out
+fail_find:
+        mov     dx, m_find
+        jmp     fail_out
+fail_fat:
+        mov     dx, m_fat
 fail_out:
         mov     ah, 0x09
         int     0x21
@@ -87,3 +129,22 @@ m_dta:  db      "FCB FAIL DTA", 13, 10, "$"
 m_rr21: db      "FCB FAIL RR21", 13, 10, "$"
 m_ah27: db      "FCB FAIL AH27", 13, 10, "$"
 m_rr27: db      "FCB FAIL RR27", 13, 10, "$"
+m_find: db      "FCB FAIL find", 13, 10, "$"
+m_fat:  db      "FCB FAIL fat", 13, 10, "$"
+fcb_find:
+        db      0
+        db      'TINY    '
+        db      'COM'
+        times   25 db 0
+fcb_miss:
+        db      0
+        db      'NOSUCH  '
+        db      'XYZ'
+        times   25 db 0
+fcb_wild:
+        db      0
+        db      '????????'
+        db      '???'
+        times   25 db 0
+find_dta:
+        times   64 db 0
