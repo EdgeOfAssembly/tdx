@@ -450,6 +450,22 @@ int main()
         expect((p.c.ax() & 0xFF00u) == 0, "int13 720k AH=0");
         expect_eq(p.c.mem_read8(0x10200u), 0x7E, "int13 720k last sec");
     }
+    {
+        /* INT 10h AH=02/03/09: SETUP.TNK centers menu lines (not AH=0E only). */
+        iron86::pc p;
+        p.boot();
+        const uint8_t prog[] = {
+            0xB4, 0x02, 0xB6, 0x05, 0xB2, 0x0A, 0xCD, 0x10, /* AH=2 DH=5 DL=10 */
+            0xB4, 0x03, 0xCD, 0x10,                         /* AH=3 get cursor */
+            0xB4, 0x09, 0xB0, 0x41, 0xB3, 0x1E, 0xB9, 0x01, 0x00, 0xCD, 0x10,
+            0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 40);
+        expect_eq(p.c.dx(), 0x050A, "int10 cursor DX");
+        expect_eq(p.c.mem_read8(0xB8000u + (5u * 80u + 10u) * 2u), 0x41, "int10 AH=9 char");
+        expect_eq(p.c.mem_read8(0xB8000u + (5u * 80u + 10u) * 2u + 1u), 0x1E, "int10 AH=9 attr");
+    }
 
     if (g_fail != 0)
     {

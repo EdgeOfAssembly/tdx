@@ -244,10 +244,6 @@ int main(int argc, char **argv)
         {
             return 1;
         }
-        if (keys != nullptr)
-        {
-            p.type_keys(keys);
-        }
         if (!p.c.load_bios_5150_8k(rom.data(), rom.size()))
         {
             return 1;
@@ -261,10 +257,19 @@ int main(int argc, char **argv)
         {
             p.enable_fast_post();
         }
+        if (keys != nullptr)
+        {
+            /* Queue only — type_keys() pumps steps and eats keys during POST. */
+            const char *k = keys;
+            for (; *k != 0; ++k)
+            {
+                p.feed_ascii(static_cast<uint8_t>(*k));
+            }
+        }
         std::fprintf(stderr, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000%s\n", rom.size(),
                      no_fast_post ? "" : " fast-post");
         uint64_t n = 0;
-        while ((!p.c.halted()) && (n < 50000000ull))
+        while ((!p.c.halted()) && (n < 150000000ull))
         {
             if (!p.c.step())
             {
@@ -276,7 +281,7 @@ int main(int argc, char **argv)
             char line[81];
             uint8_t row = 0;
             size_t col = 0;
-            for (row = 0; row < 5u; row++)
+            for (row = 0; row < 25u; row++)
             {
                 for (col = 0; col < 80u; col++)
                 {
@@ -360,6 +365,24 @@ int main(int argc, char **argv)
         }
         std::fprintf(stderr, "halted AX=%04X CS:IP=%04X:%04X last=%02X steps=%llu\n", p.c.ax(),
                      p.c.cs(), p.c.ip(), p.c.last_op(), static_cast<unsigned long long>(n));
+        {
+            char line[81];
+            uint8_t row = 0;
+            size_t col = 0;
+            for (row = 0; row < 25u; row++)
+            {
+                for (col = 0; col < 80u; col++)
+                {
+                    const uint8_t ch =
+                        p.c.mem_read8(0xB8000u + (static_cast<uint32_t>(row) * 80u +
+                                                  static_cast<uint32_t>(col)) *
+                                                     2u);
+                    line[col] = ((ch >= 32u) && (ch < 127u)) ? static_cast<char>(ch) : ' ';
+                }
+                line[80] = '\0';
+                std::fprintf(stderr, "B800[%u]: %s\n", row, line);
+            }
+        }
         const bool ok = (p.tty().find("A>") != std::string::npos) ||
                         (p.tty().find("FCB OK") != std::string::npos);
         return ok ? 0 : 1;

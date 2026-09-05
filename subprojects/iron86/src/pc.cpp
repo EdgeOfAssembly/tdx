@@ -502,6 +502,57 @@ bool pc::int10()
     if (ah == 0x00)
     {
         video_mode_ = static_cast<uint8_t>(al & 0x7Fu);
+        cur_x_ = 0;
+        cur_y_ = 0;
+        c.set_cf(false);
+        return true;
+    }
+    if (ah == 0x02) /* set cursor DH=row DL=col */
+    {
+        cur_y_ = static_cast<uint8_t>(c.dx() >> 8);
+        cur_x_ = static_cast<uint8_t>(c.dx());
+        if (cur_x_ > 79u)
+        {
+            cur_x_ = 79;
+        }
+        if (cur_y_ > 24u)
+        {
+            cur_y_ = 24;
+        }
+        c.set_cf(false);
+        return true;
+    }
+    if (ah == 0x03) /* get cursor → DH=row DL=col */
+    {
+        c.set_dx(static_cast<uint16_t>((static_cast<uint16_t>(cur_y_) << 8) | cur_x_));
+        c.set_cx(0x0607);
+        c.set_cf(false);
+        return true;
+    }
+    if ((ah == 0x09) || (ah == 0x0A)) /* write char at cursor, do not move */
+    {
+        const uint8_t attr = (ah == 0x09) ? static_cast<uint8_t>(c.bx()) : 0x07;
+        uint16_t n = c.cx();
+        if (n == 0)
+        {
+            n = 1;
+        }
+        uint32_t x = cur_x_;
+        const uint32_t y = cur_y_;
+        for (uint16_t i = 0; i < n; i++)
+        {
+            if (x > 79u)
+            {
+                break;
+            }
+            const uint32_t off = (y * 80u + x) * 2u;
+            c.mem_write8(0xB8000u + off, al);
+            if (ah == 0x09)
+            {
+                c.mem_write8(0xB8000u + off + 1u, attr);
+            }
+            x++;
+        }
         c.set_cf(false);
         return true;
     }
