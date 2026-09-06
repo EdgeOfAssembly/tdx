@@ -1180,15 +1180,19 @@ void pc::pit_tick()
             continue;
         }
         const uint8_t prev_out = ch.out_pin;
-        /* Do not stride ch0 reload-0: TANK.COM INT 1Ch STIs and nested IRQ0
-         * smashed CS:IP to 0000:7BB8. tdx F9 + wall_clock_irq0 cover 18.2 Hz. */
         ch.count = static_cast<uint16_t>(ch.count - 1u);
         if (ch.count == 0)
         {
+            /* BIOS ch0 reload 0 = 18.2 Hz. Instruction-cadence IRQ0 is far
+             * faster than a real 8088 on release tdx, so TANK.COM's INT 1Ch
+             * watchdog (cdd budget ~56 ticks) hits FATAL ERROR: 3. Pulse IRQ0
+             * from wall_clock_irq0 (~55 ms) instead. Small reloads still fire
+             * here (iron86 tests, PC speaker). */
+            const bool irq0_insn = ((i == 0) && (ch.reload != 0));
             if (ch.mode == 0)
             {
                 ch.out_pin = 1;
-                if (i == 0)
+                if (irq0_insn)
                 {
                     pic_deassert(0);
                     pic_assert(0);
@@ -1197,7 +1201,7 @@ void pc::pit_tick()
             else if (ch.mode == 2)
             {
                 ch.count = (ch.reload != 0) ? ch.reload : 0;
-                if (i == 0)
+                if (irq0_insn)
                 {
                     pic_deassert(0);
                     pic_assert(0);
@@ -1207,7 +1211,7 @@ void pc::pit_tick()
             {
                 ch.out_pin = static_cast<uint8_t>(ch.out_pin ^ 1u);
                 ch.count = ch.reload;
-                if ((i == 0) && (prev_out != 0) && (ch.out_pin == 0))
+                if (irq0_insn && (prev_out != 0) && (ch.out_pin == 0))
                 {
                     pic_deassert(0);
                     pic_assert(0);
@@ -1224,7 +1228,7 @@ void pc::pit_tick()
             if (ch.count == half)
             {
                 ch.out_pin = static_cast<uint8_t>(ch.out_pin ^ 1u);
-                if ((i == 0) && (prev_out != 0) && (ch.out_pin == 0))
+                if ((i == 0) && (ch.reload != 0) && (prev_out != 0) && (ch.out_pin == 0))
                 {
                     pic_deassert(0);
                     pic_assert(0);
