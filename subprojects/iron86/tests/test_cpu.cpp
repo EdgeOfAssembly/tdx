@@ -518,6 +518,45 @@ int main()
         c.close_exec_map();
         std::remove(path);
     }
+    {
+        /* fetch16 IP wrap: MOV AX,imm16 at 1000:FFFF, imm at 1000:0000. */
+        iron86::cpu c;
+        c.set_cs(0x1000);
+        c.set_ip(0xFFFF);
+        c.mem_write8(iron86::cpu::phys(0x1000, 0xFFFF), 0xB8);
+        c.mem_write8(iron86::cpu::phys(0x1000, 0x0000), 0x34);
+        c.mem_write8(iron86::cpu::phys(0x1000, 0x0001), 0x12);
+        c.mem_write8(iron86::cpu::phys(0x1000, 0x0002), 0xF4);
+        run(c);
+        expect_eq(c.ax(), 0x1234, "fetch16 ip16 wrap");
+        expect(c.halted(), "fetch16 ip16 hlt");
+    }
+    {
+        /* fetch16 20-bit wrap: MOV AX,imm16 at FFFF:000F → FFFFF then 00000. */
+        iron86::cpu c;
+        c.set_cs(0xFFFF);
+        c.set_ip(0x000F);
+        c.mem_write8(0xFFFFFu, 0xB8);
+        c.mem_write8(iron86::cpu::phys(0xFFFF, 0x0010), 0x78);
+        c.mem_write8(iron86::cpu::phys(0xFFFF, 0x0011), 0x56);
+        c.mem_write8(iron86::cpu::phys(0xFFFF, 0x0012), 0xF4);
+        run(c);
+        expect_eq(c.ax(), 0x5678, "fetch16 20-bit wrap");
+        expect(c.halted(), "fetch16 20-bit hlt");
+    }
+    {
+        /* CS=F000 IP=FFFF: linear FFFFF, second byte is F000:0000 not 00000. */
+        iron86::cpu c;
+        c.set_cs(0xF000);
+        c.set_ip(0xFFFF);
+        c.mem_write8(0xFFFFFu, 0xB8);
+        c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xCD);
+        c.mem_write8(iron86::cpu::phys(0xF000, 0x0001), 0xAB);
+        c.mem_write8(iron86::cpu::phys(0xF000, 0x0002), 0xF4);
+        run(c);
+        expect_eq(c.ax(), 0xABCD, "fetch16 f000:ffff");
+        expect(c.halted(), "fetch16 f000 hlt");
+    }
 
     if (g_fail != 0)
     {

@@ -103,25 +103,6 @@ void cpu::reset()
     intr_vec_ = 0;
 }
 
-uint8_t cpu::fetch8()
-{
-    const uint32_t lin = phys(cs_, ip_);
-    const uint8_t b = mem_read8(lin);
-    if (exec_map_ != nullptr)
-    {
-        exec_map_[lin] = b;
-    }
-    ip_ = static_cast<uint16_t>(ip_ + 1u);
-    return b;
-}
-
-uint16_t cpu::fetch16()
-{
-    const uint16_t lo = fetch8();
-    const uint16_t hi = fetch8();
-    return static_cast<uint16_t>(lo | (hi << 8));
-}
-
 void cpu::push16(uint16_t v)
 {
     sp_ = static_cast<uint16_t>(sp_ - 2u);

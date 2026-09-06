@@ -199,6 +199,34 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 1, "mda 3ba toggle");
     }
     {
+        /* BDA 40:49 = MDA: periodic tick is MDA; IN 3DA still toggles. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        p.c.mem_write8(0x449u, 7);
+        const uint8_t prog[] = {
+            0xBA, 0xDA, 0x03, /* MOV DX,3DAh */
+            0xEC, 0x88, 0xC3, 0xEC, 0x38, 0xD8, 0x74, 0x03, 0xB0, 0x01, 0xF4, 0xB0,
+            0x00, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 1, "cga 3da toggle mda mode");
+    }
+    {
+        /* BDA 40:49 = CGA: periodic tick is CGA; IN 3BA still toggles. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        p.c.mem_write8(0x449u, 3);
+        const uint8_t prog[] = {
+            0xBA, 0xBA, 0x03, /* MOV DX,3BAh */
+            0xEC, 0x88, 0xC3, 0xEC, 0x38, 0xD8, 0x74, 0x03, 0xB0, 0x01, 0xF4, 0xB0,
+            0x00, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 1, "mda 3ba toggle cga mode");
+    }
+    {
         /* MDA LPT probe: 3BD not-busy 0xDF; 3BC data readback. */
         iron86::pc p;
         p.wire_pc_hw();

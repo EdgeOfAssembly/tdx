@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <memory>
 
@@ -191,8 +192,47 @@ public:
     void raise_irq0();
 
 private:
-    uint8_t fetch8();
-    uint16_t fetch16();
+    /**
+     * @brief Fetch one instruction byte at CS:IP (20-bit wrap; IP wraps at 64K).
+     */
+    uint8_t fetch8()
+    {
+        const uint32_t lin = ((static_cast<uint32_t>(cs_) << 4) + ip_) & 0xFFFFFu;
+        const uint8_t b = ram_[lin];
+        if (exec_map_ != nullptr) [[unlikely]]
+        {
+            exec_map_[lin] = b;
+        }
+        ++ip_;
+        return b;
+    }
+
+    /**
+     * @brief Fetch one instruction word (LE). Split at 1 MiB wrap and IP=FFFF.
+     *
+     * A contiguous 16-bit RAM load is only valid when both bytes are the next
+     * two CS:IP bytes. Linear FFFFFh wraps to 00000h; IP FFFFh wraps to 0000h
+     * in the same CS — those are not the same address.
+     */
+    uint16_t fetch16()
+    {
+        const uint32_t lin = ((static_cast<uint32_t>(cs_) << 4) + ip_) & 0xFFFFFu;
+        if ((lin != 0xFFFFFu) && (ip_ != 0xFFFFu))
+        {
+            uint16_t v = 0;
+            std::memcpy(&v, ram_ + lin, sizeof(v));
+            if (exec_map_ != nullptr) [[unlikely]]
+            {
+                exec_map_[lin] = static_cast<uint8_t>(v);
+                exec_map_[lin + 1u] = static_cast<uint8_t>(v >> 8);
+            }
+            ip_ = static_cast<uint16_t>(ip_ + 2u);
+            return v;
+        }
+        const uint16_t lo = fetch8();
+        const uint16_t hi = fetch8();
+        return static_cast<uint16_t>(lo | (hi << 8));
+    }
     void push16(uint16_t v);
     uint16_t pop16();
     void do_int(uint8_t vector);

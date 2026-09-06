@@ -1033,6 +1033,11 @@ void pc::ppi_on_port_b()
 void pc::ppi_tick()
 {
     ppi8255 &p = hw_.ppi;
+    /* Keyboard only: speaker GATE/DATA are OUT 61h + pit_tick(ch2). */
+    if (scanq_.empty() && (p.kbd_irq_pend == 0))
+    {
+        return;
+    }
     const bool kbd_sel = ((p.port_b & 0x80u) == 0) && ((p.port_b & 0x40u) != 0);
     if ((p.kbd_ready == 0) && (!scanq_.empty()) && kbd_sel)
     {
@@ -1340,14 +1345,25 @@ void pc::after_insn()
     hw_.pit_div = static_cast<uint8_t>(hw_.pit_div + 1u);
     if ((hw_.pit_div & 3u) == 0)
     {
-        crtc_tick(&mda_);
-        crtc_tick(&cga_);
+        /* BDA 40:49: 7 = MDA, else CGA. IN 3BA/3DA still tick in crtc_read_status. */
+        if (c.mem_read8(0x449u) == 7u)
+        {
+            crtc_tick(&mda_);
+        }
+        else
+        {
+            crtc_tick(&cga_);
+        }
     }
     if ((hw_.pit_div & 1u) == 0)
     {
         pit_tick();
     }
-    ppi_tick();
+    /* Skip when scanq empty, no IRQ1 pending, and speaker GATE+DATA off. */
+    if ((!scanq_.empty()) || (hw_.ppi.kbd_irq_pend != 0) || ((hw_.ppi.port_b & 0x03u) != 0))
+    {
+        ppi_tick();
+    }
     if ((c.flags() & k_flag_if) == 0)
     {
         return;
