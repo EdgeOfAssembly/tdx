@@ -1273,52 +1273,50 @@ rex_status dos_machine::step_one()
         /* Do not return early on waiting_key: INT 16h AH=00 rewinds IP, and
          * after_insn must still tick the PIT so ROM INT 8 can advance 40:6C.
          * F7 still reports WAIT_KEY after the step. */
-        if ((bps.find(lin) != bps.end()) && (!skip_bp))
+        if ((!bps.empty()) && (bps.find(lin) != bps.end()) && (!skip_bp))
         {
             at_break = true;
             skip_bp = true;
             last_stop = REX_STOP_BREAK;
             return REX_OK;
         }
-        if (!skip_int_bp)
         {
             const uint32_t at = iron86::cpu::phys(iron->c.cs(), iron->c.ip());
             const uint8_t op = iron->c.mem_read8(at);
             if (op == 0xCD)
             {
                 const uint8_t n = iron->c.mem_read8(at + 1u);
-                const auto it = int_bps.find(n);
-                const uint16_t ax = iron->c.ax();
-                const bool mode4 = ((n != 0x10u) || (ax == 0x0004u));
-                if ((it != int_bps.end()) && mode4)
+                if ((!int_bps.empty()) && (!skip_int_bp))
                 {
-                    at_break = true;
-                    skip_int_bp = true;
-                    last_stop = REX_STOP_BREAK;
-                    if (it->second == 1u)
+                    const auto it = int_bps.find(n);
+                    const uint16_t ax = iron->c.ax();
+                    const bool mode4 = ((n != 0x10u) || (ax == 0x0004u));
+                    if ((it != int_bps.end()) && mode4)
                     {
-                        int_bps.erase(it);
+                        at_break = true;
+                        skip_int_bp = true;
+                        last_stop = REX_STOP_BREAK;
+                        if (it->second == 1u)
+                        {
+                            int_bps.erase(it);
+                        }
+                        else if (it->second > 1u)
+                        {
+                            it->second--;
+                        }
+                        rex_logf(REX_LOG_INFO, "BPINT %02X AX=%04X @ %04X:%04X", (unsigned)n, ax,
+                                 iron->c.cs(), iron->c.ip());
+                        return REX_OK;
                     }
-                    else if (it->second > 1u)
-                    {
-                        it->second--;
-                    }
-                    rex_logf(REX_LOG_INFO, "BPINT %02X AX=%04X @ %04X:%04X", (unsigned)n, ax,
-                             iron->c.cs(), iron->c.ip());
-                    return REX_OK;
+                }
+                if ((n == 0x21u) && ((iron->c.ax() >> 8) == 0x4Bu))
+                {
+                    note_exec_from_dsdx();
                 }
             }
         }
         skip_int_bp = false;
         at_break = false;
-        {
-            const uint32_t at = iron86::cpu::phys(iron->c.cs(), iron->c.ip());
-            if ((iron->c.mem_read8(at) == 0xCD) && (iron->c.mem_read8(at + 1u) == 0x21) &&
-                ((iron->c.ax() >> 8) == 0x4Bu))
-            {
-                note_exec_from_dsdx();
-            }
-        }
         if (!iron->c.step())
         {
             if (iron->c.halted())
@@ -1334,7 +1332,9 @@ rex_status dos_machine::step_one()
             return REX_ERR_CPU;
         }
         con_out = iron->tty();
-        /* Real BIOS INT 10h writes BDA 40:49; iron86 intercept is off on --bios. */
+        /* Real BIOS INT 10h writes BDA 40:49; sample every 256 insns. */
+        iron_vid_div++;
+        if ((iron_vid_div & 255u) == 0u)
         {
             const uint8_t bda_mode = iron->c.mem_read8(0x449u);
             if (mda_video)
@@ -1355,7 +1355,7 @@ rex_status dos_machine::step_one()
             return REX_OK;
         }
         last_stop = REX_STOP_STEP;
-        if (bps.find(linear_ip()) != bps.end())
+        if ((!bps.empty()) && (bps.find(linear_ip()) != bps.end()))
         {
             at_break = true;
             skip_bp = true;

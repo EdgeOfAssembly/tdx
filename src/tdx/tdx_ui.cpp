@@ -38,7 +38,8 @@ constexpr int k_list_w = 66; /**< Leave a narrow Break box on the right. */
 constexpr uint64_t k_run_slice_insns = 32000;
 constexpr uint32_t k_run_delay_default_ms = 5;
 #else
-constexpr uint64_t k_run_slice_insns = 8000;
+/* Larger slices: M1TP play; sock/SDL still polled once per slice. */
+constexpr uint64_t k_run_slice_insns = 65536;
 constexpr uint32_t k_run_delay_default_ms = 0;
 #endif
 constexpr int k_box_x = 67;  /**< 13 cols: borders + 1010:0035 + sbar. */

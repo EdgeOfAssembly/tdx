@@ -107,6 +107,7 @@ struct dos_machine
     uint32_t image_bytes = 0;
     std::map<uint64_t, rex_insn> decode; /**< Capstone once at load. */
     uint64_t pit_last_ns = 0;
+    uint32_t iron_vid_div = 0; /**< Sample BDA 40:49 every 256 iron steps. */
 
     pic8259 pic;           /**< 8259A PIC: timer/keyboard hardware IRQs. */
     pit8253 pit{pic};      /**< 8253 PIT: ch0 terminal count drives IRQ0. */
