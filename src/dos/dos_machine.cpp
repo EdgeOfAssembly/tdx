@@ -1331,11 +1331,11 @@ rex_status dos_machine::step_one()
                      iron->c.cs(), iron->c.ip());
             return REX_ERR_CPU;
         }
-        con_out = iron->tty();
-        /* Real BIOS INT 10h writes BDA 40:49; sample every 256 insns. */
+        /* tty_ can be hundreds of bytes; copying it every insn dominated step_one. */
         iron_vid_div++;
         if ((iron_vid_div & 255u) == 0u)
         {
+            con_out = iron->tty();
             const uint8_t bda_mode = iron->c.mem_read8(0x449u);
             if (mda_video)
             {
@@ -1350,6 +1350,7 @@ rex_status dos_machine::step_one()
         video_dirty = true;
         if (iron->waiting_key())
         {
+            con_out = iron->tty();
             wait_key = true;
             last_stop = REX_STOP_WAIT_KEY;
             return REX_OK;
