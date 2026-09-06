@@ -1,4 +1,4 @@
-.TH TDX 1 "2026-09-06" "tdx 0.22" "User Commands"
+.TH TDX 1 "2026-09-07" "tdx 0.23" "User Commands"
 .SH NAME
 tdx \- native Linux debugger for DOS EXE/COM (Turbo Debugger X)
 .SH SYNOPSIS
@@ -88,6 +88,9 @@ Log every stepped instruction to stderr.
 .TP
 .BI \-\-exec\-map " FILE"
 Write a 1 MiB executed-opcode map (iron86). Unexecuted bytes stay 0.
+.TP
+.BI \-\-prefetch\-bytes " N"
+iron86 8088-style prefetch queue (default 4; 0 disables; 6 is 8086; max 1024).
 .TP
 .BI \-\-scale " N"
 CPU window integer scale (default 2).

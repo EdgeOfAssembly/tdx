@@ -101,6 +101,19 @@ void cpu::reset()
     mr_ = {};
     intr_pending_ = false;
     intr_vec_ = 0;
+    q_len_ = 0;
+    q_head_ = 0;
+}
+
+void cpu::set_prefetch_bytes(unsigned n)
+{
+    if (n > k_prefetch_max)
+    {
+        n = k_prefetch_max;
+    }
+    prefetch_n_ = static_cast<uint16_t>(n);
+    q_len_ = 0;
+    q_head_ = 0;
 }
 
 void cpu::push16(uint16_t v)

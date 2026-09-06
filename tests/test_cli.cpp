@@ -48,7 +48,28 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.22");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.23");
+}
+
+TEST_CASE("prefetch-bytes default 4; 0 is off")
+{
+    auto a = parse({"game.exe"});
+    REQUIRE(a.prefetch_bytes == 4u);
+    auto b = parse({"--prefetch-bytes", "0", "game.exe"});
+    REQUIRE(b.prefetch_bytes == 0u);
+    auto c = parse({"game.exe", "--prefetch-bytes=6"});
+    REQUIRE(c.prefetch_bytes == 6u);
+    auto d = parse({"--prefetch-bytes", "2000", "--no-ui"});
+    REQUIRE(d.prefetch_bytes == 1024u);
+    REQUIRE(d.no_ui);
+}
+
+TEST_CASE("prefetch-bytes missing value is usage error")
+{
+    char *argv[] = {const_cast<char *>("tdx"), const_cast<char *>("--prefetch-bytes")};
+    tdx_cli c{};
+    REQUIRE_FALSE(tdx_cli_parse(2, argv, &c));
+    REQUIRE(c.usage_error);
 }
 
 TEST_CASE("bios is default with floppy-a; --no-bios opts out")

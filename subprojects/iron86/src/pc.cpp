@@ -1,6 +1,9 @@
 /**
  * @file pc.cpp
  * @brief INT 10h (tty/cursor/scroll), INT 13h AH=00/02, INT 16h, INT 1Ah.
+ *
+ * With rom_bios(), INT 10h AH=0Eh may be served here while IVT[10h] is still
+ * the 24APR81 VIDEO_IO at F000:F065; AH=00 and hooked INT 10h stay in ROS.
  */
 #include "iron86/pc.h"
 #include "iron86/crtc.h"
@@ -446,7 +449,8 @@ bool pc::bios_int(uint8_t vector)
     {
         /* 5150 8K ROM owns video/timer. INT 13h stays here (ROM is 40-track
          * 360K; FlopFS 720K B: uses cyl 40–79). INT 16h too: tdxctl type
-         * fills iron86's key queue, which ROM INT 16h never reads. */
+         * fills iron86's key queue, which ROM INT 16h never reads.
+         * INT 8 / INT 1Ah always fall through to ROS. */
         if (vector == 0x13)
         {
             return int13();
@@ -454,6 +458,43 @@ bool pc::bios_int(uint8_t vector)
         if (vector == 0x16)
         {
             return int16();
+        }
+        if (vector == 0x10)
+        {
+            /* 24APR81 VIDEO_IO is F000:F065 (vector table at F000:FF13).
+             * Steal only AH=0Eh teletype while the IVT still points there
+             * and BDA 40:49 is 80-column CGA text. AH=00 mode-set, graphics
+             * teletype, and a hooked INT 10h stay in ROS. */
+            if ((c.mem_read16(0x40u) != 0xF065u) || (c.mem_read16(0x42u) != 0xF000u))
+            {
+                return false;
+            }
+            if (static_cast<uint8_t>(c.ax() >> 8) != 0x0Eu)
+            {
+                return false;
+            }
+            const uint8_t mode = c.mem_read8(0x449u);
+            if ((mode != 2u) && (mode != 3u))
+            {
+                return false;
+            }
+            const uint8_t page = static_cast<uint8_t>((c.bx() >> 8) & 7u);
+            const uint32_t bda = 0x450u + static_cast<uint32_t>(page) * 2u;
+            const uint16_t cr = c.mem_read16(bda);
+            cur_x_ = static_cast<uint8_t>(cr);
+            cur_y_ = static_cast<uint8_t>(cr >> 8);
+            if (cur_x_ > 79u)
+            {
+                cur_x_ = 79;
+            }
+            if (cur_y_ > 24u)
+            {
+                cur_y_ = 24;
+            }
+            const bool handled = int10();
+            c.mem_write16(bda, static_cast<uint16_t>(
+                                   (static_cast<uint16_t>(cur_y_) << 8) | cur_x_));
+            return handled;
         }
         return false;
     }

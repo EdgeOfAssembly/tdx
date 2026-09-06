@@ -61,7 +61,11 @@ public:
 
     /**
      * @brief Optional INT intercept. With rom_bios(), INT 13h (720K CHS)
-     *        and INT 16h (tdxctl type queue). INT 10/1A go to the 5150 ROM.
+     *        and INT 16h (tdxctl type queue). INT 10h AH=0Eh teletype is
+     *        handled here only while IVT[10h] is still F000:F065 (24APR81
+     *        VIDEO_IO) and BDA 40:49 is 80-column CGA text; AH=00 mode-set
+     *        and a hooked INT 10h go to the ROS. INT 8 / INT 1Ah are never
+     *        intercepted when the ROM is loaded.
      */
     bool bios_int(uint8_t vector);
 

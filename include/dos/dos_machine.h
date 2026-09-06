@@ -178,6 +178,12 @@ struct dos_machine
     void set_mda(bool on);
     /** @brief mmap a 1 MiB executed-opcode map (iron86). */
     rex_status set_exec_map(const char *path);
+    /**
+     * @brief 8088-style prefetch queue for iron86 (0 = off). Default 4.
+     * Applied when the iron86 PC is created and if it already exists.
+     */
+    void set_prefetch_bytes(unsigned n);
+    unsigned prefetch_bytes = 4; /**< iron86 BIU queue; 0 = off. */
     /** @brief Mount IMAGE or host DIR as A: on the iron86 FDC (PyFloppy). */
     rex_status attach_floppy_image(const char *image);
     /** @brief Mount IMAGE or host DIR as B: (FDC unit 1 / INT 13h DL=1). */

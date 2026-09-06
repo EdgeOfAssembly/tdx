@@ -557,6 +557,82 @@ int main()
         expect_eq(c.ax(), 0xABCD, "fetch16 f000:ffff");
         expect(c.halted(), "fetch16 f000 hlt");
     }
+    {
+        /* Prefetch 0: same wrap as the memcpy fetch16 path. */
+        iron86::cpu c;
+        c.set_prefetch_bytes(0);
+        c.set_cs(0xF000);
+        c.set_ip(0xFFFF);
+        c.mem_write8(0xFFFFFu, 0xB8);
+        c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xCD);
+        c.mem_write8(iron86::cpu::phys(0xF000, 0x0001), 0xAB);
+        c.mem_write8(iron86::cpu::phys(0xF000, 0x0002), 0xF4);
+        run(c);
+        expect_eq(c.ax(), 0xABCD, "prefetch0 fetch16 wrap");
+        expect(c.halted(), "prefetch0 fetch16 hlt");
+        expect_eq(static_cast<uint16_t>(c.prefetch_bytes()), 0, "prefetch0 size");
+    }
+    {
+        iron86::cpu c;
+        c.set_prefetch_bytes(5000);
+        expect_eq(static_cast<uint16_t>(c.prefetch_bytes()), 1024, "prefetch clamp 1024");
+    }
+    {
+        /*
+         * SMC: 1000:0100  C6 06 05 01 90  mov byte [0105h],90h
+         *                 CC              int3
+         *                 F4              hlt
+         * Prefetch 0 reads the patched NOP then HLT (not INT3).
+         */
+        iron86::cpu c;
+        c.set_prefetch_bytes(0);
+        const uint8_t prog[] = {0xC6, 0x06, 0x05, 0x01, 0x90, 0xCC, 0xF4};
+        c.mem_write8(0, 0xCF); /* IRET at 0000:0000 */
+        c.set_ivt(3, 0, 0);
+        c.load_com(prog, sizeof(prog), 0x1000);
+        expect(c.step(), "smc0 mov");
+        expect_eq(c.mem_read8(iron86::cpu::phys(0x1000, 0x0105)), 0x90, "smc0 ram nop");
+        expect(c.step(), "smc0 nop");
+        expect_eq(c.last_op(), 0x90, "smc0 last nop");
+        expect(c.step(), "smc0 hlt");
+        expect_eq(c.last_op(), 0xF4, "smc0 last hlt");
+        expect(c.halted(), "smc0 halted");
+        expect(c.cs() == 0x1000, "smc0 still com cs");
+    }
+    {
+        /* Prefetch 6: INT3 was queued before the write; execute INT3. */
+        iron86::cpu c;
+        c.set_prefetch_bytes(6);
+        const uint8_t prog[] = {0xC6, 0x06, 0x05, 0x01, 0x90, 0xCC, 0xF4};
+        c.mem_write8(0, 0xCF);
+        c.set_ivt(3, 0, 0);
+        c.load_com(prog, sizeof(prog), 0x1000);
+        expect(c.step(), "smc6 mov");
+        expect_eq(c.mem_read8(iron86::cpu::phys(0x1000, 0x0105)), 0x90, "smc6 ram nop");
+        expect(c.step(), "smc6 int3");
+        expect_eq(c.last_op(), 0xCC, "smc6 last int3");
+        expect_eq(c.cs(), 0, "smc6 ivt cs");
+        expect_eq(c.ip(), 0, "smc6 ivt ip");
+        expect(c.step(), "smc6 iret");
+        expect_eq(c.last_op(), 0xCF, "smc6 iret");
+        expect(c.step(), "smc6 hlt");
+        expect_eq(c.last_op(), 0xF4, "smc6 hlt");
+        expect(c.halted(), "smc6 halted");
+    }
+    {
+        /*
+         * Prefetch 4 + short JMP: CS:IP skip flushes; skipped MOV is not
+         * taken from the old queue (AX stays 1, HLT at the target).
+         */
+        iron86::cpu c;
+        c.set_prefetch_bytes(4);
+        const uint8_t prog[] = {0xB8, 0x01, 0x00, 0xEB, 0x03, 0xB8, 0xFF, 0xFF, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        run(c);
+        expect_eq(c.ax(), 1, "jmp flush ax");
+        expect_eq(c.last_op(), 0xF4, "jmp flush hlt");
+        expect(c.halted(), "jmp flush halted");
+    }
 
     if (g_fail != 0)
     {

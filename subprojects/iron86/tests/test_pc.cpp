@@ -614,6 +614,70 @@ int main()
         expect(p.c.halted(), "pit reload0 irq0 hlt");
         expect(p.c.mem_read16(0x46Cu) >= 2u, "pit reload0 40:6C");
     }
+    {
+        /* --bios INT 10h AH=0Eh fast path (24APR81 VIDEO_IO = F000:F065). */
+        const char *rom_path =
+            "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN";
+        std::ifstream rin(rom_path, std::ios::binary);
+        if (!rin)
+        {
+            rom_path =
+                "/mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN";
+            rin.open(rom_path, std::ios::binary);
+        }
+        if (rin)
+        {
+            std::vector<uint8_t> rom((std::istreambuf_iterator<char>(rin)),
+                                     std::istreambuf_iterator<char>());
+            {
+                iron86::pc p;
+                expect(p.c.load_bios_5150_8k(rom.data(), rom.size()), "int10-0e rom");
+                p.wire_pc_hw();
+                p.c.set_ivt(0x10, 0xF000, 0xF065);
+                p.c.mem_write8(0x449u, 3); /* CRT_MODE 80×25 */
+                p.c.mem_write16(0x450u, 0);
+                const uint8_t prog[] = {
+                    0xB4, 0x0E, 0xB0, 0x5A, 0xCD, 0x10, 0xF4, /* AH=0E AL='Z' */
+                };
+                p.c.load_com(prog, sizeof(prog), 0x1000);
+                run(p.c, 16);
+                expect(p.c.halted(), "int10-0e hlt");
+                expect_eq(p.c.cs(), 0x1000, "int10-0e cs");
+                expect_eq(p.c.mem_read8(0xB8000u), static_cast<uint16_t>('Z'), "int10-0e vram");
+                expect_eq(p.c.mem_read16(0x450u), 0x0001, "int10-0e bda cursor");
+            }
+            {
+                /* Hooked INT 10h: IRET stub, VRAM must stay empty. */
+                iron86::pc p;
+                expect(p.c.load_bios_5150_8k(rom.data(), rom.size()), "int10-hook rom");
+                p.wire_pc_hw();
+                p.c.set_ivt(0x10, 0x1000, 0x0300);
+                p.c.mem_write8(0x449u, 3);
+                p.c.mem_write8(0x10300u, 0xCF); /* IRET */
+                const uint8_t prog[] = {
+                    0xB4, 0x0E, 0xB0, 0x5A, 0xCD, 0x10, 0xF4,
+                };
+                p.c.load_com(prog, sizeof(prog), 0x1000);
+                run(p.c, 16);
+                expect(p.c.halted(), "int10-hook hlt");
+                expect_eq(p.c.mem_read8(0xB8000u), 0, "int10-hook no steal");
+            }
+            {
+                /* AH=00 mode-set always enters ROS VIDEO_IO. */
+                iron86::pc p;
+                expect(p.c.load_bios_5150_8k(rom.data(), rom.size()), "int10-00 rom");
+                p.wire_pc_hw();
+                p.c.set_ivt(0x10, 0xF000, 0xF065);
+                p.c.mem_write8(0x449u, 3);
+                const uint8_t prog[] = {0xCD, 0x10, 0xF4};
+                p.c.load_com(prog, sizeof(prog), 0x1000);
+                p.c.set_ax(0x0003);
+                expect(p.c.step(), "int10-00 step");
+                expect_eq(p.c.cs(), 0xF000, "int10-00 cs rom");
+                expect_eq(p.c.ip(), 0xF065, "int10-00 ip rom");
+            }
+        }
+    }
 
     if (g_fail != 0)
     {

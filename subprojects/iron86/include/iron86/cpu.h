@@ -17,6 +17,10 @@ namespace iron86
 {
 
 inline constexpr uint32_t k_mem_size = 0x100000u;
+/** @brief Prefetch queue cap; @ref cpu::set_prefetch_bytes clamps here. */
+inline constexpr unsigned k_prefetch_max = 1024u;
+/** @brief Default BIU queue: 8088 / IBM 5150 (6 = 8086). */
+inline constexpr unsigned k_prefetch_default = 4u;
 inline constexpr uint16_t k_flag_cf = 0x0001;
 inline constexpr uint16_t k_flag_pf = 0x0004;
 inline constexpr uint16_t k_flag_af = 0x0010;
@@ -191,19 +195,94 @@ public:
     /** @brief Latch IRQ0 (vector 08h). */
     void raise_irq0();
 
+    /**
+     * @brief Set 8088-style prefetch queue size (BIU).
+     *
+     * @param[in] n Bytes kept ahead of the EU. 0 disables the queue (every
+     *              fetch reads RAM). Values above @c k_prefetch_max are
+     *              clamped to 1024. Default is 4 (8088 / IBM 5150); 6 is 8086.
+     *
+     * @note 8086/8088 do not snoop data writes. A byte already in the queue
+     *       is executed even if RAM was patched (self-modifying code). A
+     *       CS:IP discontinuity (jmp/call/ret/int/iret, or debugger
+     *       set_cs/set_ip) flushes and refills from RAM. mem_write8/16 must
+     *       not flush.
+     */
+    void set_prefetch_bytes(unsigned n);
+
+    /**
+     * @brief Current prefetch queue size (0 = off).
+     */
+    unsigned prefetch_bytes() const
+    {
+        return prefetch_n_;
+    }
+
 private:
     /**
+     * @brief Fill the prefetch queue from RAM at CS:IP + q_len_ (IP 16-bit wrap).
+     *
+     * Remaining bytes are exactly RAM[CS:IP], RAM[CS:IP+1], … for q_len_
+     * bytes (IP wraps at 64K; linear address wraps at 1 MiB).
+     */
+    void fill_prefetch()
+    {
+        const uint16_t n = prefetch_n_;
+        while (q_len_ < n)
+        {
+            const uint16_t off = static_cast<uint16_t>(ip_ + q_len_);
+            const uint32_t lin = ((static_cast<uint32_t>(cs_) << 4) + off) & 0xFFFFFu;
+            const uint16_t slot = static_cast<uint16_t>(
+                (static_cast<uint32_t>(q_head_) + static_cast<uint32_t>(q_len_)) &
+                (k_prefetch_max - 1u));
+            q_[slot] = ram_[lin];
+            q_len_ = static_cast<uint16_t>(q_len_ + 1u);
+        }
+        q_cs_ = cs_;
+        q_ip_ = ip_;
+    }
+
+    /**
      * @brief Fetch one instruction byte at CS:IP (20-bit wrap; IP wraps at 64K).
+     *
+     * With prefetch_n_ == 0 this is a direct RAM load. Otherwise the BIU
+     * queue supplies the byte; a CS:IP mismatch flushes (no write-snoop).
      */
     uint8_t fetch8()
     {
+        if (prefetch_n_ == 0) [[unlikely]]
+        {
+            const uint32_t lin = ((static_cast<uint32_t>(cs_) << 4) + ip_) & 0xFFFFFu;
+            const uint8_t b = ram_[lin];
+            if (exec_map_ != nullptr) [[unlikely]]
+            {
+                exec_map_[lin] = b;
+            }
+            ++ip_;
+            return b;
+        }
+        if ((cs_ != q_cs_) || (ip_ != q_ip_))
+        {
+            q_len_ = 0;
+            q_head_ = 0;
+        }
+        if (q_len_ == 0)
+        {
+            fill_prefetch();
+        }
+        const uint8_t b = q_[q_head_];
+        q_head_ = static_cast<uint16_t>((static_cast<uint32_t>(q_head_) + 1u) &
+                                        (k_prefetch_max - 1u));
+        q_len_ = static_cast<uint16_t>(q_len_ - 1u);
         const uint32_t lin = ((static_cast<uint32_t>(cs_) << 4) + ip_) & 0xFFFFFu;
-        const uint8_t b = ram_[lin];
         if (exec_map_ != nullptr) [[unlikely]]
         {
             exec_map_[lin] = b;
         }
-        ++ip_;
+        ip_ = static_cast<uint16_t>(ip_ + 1u);
+        q_ip_ = ip_;
+        q_cs_ = cs_;
+        fill_prefetch();
         return b;
     }
 
@@ -212,10 +291,17 @@ private:
      *
      * A contiguous 16-bit RAM load is only valid when both bytes are the next
      * two CS:IP bytes. Linear FFFFFh wraps to 00000h; IP FFFFh wraps to 0000h
-     * in the same CS — those are not the same address.
+     * in the same CS — those are not the same address. Prefetch uses two
+     * fetch8 calls so IP wrap stays correct.
      */
     uint16_t fetch16()
     {
+        if (prefetch_n_ != 0)
+        {
+            const uint16_t lo = fetch8();
+            const uint16_t hi = fetch8();
+            return static_cast<uint16_t>(lo | (hi << 8));
+        }
         const uint32_t lin = ((static_cast<uint32_t>(cs_) << 4) + ip_) & 0xFFFFFu;
         if ((lin != 0xFFFFFu) && (ip_ != 0xFFFFu))
         {
@@ -418,6 +504,12 @@ private:
     bool halted_ = false;
     uint8_t last_op_ = 0;
     bool rom_bios_ = false;
+    uint16_t prefetch_n_ = static_cast<uint16_t>(k_prefetch_default);
+    uint16_t q_len_ = 0;
+    uint16_t q_head_ = 0;
+    uint16_t q_cs_ = 0;
+    uint16_t q_ip_ = 0;
+    uint8_t q_[k_prefetch_max]{};
 };
 
 } // namespace iron86

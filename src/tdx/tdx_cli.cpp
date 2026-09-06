@@ -5,6 +5,7 @@
 
 #include "tdx/tdx_cli.h"
 
+#include "iron86/cpu.h"
 #include "tdx/tdx_version.h"
 
 #include <cstdio>
@@ -45,6 +46,7 @@ void tdx_print_usage(FILE *fp)
         "      --run             After load, run until break/halt (headless-friendly)\n"
         "      --verbose         Log every stepped instruction to stderr\n"
         "      --exec-map FILE   1 MiB executed-opcode map (iron86; same linear addrs)\n"
+        "      --prefetch-bytes N  BIU prefetch queue (default: 4; 0=off, 6=8086; max 1024)\n"
         "      --scale N         CPU window integer scale (default: 2)\n"
         "\n"
         "Keys (CPU window): F7 trace, F8 step over, F9 run/pause, F2 breakpoint,\n"
@@ -54,6 +56,48 @@ void tdx_print_usage(FILE *fp)
         "\n"
         "tdx " TDX_VERSION_STRING "\n",
         fp);
+}
+
+/**
+ * @brief Match --name or --name=VAL as unsigned decimal.
+ * @return 1 matched, 0 no match, -1 missing/empty/non-numeric.
+ */
+static int take_u32_opt(const char *a, const char *name, unsigned long *val, int *i, int argc,
+                        char **argv)
+{
+    const size_t n = std::strlen(name);
+    const char *s = nullptr;
+    char *end = nullptr;
+    if (std::strncmp(a, name, n) != 0)
+    {
+        return 0;
+    }
+    if (a[n] == '=')
+    {
+        s = a + n + 1;
+    }
+    else if (a[n] == '\0')
+    {
+        if (*i + 1 >= argc)
+        {
+            return -1;
+        }
+        s = argv[++(*i)];
+    }
+    else
+    {
+        return 0;
+    }
+    if ((s == nullptr) || (s[0] == '\0') || (s[0] == '-'))
+    {
+        return -1;
+    }
+    *val = std::strtoul(s, &end, 10);
+    if ((end == s) || (*end != '\0'))
+    {
+        return -1;
+    }
+    return 1;
 }
 
 bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
@@ -245,6 +289,25 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
             {
                 out->scale = 1;
             }
+        }
+        else if ((std::strcmp(a, "--prefetch-bytes") == 0) ||
+                 (std::strncmp(a, "--prefetch-bytes=", 17) == 0))
+        {
+            unsigned long pv = 0;
+            const int t = take_u32_opt(a, "--prefetch-bytes", &pv, &i, argc, argv);
+            if (t <= 0)
+            {
+                std::fputs("tdx: --prefetch-bytes needs N\n", stderr);
+                out->usage_error = true;
+                return false;
+            }
+            if (pv > iron86::k_prefetch_max)
+            {
+                std::fprintf(stderr, "tdx: --prefetch-bytes %lu clamped to %u\n", pv,
+                             iron86::k_prefetch_max);
+                pv = iron86::k_prefetch_max;
+            }
+            out->prefetch_bytes = static_cast<unsigned>(pv);
         }
         else if (a[0] == '-')
         {

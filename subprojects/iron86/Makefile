@@ -47,9 +47,10 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack iron86
 	./tests/run_crtc
 	./tests/run_pack
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.15'
-	./iron86 --no-audio -v | grep -q 'iron86 0.15'
+	./iron86 -v | grep -q 'iron86 0.16'
+	./iron86 --no-audio -v | grep -q 'iron86 0.16'
 	./iron86 -h | grep -q -- --exec-map
+	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 >/tmp/iron86-usage.txt
 	grep -q Usage /tmp/iron86-usage.txt
 	grep -q -- --no-fast-post /tmp/iron86-usage.txt

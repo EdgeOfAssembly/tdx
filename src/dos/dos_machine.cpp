@@ -1017,6 +1017,7 @@ rex_status dos_machine::load_floppy(const char *image)
     }
     std::fclose(fp);
     iron = std::make_unique<iron86::pc>();
+    iron->c.set_prefetch_bytes(prefetch_bytes);
     if (!iron->load_floppy(img.data(), img.size()))
     {
         iron.reset();
@@ -1069,6 +1070,7 @@ rex_status dos_machine::load_bios_5150(const char *path)
     {
         iron = std::make_unique<iron86::pc>();
     }
+    iron->c.set_prefetch_bytes(prefetch_bytes);
     if (!iron->c.load_bios_5150_8k(rom.data(), rom.size()))
     {
         return REX_ERR_IO;
@@ -1084,6 +1086,15 @@ rex_status dos_machine::load_bios_5150(const char *path)
     return REX_OK;
 }
 
+void dos_machine::set_prefetch_bytes(unsigned n)
+{
+    prefetch_bytes = n;
+    if (iron)
+    {
+        iron->c.set_prefetch_bytes(n);
+    }
+}
+
 rex_status dos_machine::set_exec_map(const char *path)
 {
     if ((path == nullptr) || (path[0] == '\0'))
@@ -1094,6 +1105,7 @@ rex_status dos_machine::set_exec_map(const char *path)
     {
         iron = std::make_unique<iron86::pc>();
     }
+    iron->c.set_prefetch_bytes(prefetch_bytes);
     if (!iron->c.open_exec_map(path))
     {
         return REX_ERR_IO;

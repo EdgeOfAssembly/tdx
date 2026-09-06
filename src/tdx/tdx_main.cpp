@@ -106,6 +106,7 @@ int main(int argc, char **argv)
 
     s = rex_session_create();
     assert(s != nullptr);
+    rex_session_set_prefetch_bytes(s, cli.prefetch_bytes);
     cwd = cli.cwd.empty() ? nullptr : cli.cwd.c_str();
     if (!cli.bios.empty())
     {

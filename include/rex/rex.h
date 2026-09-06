@@ -73,6 +73,12 @@ REX_API rex_status rex_session_load_bios(rex_session *s, const char *path);
 REX_API void rex_session_set_mda(rex_session *s, int on);
 
 /**
+ * @brief 8088-style prefetch queue (iron86). Default 4; 0 = off (always RAM).
+ * Clamped to 1024. Call before or after load; applied when the iron86 PC exists.
+ */
+REX_API void rex_session_set_prefetch_bytes(rex_session *s, unsigned n);
+
+/**
  * @brief 1 MiB executed-opcode map (iron86). Same linear layout as RAM; zeros
  *        where nothing was fetched. Enable-only; default off.
  */

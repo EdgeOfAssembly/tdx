@@ -1,4 +1,4 @@
-.TH IRON86 1 "2026-09-06" "iron86 0.14" "User Commands"
+.TH IRON86 1 "2026-09-07" "iron86 0.16" "User Commands"
 .SH NAME
 iron86 \- chip-level 8086 IBM PC (no DOS)
 .SH SYNOPSIS
@@ -55,6 +55,12 @@ Type STRING as INT 16h keys.
 .TP
 .BI \-\-exec\-map " FILE"
 1 MiB executed-opcode map.
+.TP
+.BI \-\-prefetch\-bytes " N"
+8088-style BIU prefetch queue (default 4; 0 disables; 6 is 8086).
+Values above 1024 are clamped to 1024 (note on stderr).
+Queued bytes are not snooped on data writes (self-modifying code).
+A taken jump/call/ret/int/iret flushes the queue.
 .SH FLOPPY GEOMETRY
 Directory pack is non-recursive, max 32 8.3 names, 360K or 720K only.
 Raw images smaller than 300000 bytes use 8 spt / 1 head;

@@ -32,6 +32,7 @@ struct tdx_cli
     std::string exec_map;  /**< 1 MiB executed-opcode map (iron86). */
     bool mda = false;      /**< SW1 MDA 80×25 (B000, mode 7). Default CGA. */
     int scale = 2;
+    unsigned prefetch_bytes = 4; /**< iron86 BIU queue; 0=off. Default 8088. */
 };
 
 bool tdx_cli_parse(int argc, char **argv, tdx_cli *out);

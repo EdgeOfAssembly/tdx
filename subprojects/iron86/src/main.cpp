@@ -7,13 +7,14 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iterator>
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.15";
+static const char *k_version = "0.16";
 
 static void usage(FILE *out)
 {
@@ -44,6 +45,7 @@ static void usage(FILE *out)
         "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
         "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
         "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
+        "  --prefetch-bytes N   BIU prefetch queue (default: 4; 0=off, 6=8086; max 1024)\n"
         "\n",
         out);
     std::fprintf(out, "iron86 %s\n", k_version);
@@ -76,6 +78,59 @@ static int take_path_opt(const char *a, const char *name, const char **val, int 
     }
     *val = argv[++(*i)];
     return 1;
+}
+
+/**
+ * @brief Match --name or --name=VAL as an unsigned decimal.
+ * @return 1 matched, 0 no match, -1 missing/empty/non-numeric.
+ */
+static int take_u32_opt(const char *a, const char *name, unsigned long *val, int *i, int argc,
+                        char **argv)
+{
+    const size_t n = std::strlen(name);
+    const char *s = nullptr;
+    char *end = nullptr;
+    if (std::strncmp(a, name, n) != 0)
+    {
+        return 0;
+    }
+    if (a[n] == '=')
+    {
+        s = a + n + 1;
+    }
+    else if (a[n] == '\0')
+    {
+        if (*i + 1 >= argc)
+        {
+            return -1;
+        }
+        s = argv[++(*i)];
+    }
+    else
+    {
+        return 0;
+    }
+    if ((s == nullptr) || (s[0] == '\0') || (s[0] == '-'))
+    {
+        return -1;
+    }
+    *val = std::strtoul(s, &end, 10);
+    if ((end == s) || (*end != '\0'))
+    {
+        return -1;
+    }
+    return 1;
+}
+
+static unsigned clamp_prefetch(unsigned long v)
+{
+    if (v > iron86::k_prefetch_max)
+    {
+        std::fprintf(stderr, "iron86: --prefetch-bytes %lu clamped to %u\n", v,
+                     iron86::k_prefetch_max);
+        return iron86::k_prefetch_max;
+    }
+    return static_cast<unsigned>(v);
 }
 
 static std::vector<uint8_t> slurp(const char *path)
@@ -127,6 +182,7 @@ int main(int argc, char **argv)
     const char *keys = nullptr;
     const char *bios = nullptr;
     const char *exec_map = nullptr;
+    unsigned prefetch_bytes = iron86::k_prefetch_default;
     bool no_fast_post = false;
     bool no_audio = false;
     bool mda = false;
@@ -226,6 +282,20 @@ int main(int argc, char **argv)
             }
             continue;
         }
+        {
+            unsigned long pv = 0;
+            t = take_u32_opt(a, "--prefetch-bytes", &pv, &i, argc, argv);
+            if (t != 0)
+            {
+                if (t < 0)
+                {
+                    std::fputs("iron86: --prefetch-bytes needs N\n", stderr);
+                    return 2;
+                }
+                prefetch_bytes = clamp_prefetch(pv);
+                continue;
+            }
+        }
         if (a[0] == '-')
         {
             std::fprintf(stderr, "iron86: unknown option %s\n", a);
@@ -249,6 +319,7 @@ int main(int argc, char **argv)
             return 1;
         }
         iron86::pc p;
+        p.c.set_prefetch_bytes(prefetch_bytes);
         if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
         {
             std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
@@ -334,6 +405,7 @@ int main(int argc, char **argv)
     if ((floppy_a != nullptr) || (floppy_b != nullptr))
     {
         iron86::pc p;
+        p.c.set_prefetch_bytes(prefetch_bytes);
         if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
         {
             std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
@@ -436,6 +508,7 @@ int main(int argc, char **argv)
         return 1;
     }
     iron86::cpu c;
+    c.set_prefetch_bytes(prefetch_bytes);
     if ((exec_map != nullptr) && !c.open_exec_map(exec_map))
     {
         std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);

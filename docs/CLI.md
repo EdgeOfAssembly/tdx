@@ -2,7 +2,7 @@
 
 Order-independent options (cli-design). No-args prints usage except **tdxview**
 (attaches to `/tmp/tdx.sock`). `-h`/`--help` and `-v`/`--version` on every tool.
-Version **0.22** (tdx / tdxview / tdxctl), iron86 **0.14**.
+Version **0.23** (tdx / tdxview / tdxctl), iron86 **0.16**.
 
 Runtime floppy swap (no CPU reset): `tdxctl floppy b /path/DISK02.IMG`
 (A: stays the DOS boot disk; B: is M1TP “DISK B”).
@@ -43,6 +43,7 @@ tdx --floppy-a image.img --no-bios [options]
 | `--run` | After load, run until break/halt |
 | `--verbose` | Log every stepped instruction |
 | `--exec-map FILE` | 1 MiB executed-opcode map (iron86) |
+| `--prefetch-bytes N` | BIU prefetch queue (default 4; 0=off, 6=8086; max 1024) |
 | `--scale N` | CPU window integer scale (default 2) |
 
 Always `scripts/tdx-kill.sh` before a new tdx/tdxview pair.
@@ -108,6 +109,7 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 | `--floppy PATH` | Alias for `--floppy-a` |
 | `--keys STRING` | Type STRING as INT 16h keys |
 | `--exec-map FILE` | 1 MiB executed-opcode map |
+| `--prefetch-bytes N` | BIU prefetch queue (default 4; 0=off, 6=8086; max 1024) |
 
 ---
 

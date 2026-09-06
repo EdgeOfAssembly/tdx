@@ -32,6 +32,7 @@ struct rex_session
     bool floppy = false;
     bool floppy_uc = false;
     bool bios = false;
+    unsigned prefetch_bytes = 4;
     std::string floppy_a;
     std::string floppy_b;
     std::string guest;
@@ -141,6 +142,7 @@ rex_status rex_session_load(rex_session *s, const char *path, const char *cwd)
     s->arch = REX_ARCH_I8086;
     s->load_path = path;
     s->load_cwd = (cwd != nullptr) ? cwd : "";
+    s->dos->set_prefetch_bytes(s->prefetch_bytes);
     s->dos->exec_name = path_basename(path);
     refresh_guest(s);
     return s->dos->load_path(path, cwd);
@@ -159,6 +161,7 @@ rex_status rex_session_load_floppy(rex_session *s, const char *image)
     s->floppy = true;
     s->floppy_uc = false;
     s->floppy_a = image;
+    s->dos->set_prefetch_bytes(s->prefetch_bytes);
     s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_floppy(image);
@@ -176,6 +179,7 @@ rex_status rex_session_load_floppy_uc(rex_session *s, const char *image)
     s->load_cwd.clear();
     s->floppy = false;
     s->floppy_uc = true;
+    s->dos->set_prefetch_bytes(s->prefetch_bytes);
     s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_floppy_uc(image);
@@ -194,9 +198,23 @@ rex_status rex_session_load_bios(rex_session *s, const char *path)
     s->floppy = false;
     s->floppy_uc = false;
     s->bios = true;
+    s->dos->set_prefetch_bytes(s->prefetch_bytes);
     s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_bios_5150(path);
+}
+
+void rex_session_set_prefetch_bytes(rex_session *s, unsigned n)
+{
+    if (s == nullptr)
+    {
+        return;
+    }
+    s->prefetch_bytes = n;
+    if (s->dos)
+    {
+        s->dos->set_prefetch_bytes(n);
+    }
 }
 
 void rex_session_set_mda(rex_session *s, int on)
