@@ -970,7 +970,14 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "cga") || (cmd == "video") || (cmd == "frame"))
     {
         uint8_t px[DOS_CGA_PIXELS];
-        const uint8_t mode = rex_session_video_mode(s);
+        uint8_t mode = rex_session_video_mode(s);
+        {
+            uint8_t crt = 0;
+            if ((rex_session_read_mem(s, 0x449ull, &crt, 1) == REX_OK) && (crt != 0))
+            {
+                mode = crt; /* live BDA; inner loop samples 40:49 only every 256 insns */
+            }
+        }
         resp["mode"] = mode;
         resp["w"] = DOS_CGA_WIDTH;
         resp["h"] = DOS_CGA_HEIGHT;
