@@ -400,10 +400,33 @@ void pc::type_keys(const char *s)
     }
 }
 
+static void floppy_geom(size_t n, uint32_t *spt, uint32_t *heads)
+{
+    if (n >= 1474560u)
+    {
+        *spt = 18; /* 1.44M 80/2/18 */
+        *heads = 2;
+    }
+    else if (n >= 737280u)
+    {
+        *spt = 9; /* 720K 80/2/9 */
+        *heads = 2;
+    }
+    else if ((n >= 512u) && (n < 300000u))
+    {
+        *spt = 8;
+        *heads = 1;
+    }
+    else
+    {
+        *spt = 9; /* 360K 40/2/9 */
+        *heads = 2;
+    }
+}
+
 uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
 {
-    /* 360K 40/2/9 or 720K 80/2/9 (same SPT/heads). sec is 1-based.
-     * Tiny images (<300K): 8 spt, 1 head (single-sided 8-sector). */
+    /* sec is 1-based. Size picks 360K / 720K / 1.44M / tiny 8-spt. */
     if (sec == 0)
     {
         return UINT32_MAX;
@@ -412,12 +435,7 @@ uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
     uint32_t nh = 2;
     if (unit < 2u)
     {
-        const size_t n = floppy_[unit].size();
-        if ((n >= 512u) && (n < 300000u))
-        {
-            spt = 8;
-            nh = 1;
-        }
+        floppy_geom(floppy_[unit].size(), &spt, &nh);
     }
     return (static_cast<uint32_t>(cyl) * nh + head) * spt + (static_cast<uint32_t>(sec) - 1u);
 }
@@ -687,6 +705,64 @@ bool pc::int13()
         c.set_cf(false);
         return true;
     }
+    if (ah == 0x03)
+    {
+        const uint8_t nsec = (al == 0) ? 1 : al;
+        const uint8_t sec = static_cast<uint8_t>(cl & 0x3Fu);
+        const uint8_t unit = static_cast<uint8_t>(dl & 3u);
+        if ((unit > 1u) || (floppy_[unit].size() < 512u))
+        {
+            c.set_ax(0x0400);
+            c.set_cf(true);
+            return true;
+        }
+        const uint32_t lba = chs_lba(ch, dh, sec, dl);
+        const uint32_t off = lba * 512u;
+        const uint32_t bytes = static_cast<uint32_t>(nsec) * 512u;
+        if ((lba == UINT32_MAX) || (off + bytes > floppy_[unit].size()))
+        {
+            c.set_ax(0x0400);
+            c.set_cf(true);
+            return true;
+        }
+        uint32_t src = cpu::phys(c.es(), c.bx());
+        for (uint32_t i = 0; i < bytes; i++)
+        {
+            floppy_[unit][off + i] = c.mem_read8(src + i);
+        }
+        c.set_ax(nsec);
+        c.set_cf(false);
+        return true;
+    }
+    if (ah == 0x08)
+    {
+        const uint8_t unit = static_cast<uint8_t>(dl & 3u);
+        if ((unit > 1u) || (floppy_[unit].size() < 512u))
+        {
+            c.set_ax(0x0100);
+            c.set_cf(true);
+            return true;
+        }
+        const size_t n = floppy_[unit].size();
+        uint32_t spt32 = 9;
+        uint32_t heads32 = 2;
+        floppy_geom(n, &spt32, &heads32);
+        const uint8_t spt = static_cast<uint8_t>(spt32);
+        const uint8_t heads = static_cast<uint8_t>(heads32);
+        const uint16_t cyls = static_cast<uint16_t>((n / 512u) / (spt32 * heads32));
+        const uint8_t maxc = (cyls > 1u) ? static_cast<uint8_t>(cyls - 1u) : 0;
+        uint8_t ndrv = 1;
+        if (floppy_[1].size() >= 512u)
+        {
+            ndrv = 2;
+        }
+        c.set_ax(0);
+        c.set_bx(0);
+        c.set_cx(static_cast<uint16_t>((static_cast<uint16_t>(maxc) << 8) | spt));
+        c.set_dx(static_cast<uint16_t>((static_cast<uint16_t>(heads - 1u) << 8) | ndrv));
+        c.set_cf(false);
+        return true;
+    }
     c.set_ax(0x0100);
     c.set_cf(true);
     return true;
@@ -750,12 +826,12 @@ void pc::wire_pc_hw()
     }
     hw_.dma.mask = 0x0F;
     hw_.fdc.msr = 0x80;
-    hw_.fdc.spt = 9;
-    hw_.fdc.heads = 2;
-    if ((floppy_[0].size() >= 512u) && (floppy_[0].size() < 300000u))
     {
-        hw_.fdc.spt = 8;
-        hw_.fdc.heads = 1;
+        uint32_t spt = 9;
+        uint32_t heads = 2;
+        floppy_geom(floppy_[0].size(), &spt, &heads);
+        hw_.fdc.spt = static_cast<uint8_t>(spt);
+        hw_.fdc.heads = static_cast<uint8_t>(heads);
     }
     c.set_io([this](uint16_t p) { return in_port(p); },
              [this](uint16_t p, uint8_t v) { out_port(p, v); });
@@ -1087,6 +1163,13 @@ uint8_t pc::pit_read(uint16_t port)
     return ret;
 }
 
+void pc::wall_clock_irq0()
+{
+    /* Same edge as Unicorn pit_poll: drop then raise so edge-triggered IRR latches. */
+    pic_deassert(0);
+    pic_assert(0);
+}
+
 void pc::pit_tick()
 {
     for (uint8_t i = 0; i < 3u; i++)
@@ -1097,6 +1180,8 @@ void pc::pit_tick()
             continue;
         }
         const uint8_t prev_out = ch.out_pin;
+        /* Do not stride ch0 reload-0: TANK.COM INT 1Ch STIs and nested IRQ0
+         * smashed CS:IP to 0000:7BB8. tdx F9 + wall_clock_irq0 cover 18.2 Hz. */
         ch.count = static_cast<uint16_t>(ch.count - 1u);
         if (ch.count == 0)
         {

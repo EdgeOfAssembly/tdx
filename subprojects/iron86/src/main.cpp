@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-static const char *k_version = "0.13";
+static const char *k_version = "0.15";
 
 static void usage(FILE *out)
 {
@@ -376,12 +376,23 @@ int main(int argc, char **argv)
             if ((n & 0x3FFFu) == 0)
             {
                 const std::string &t = p.tty();
-                if ((t.find("FCB OK") != std::string::npos) ||
-                    (t.find("FCB FAIL") != std::string::npos))
+                if (t.find("FCB FAIL") != std::string::npos)
                 {
                     break;
                 }
-                if ((keys == nullptr) && (t.find("A>") != std::string::npos) && (n > 80000ull))
+                if (keys != nullptr)
+                {
+                    const bool want_mz = std::strstr(keys, "MZFAR") != nullptr;
+                    const bool want_if = std::strstr(keys, "IFLAG") != nullptr;
+                    const bool fcb = t.find("FCB OK") != std::string::npos;
+                    const bool mz = t.find("MZFAR OK") != std::string::npos;
+                    const bool iff = t.find("IF OK") != std::string::npos;
+                    if (fcb && (!want_mz || mz) && (!want_if || iff))
+                    {
+                        break;
+                    }
+                }
+                else if ((t.find("A>") != std::string::npos) && (n > 80000ull))
                 {
                     /* Prompt is up; no --keys, skip the idle AH=0A spin. */
                     break;

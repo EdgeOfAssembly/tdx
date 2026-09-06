@@ -34,6 +34,7 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 **Default: load official ROS** (`tdx --floppy-a` → 5150 8K unless `--no-bios`). Fast-post is warm-boot (`40:72` + `BX=1234h`, `CS:IP=F000:E199`). Do **not** grow the C++ INT 10/13/16 clone as the main path.
 
+- [x] **PIT/IRQ0 under tdx F9** — BIOS ch0 reload 0 strides in `pit_tick`; F9 slices keep stepping through INT 16 wait so ROM INT 8 advances `40:6C`. `pit_poll` pulses iron86 IRQ0 at 18.2 Hz wall. (TANK.COM INT 1A stall.)
 - [ ] **Profile POST** — `make profile` (gprof `-pg`), then speed warm-boot without patching ROS (checksum ERR01). PIT/CGA status waits, tdx F9 slice.
 - [ ] **`--no-bios` fallback** — keep working when the user has no ROM. Today: enough INT 10/13/16 for FloppyOS + SETUP. **Do not expand this until last.**
 - [ ] **Full reimplemented BIOS (LAST)** — PC → XT → AT → 386/486/Pentium. For each machine, read the **official ROS** and reimplement hot paths in **Intel syntax** (`-masm=intel` / `.intel_syntax noprefix` inline asm), not a second C++ BIOS. Massive; after HDD/FDC/FlopFS.

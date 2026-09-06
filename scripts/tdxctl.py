@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.20"
+VERSION = "0.22"
 
 
 def usage() -> None:
@@ -24,7 +24,7 @@ def usage() -> None:
   (same as CPU +/- keys); 0 ms is fastest.
 
 Commands:
-  step | step-in | over | step-over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | quit | help
+  step | step-in | over | step-over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | floppy | quit | help
   mem <seg:off> [len]
   poke <seg:off> <hex>   write bytes (90CF or 90 CF)
   setip <seg:off>        set CS:IP
@@ -54,6 +54,7 @@ Commands:
   delay [N|+|-]      F9 slice park in ms (query / set / slower / faster)
   faster             Decrease delay one 5 ms step (not below 0)
   slower             Increase delay one 5 ms step (cap 200 ms)
+  floppy a|b PATH    Swap drive A: or B: image at runtime (UNIX socket)
 
 Options:
   -h, --help         Show this help and exit
@@ -155,6 +156,10 @@ def build_line(cmd: str, rest: list[str]) -> str:
         return json.dumps({"cmd": "nav", "key": rest[0]})
     if cmd == "shot" and rest:
         return json.dumps({"cmd": "shot", "path": rest[0]})
+    if cmd in {"floppy", "swap", "floppy-swap"} and rest:
+        unit = rest[0]
+        path = " ".join(rest[1:])
+        return json.dumps({"cmd": "floppy", "unit": unit, "path": path})
     if cmd == "delay" and rest:
         token = rest[0]
         if token in {"+", "-"}:

@@ -30,7 +30,7 @@
 | **1C** | Get FAT (DL) | Same stub as 1B (DL ignored) |
 | **4E** | Find first | CX=attr, DS:DX filespec (`*.*`, `B:*.*`) |
 | **4F** | Find next | continue search |
-| **4B** | Exec | AL=0..3 load+run **COM or MZ EXE** (AL>3 → AX=1 CF). Full payload read required. Relocs; ES:BX EPB (minimal). |
+| **4B** | Exec | AL=0..3 load+run **COM or MZ EXE** (AL>3 → AX=1 CF). Full payload read required. Relocs; ES:BX EPB (minimal). Child entry is `retf` with **IF=1** (`sti` after SS:SP). |
 | **48** | Allocate | BX=paragraphs → AX=segment; fail CF AX=8 BX=largest free |
 | **49** | Free | ES=block (payload segment) |
 | **4A** | Resize | ES=block, BX=new paragraphs (shrink/grow if coalesced). Coalesce keeps `'M'` on owned blocks (do not mark COM as `'Z'`). |

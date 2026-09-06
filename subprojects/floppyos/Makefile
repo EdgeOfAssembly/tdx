@@ -68,20 +68,25 @@ $(BUILD_DIR)/tiny.com: programs/tiny.asm | $(BUILD_DIR)
 $(BUILD_DIR)/fcbtest.com: programs/fcbtest.asm | $(BUILD_DIR)
 	$(NASM) -f bin -o $@ $<
 
-programs: $(BUILD_DIR)/hello.com $(BUILD_DIR)/tiny.com $(BUILD_DIR)/fcbtest.com
+$(BUILD_DIR)/iflag.com: programs/iflag.asm | $(BUILD_DIR)
+	$(NASM) -f bin -o $@ $<
+
+programs: $(BUILD_DIR)/hello.com $(BUILD_DIR)/tiny.com $(BUILD_DIR)/fcbtest.com \
+	$(BUILD_DIR)/iflag.com
 image: $(BUILD_DIR)/floppyos.img
 
 $(BUILD_DIR)/floppyos.img: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/stage1_5.bin \
 		$(BUILD_DIR)/kernel.bin $(BUILD_DIR)/hello.com $(BUILD_DIR)/command.com \
 		$(BUILD_DIR)/hello.exe $(BUILD_DIR)/mzfar.exe $(BUILD_DIR)/tiny.com \
-		$(BUILD_DIR)/fcbtest.com \
+		$(BUILD_DIR)/fcbtest.com $(BUILD_DIR)/iflag.com \
 		$(BUILD_DIR)/mkimg $(BUILD_DIR)/mkflopfs
 	$(BUILD_DIR)/mkimg -s 360 -o $@ -b $(BUILD_DIR)/boot.bin
 	$(BUILD_DIR)/mkflopfs -i $@ -s $(BUILD_DIR)/stage1_5.bin \
 		-k $(BUILD_DIR)/kernel.bin -c $(BUILD_DIR)/command.com \
 		-f $(BUILD_DIR)/hello.com -f $(BUILD_DIR)/hello.exe \
 		-f $(BUILD_DIR)/mzfar.exe \
-		-f $(BUILD_DIR)/tiny.com -f $(BUILD_DIR)/fcbtest.com
+		-f $(BUILD_DIR)/tiny.com -f $(BUILD_DIR)/fcbtest.com \
+		-f $(BUILD_DIR)/iflag.com
 	@test $$(wc -c < $@) -eq 368640
 
 IRON86 ?= ../iron86/iron86
@@ -90,9 +95,10 @@ smoke: smoke-iron86
 
 smoke-iron86: image
 	@test -x $(IRON86) || $(MAKE) -s -C ../iron86
-	$(IRON86) --floppy $(BUILD_DIR)/floppyos.img --keys $$'B:\rA:\rFCBTEST\rMZFAR.EXE\r' \
+	$(IRON86) --floppy $(BUILD_DIR)/floppyos.img --keys $$'B:\rA:\rFCBTEST\rIFLAG\rMZFAR.EXE\r' \
 		| tee $(BUILD_DIR)/smoke-iron86.log
 	grep -q "FCB OK" $(BUILD_DIR)/smoke-iron86.log
+	grep -q "IF OK" $(BUILD_DIR)/smoke-iron86.log
 	grep -q "MZFAR OK" $(BUILD_DIR)/smoke-iron86.log
 	grep -q "A>" $(BUILD_DIR)/smoke-iron86.log
 	grep -q "B>" $(BUILD_DIR)/smoke-iron86.log

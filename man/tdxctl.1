@@ -1,4 +1,4 @@
-.TH TDXCTL 1 "2026-09-04" "tdx 0.19" "User Commands"
+.TH TDXCTL 1 "2026-09-06" "tdx 0.22" "User Commands"
 .SH NAME
 tdxctl \- talk to tdx or tdxview over a UNIX socket
 .SH SYNOPSIS
@@ -93,6 +93,14 @@ Breakpoints (see
 .B tdxctl \-h
 for full forms).
 .TP
+.BI "floppy " "a|b PATH"
+Replace drive A: or B: with a new image (or host directory) without
+resetting the CPU. M1 Tank Platoon: A: stays DOS, B: swaps
+.I DISK01.IMG
+/
+.I DISK02.IMG
+when the game asks for DISK B.
+.TP
 .B quit
 Ask tdx to exit.
 .SH EXIT STATUS
@@ -115,6 +123,10 @@ Unpause at 0 ms delay:
 .B tdxctl delay 0
 .br
 .B tdxctl unpause
+.RE
+Swap B: to M1TP disk 2:
+.RS
+.B tdxctl floppy b /path/DISK02.IMG
 .RE
 .SH SEE ALSO
 .BR tdx (1),

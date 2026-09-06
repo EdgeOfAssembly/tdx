@@ -454,6 +454,66 @@ int main()
         expect_eq(p.c.mem_read8(0x10200u), 0x7E, "int13 720k last sec");
     }
     {
+        /* Runtime swap B: (tdxctl floppy b PATH). */
+        std::vector<uint8_t> first(368640u, 0);
+        std::vector<uint8_t> second(368640u, 0);
+        first[0] = 0x11;
+        second[0] = 0x22;
+        iron86::pc p;
+        expect(p.attach_floppy(1, first.data(), first.size()), "swap B first");
+        expect(p.attach_floppy(1, second.data(), second.size()), "swap B second");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0,
+            0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,
+            0xB9, 0x01, 0x00, 0xBA, 0x01, 0x00,
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "swap B AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0x22, "swap B new boot");
+    }
+    {
+        /* 1.44M 80/2/18: sector 18 is still C=0 H=0 (would be H=1 if 9 spt). */
+        std::vector<uint8_t> img(1474560u, 0);
+        img[17u * 512u] = 0xA5;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "1440k attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0,
+            0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,
+            0xB9, 0x12, 0x00, 0xBA, 0x00, 0x00, /* C=0 S=18 H=0 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "1440k AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0xA5, "1440k spt18");
+    }
+    {
+        /* INT 13h AH=03 write then AH=02 read (SETUP config on B:). */
+        std::vector<uint8_t> img(368640u, 0);
+        iron86::pc p;
+        expect(p.attach_floppy(1, img.data(), img.size()), "write attach B");
+        p.wire_pc_hw();
+        p.c.mem_write8(0x10200u, 0x5A);
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0,
+            0xB8, 0x01, 0x03, 0xBB, 0x00, 0x02, /* AH=3 write 1 sec */
+            0xB9, 0x01, 0x00, 0xBA, 0x01, 0x00,
+            0xCD, 0x13,
+            0xB8, 0x01, 0x02, 0xBB, 0x00, 0x04, /* AH=2 read to 0400 */
+            0xB9, 0x01, 0x00, 0xBA, 0x01, 0x00,
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 64);
+        expect((p.c.ax() & 0xFF00u) == 0, "int13 write AH=0");
+        expect_eq(p.c.mem_read8(0x10400u), 0x5A, "int13 write roundtrip");
+    }
+    {
         /* INT 10h AH=02/03/09: SETUP.TNK centers menu lines (not AH=0E only). */
         iron86::pc p;
         p.boot();
@@ -483,6 +543,48 @@ int main()
         run(p.c, 20);
         expect_eq(p.c.mem_read8(0xB8000u), static_cast<uint16_t>(' '), "int10 AH=6 clear");
         expect_eq(p.c.mem_read8(0xB8000u + 1u), 0x07, "int10 AH=6 attr");
+    }
+    {
+        /* BIOS ch0 mode 3 reload 0: stride must fire IRQ0 within a tdx F9 slice
+         * (~32k insns). ISR at 1000:0300 increments 40:6C and EOIs. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x13, 0xE6, 0x20,             /* MOV AL,13h; OUT 20h,AL ICW1 */
+            0xB0, 0x08, 0xE6, 0x21,             /* ICW2 = 08h */
+            0xB0, 0x09, 0xE6, 0x21,             /* ICW4 */
+            0xB0, 0xFE, 0xE6, 0x21,             /* IMR unmask IRQ0 */
+            0xB0, 0x36, 0xE6, 0x43,             /* PIT ch0 mode 3 */
+            0xB0, 0x20, 0xE6, 0x40,             /* reload LSB 32 */
+            0xB0, 0x00, 0xE6, 0x40,             /* reload MSB 0 */
+            0x31, 0xC0, 0x8E, 0xD8,             /* XOR AX,AX; MOV DS,AX */
+            0xC7, 0x06, 0x20, 0x00, 0x00, 0x03, /* IVT[08] off = 0300h */
+            0xC7, 0x06, 0x22, 0x00, 0x00, 0x10, /* IVT[08] seg = 1000h */
+            0xC7, 0x06, 0x6C, 0x04, 0x00, 0x00, /* 40:6C = 0 */
+            0xFB,                               /* STI */
+            0xA1, 0x6C, 0x04,                   /* MOV AX,[046C] */
+            0x3D, 0x02, 0x00,                   /* CMP AX,2 */
+            0x72, 0xF8,                         /* JB to MOV AX (IP after JB - 8) */
+            0xF4,                               /* HLT */
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        static const uint8_t isr[] = {
+            0x1E,                   /* PUSH DS */
+            0x31, 0xC0,             /* XOR AX,AX */
+            0x8E, 0xD8,             /* MOV DS,AX */
+            0xFF, 0x06, 0x6C, 0x04, /* INC WORD [046C] */
+            0x1F,                   /* POP DS */
+            0xB0, 0x20,             /* MOV AL,20h */
+            0xE6, 0x20,             /* OUT 20h,AL EOI */
+            0xCF,                   /* IRET */
+        };
+        for (size_t i = 0; i < sizeof(isr); i++)
+        {
+            p.c.mem_write8(0x10000u + 0x300u + static_cast<uint32_t>(i), isr[i]);
+        }
+        run(p.c, 20000);
+        expect(p.c.halted(), "pit reload0 irq0 hlt");
+        expect(p.c.mem_read16(0x46Cu) >= 2u, "pit reload0 40:6C");
     }
 
     if (g_fail != 0)

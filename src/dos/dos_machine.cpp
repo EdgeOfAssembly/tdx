@@ -1270,25 +1270,9 @@ rex_status dos_machine::step_one()
             last_stop = REX_STOP_HALTED;
             return REX_OK;
         }
-        if (iron->waiting_key())
-        {
-            wait_key = true;
-            last_stop = REX_STOP_WAIT_KEY;
-            con_out = iron->tty();
-            {
-                const uint8_t bda_mode = iron->c.mem_read8(0x449u);
-                if (mda_video)
-                {
-                    video_mode = 0x07;
-                }
-                else
-                {
-                    video_mode = (bda_mode != 0) ? bda_mode : iron->video_mode();
-                }
-                cga_3d9 = iron->c.mem_read8(0x466u);
-            }
-            return REX_OK;
-        }
+        /* Do not return early on waiting_key: INT 16h AH=00 rewinds IP, and
+         * after_insn must still tick the PIT so ROM INT 8 can advance 40:6C.
+         * F7 still reports WAIT_KEY after the step. */
         if ((bps.find(lin) != bps.end()) && (!skip_bp))
         {
             at_break = true;
@@ -1448,11 +1432,14 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
     if (iron)
     {
         rex_status st = REX_OK;
+        bool parked_key = false;
         stop_req = false;
         wait_key = false;
         /* Continue past BPINT/BP: skip_* flags still suppress the same insn. */
         at_break = false;
-        while ((left > 0) && (!halted) && (!at_break) && (!wait_key) && (!stop_req))
+        /* INT 16h AH=00 must not end the slice: tdx F9 is 8k–32k insns with a
+         * 5 ms park, and a 1-insn slice never lets BIOS PIT reload-0 wrap. */
+        while ((left > 0) && (!halted) && (!at_break) && (!stop_req))
         {
             st = step_one();
             left--;
@@ -1465,6 +1452,13 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
                 last_stop = REX_STOP_STEP;
                 return REX_OK;
             }
+            if (wait_key)
+            {
+                parked_key = true;
+                wait_key = false;
+                last_stop = REX_STOP_STEP;
+                continue;
+            }
             if ((last_stop != REX_STOP_STEP) && (last_stop != REX_STOP_NONE))
             {
                 break;
@@ -1473,6 +1467,12 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         if (halted)
         {
             last_stop = REX_STOP_HALTED;
+        }
+        else if (parked_key &&
+                 ((last_stop == REX_STOP_STEP) || (last_stop == REX_STOP_NONE)))
+        {
+            last_stop = REX_STOP_WAIT_KEY;
+            wait_key = true;
         }
         return REX_OK;
     }
@@ -2035,6 +2035,25 @@ rex_status dos_machine::vcr_forward(bool step_into)
 
 void dos_machine::pit_poll(void)
 {
+    if (iron)
+    {
+        struct timespec now{};
+        uint64_t ns = 0;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        ns = (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
+        if (pit_last_ns == 0)
+        {
+            pit_last_ns = ns;
+            return;
+        }
+        if (ns - pit_last_ns < 55000000ull)
+        {
+            return;
+        }
+        pit_last_ns = ns;
+        iron->wall_clock_irq0();
+        return;
+    }
     /* Wall-clock tick advance (BIOS 046Ch dword + cadence for the tdx UI).
      * The real work that unstucks DOS games is done by deliver_pending_irq()
      * via the emulated 8259 PIC + 8253 PIT below, ticked by guest instruction

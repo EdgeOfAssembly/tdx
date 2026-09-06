@@ -1,6 +1,6 @@
 /**
  * @file pc.h
- * @brief Tiny IBM PC: 360K/720K floppy + INT 10h/13h/16h + INT 1Ah ticks.
+ * @brief Tiny IBM PC: 360K/720K/1.44M floppy + INT 10h/13h/16h + INT 1Ah ticks.
  */
 #ifndef IRON86_PC_H
 #define IRON86_PC_H
@@ -76,6 +76,15 @@ public:
      * Skips PIT/DMA/64K fill; still runs 8259 ICW and real INT 10h/19h.
      */
     void enable_fast_post();
+
+    /**
+     * @brief Pulse IRQ0 once (tdx F9 wall-clock 18.2 Hz).
+     *
+     * Unicorn `pit_poll` already deassert+assert IRQ0 between slices. iron86
+     * `--bios` must do the same so ROM INT 8 can advance BDA 40:6C while
+     * INT 16h AH=00 has `waiting_key` set.
+     */
+    void wall_clock_irq0();
 
     /**
      * @brief SW1 video bits: MDA 80×25 (0x3D family) vs CGA 80×25 (0x2D).

@@ -1220,6 +1220,49 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["regs"] = regs_json(s);
         resp["con"] = json_latin1(rex_session_con_out(s));
     }
+    else if ((cmd == "floppy") || (cmd == "swap") || (cmd == "floppy-swap"))
+    {
+        std::string unit = req.value("unit", "");
+        std::string path = req.value("path", "");
+        if (unit.empty() && req.contains("_rest"))
+        {
+            std::istringstream is(req["_rest"].get<std::string>());
+            is >> unit;
+            std::getline(is, path);
+            while ((!path.empty()) && ((path.front() == ' ') || (path.front() == '\t')))
+            {
+                path.erase(path.begin());
+            }
+        }
+        uint8_t drv = 0xFF;
+        if ((unit == "a") || (unit == "A") || (unit == "0"))
+        {
+            drv = 0;
+        }
+        else if ((unit == "b") || (unit == "B") || (unit == "1"))
+        {
+            drv = 1;
+        }
+        if ((drv > 1u) || path.empty())
+        {
+            resp["ok"] = false;
+            resp["error"] = "usage: floppy a|b PATH";
+        }
+        else
+        {
+            const rex_status st = (drv == 0)
+                                      ? rex_session_attach_floppy(s, path.c_str())
+                                      : rex_session_attach_floppy_b(s, path.c_str());
+            if (st != REX_OK)
+            {
+                resp["ok"] = false;
+                resp["error"] = "floppy";
+                resp["status"] = rex_status_str(st);
+            }
+        }
+        resp["unit"] = unit;
+        resp["path"] = path;
+    }
     else if (cmd == "reset")
     {
         if (rex_session_reset(s) != REX_OK)
@@ -1236,7 +1279,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem poke setip dump bp bpint bpinsn bpm bpdel bplist shot key type nav status cga ping quit";
+            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem poke setip dump bp bpint bpinsn bpm bpdel bplist shot key type nav status cga ping floppy quit";
     }
     else
     {

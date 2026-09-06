@@ -651,10 +651,24 @@ install_int21:
         mov     bx, 0x21*4
         mov     word [bx], int21_handler
         mov     [bx+2], cs
+        ; TANK.COM anti-debug: INT 2 and INT 3 first opcode must be IRET.
+        mov     word [0x00], iret_stub
+        mov     [0x02], cs
+        mov     word [0x04], iret_stub
+        mov     [0x06], cs
+        mov     word [0x08], iret_stub
+        mov     [0x0A], cs
+        mov     word [0x0C], iret_stub
+        mov     [0x0E], cs
+        mov     word [0x10], iret_stub
+        mov     [0x12], cs
         pop     ds
         pop     bx
         pop     ax
         ret
+
+iret_stub:
+        iret
 
 int21_handler:
         sti
@@ -1178,16 +1192,19 @@ ex_run:
         mov     word [cs:dta_off], 0x80
         mov     ds, ax
         mov     es, ax
-        mov     ss, [cs:ex_ss]
-        mov     sp, [cs:ex_sp]
         xor     bx, bx
         xor     cx, cx
         xor     dx, dx
         xor     si, si
         xor     di, di
+        cli                             ; 8086: IRQ between SS and SP uses a mixed stack
+        mov     ss, [cs:ex_ss]
+        mov     sp, [cs:ex_sp]
         push    word [cs:ex_cs]
         push    word [cs:ex_ip]
         mov     dl, [cs:cur_drive]
+        cld                             ; TANK.COM leaves DF=1; EXEPACK rep movsb must go forward
+        sti                             ; INT 21h 4B is retf, not IRET; child needs IF=1
         retf
 
 ex_fail_free:

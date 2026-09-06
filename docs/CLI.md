@@ -2,7 +2,10 @@
 
 Order-independent options (cli-design). No-args prints usage except **tdxview**
 (attaches to `/tmp/tdx.sock`). `-h`/`--help` and `-v`/`--version` on every tool.
-Version **0.19** (tdx / tdxview / tdxctl), iron86 **0.13**.
+Version **0.22** (tdx / tdxview / tdxctl), iron86 **0.14**.
+
+Runtime floppy swap (no CPU reset): `tdxctl floppy b /path/DISK02.IMG`
+(A: stays the DOS boot disk; B: is M1TP “DISK B”).
 
 Man pages: `man/tdx.1`, `man/tdxview.1`, `man/tdxctl.1`, `man/iron86.1`
 (`mandoc -T lint`; `man -l man/tdx.1`).

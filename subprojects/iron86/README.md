@@ -32,7 +32,7 @@ reset vector at `FFFF0`, CPU `FFFF:0000`. Do not commit the ROM.
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.12** — dual floppy A:/B: (`--floppy-a` / `--floppy-b`, directory
+Version **0.14** — dual floppy A:/B: (`--floppy-a` / `--floppy-b`, directory
 packs 360K or 720K FlopFS), 544K PPI I/O nibble (Py86 `0x0F`, 1981 BIOS max),
 PC speaker BEL
 (PIT ch2 + PPI 61h bits 0+1; `--no-audio` only). Fast-post
