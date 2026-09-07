@@ -1065,9 +1065,25 @@ void pc::ppi_on_port_b()
     {
         ppi_tick();
     }
-    if (clock_now_high && ((prev & 0x80u) == 0) && ((now & 0x80u) != 0))
+    const bool pb7_was = (prev & 0x80u) != 0;
+    const bool pb7_now = (now & 0x80u) != 0;
+    if (!pb7_was && pb7_now)
     {
+        /* Keyboard ack: 5150 INT 9 OR AL,80h / OUT 61h. */
+        p.kbd_ready = 0;
+        p.kbd_irq_pend = 0;
         pic_deassert(1);
+    }
+    if (pb7_was && !pb7_now)
+    {
+        /* PB7 falling: present next queued scancode (make/break). */
+        if (!scanq_.empty())
+        {
+            p.kbd_data = scanq_.front();
+            scanq_.pop_front();
+            p.kbd_ready = 1;
+            p.kbd_irq_pend = 1;
+        }
     }
 }
 
@@ -1766,13 +1782,11 @@ uint8_t pc::in_port(uint16_t port)
             {
                 return hw_.ppi.dip;
             }
-            const uint8_t sc = hw_.ppi.kbd_data;
-            if (hw_.ppi.kbd_ready != 0)
-            {
-                hw_.ppi.kbd_ready = 0;
-                pic_deassert(1);
-            }
-            return sc;
+            /* 5150 PPI Port A is a latch. BIOS INT 9 (F000:E987) does
+             * IN 60h then pulses PB7 (OR 80h / OUT 61h / restore) to ack.
+             * Clearing ready on the read broke wrap-INT9 games (M1TP
+             * CGAGRPH: IN 60h, then CALL FAR the ROM handler). */
+            return hw_.ppi.kbd_data;
         }
         if (p == 0x61u)
         {

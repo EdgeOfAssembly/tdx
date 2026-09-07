@@ -158,6 +158,22 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x001E, "xt scan a");
     }
     {
+        /* IN 60h does not ack; 5150 INT 9 PB7 pulse does. Two reads see
+         * make 1Eh; after OR 80h / OUT 61h / restore, IN 60h is break 9Eh.
+         * M1TP CGAGRPH wraps ROM INT 9 this way. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        p.type_scan(0x1E);
+        const uint8_t prog[] = {
+            0xE4, 0x60, 0x88, 0xC3, 0xE4, 0x60, 0x38, 0xD8, 0x75, 0x17, 0x3C, 0x1E,
+            0x75, 0x13, 0xE4, 0x61, 0x8A, 0xE0, 0x0C, 0x80, 0xE6, 0x61, 0x86, 0xE0,
+            0xE6, 0x61, 0xE4, 0x60, 0x3C, 0x9E, 0x75, 0x01, 0xF4, 0xB0, 0xFF, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 64);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x009E, "ppi 60 latch wrap");
+    }
+    {
         /* PIT ch2 mode 3 + OUT 61h bits 0+1 → one rising-edge beep. */
         iron86::pc p;
         p.wire_pc_hw();
