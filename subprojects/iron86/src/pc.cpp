@@ -1095,6 +1095,9 @@ void pc::ppi_tick()
     {
         return;
     }
+    /* PB6+PB7=0: XT clock enable. scanq drain still needs that (real kbd).
+     * IRQ1 for an already-latched byte does not: tdxctl injects sit in
+     * kbd_data with PB6 often clear (M1TP CGAGRPH hooks INT 9). */
     const bool kbd_sel = ((p.port_b & 0x80u) == 0) && ((p.port_b & 0x40u) != 0);
     if ((p.kbd_ready == 0) && (!scanq_.empty()) && kbd_sel)
     {
@@ -1104,7 +1107,7 @@ void pc::ppi_tick()
         p.kbd_irq_pend = 1;
         pic_deassert(1);
     }
-    if ((p.kbd_irq_pend == 0) || (!kbd_sel))
+    if ((p.kbd_irq_pend == 0) || ((p.port_b & 0x80u) != 0))
     {
         return;
     }
