@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.23");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.24");
 }
 
 TEST_CASE("prefetch-bytes default 4; 0 is off")

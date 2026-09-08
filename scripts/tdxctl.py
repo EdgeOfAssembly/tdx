@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.23"
+VERSION = "0.24"
 
 
 def usage() -> None:
@@ -27,7 +27,8 @@ Commands:
   step | step-in | over | step-over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | floppy | quit | help
   mem <seg:off> [len]
   poke <seg:off> <hex>   write bytes (90CF or 90 CF)
-  setip <seg:off>        set CS:IP
+  setip <seg:off|linear> set CS:IP (0FDB:A360 or 0xFE199 canonical)
+  getip                  print CS:IP and 20-bit linear (alias: ip with no arg)
   type <text>            INT 16 string; \\n = Enter  (e.g. type 'B:\\nTANK\\n')
   dump cga [FILE]    16 KiB B800 → SCREEN.CGA (default)
   dump mda [FILE]    4 KiB B000 → SCREEN.MDA (default)
@@ -150,6 +151,8 @@ def build_line(cmd: str, rest: list[str]) -> str:
         return json.dumps({"cmd": "type", "text": text})
     if cmd in {"poke", "write", "memw"} and len(rest) >= 2:
         return json.dumps({"cmd": "poke", "addr": rest[0], "hex": "".join(rest[1:])})
+    if cmd in {"getip"} or (cmd == "ip" and not rest):
+        return json.dumps({"cmd": "getip"})
     if cmd in {"setip", "ip"} and rest:
         return json.dumps({"cmd": "setip", "addr": rest[0]})
     if cmd == "nav" and rest:

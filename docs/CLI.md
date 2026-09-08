@@ -2,7 +2,8 @@
 
 Order-independent options (cli-design). No-args prints usage except **tdxview**
 (attaches to `/tmp/tdx.sock`). `-h`/`--help` and `-v`/`--version` on every tool.
-Version **0.23** (tdx / tdxview / tdxctl), iron86 **0.16**.
+Version **0.24** (tdx / tdxview / tdxctl), iron86 **0.16**.
+`tdxctl getip` / `setip 0FDB:A360` / `setip 0xFE199` (canonical CS:IP).
 
 Runtime floppy swap (no CPU reset): `tdxctl floppy b /path/DISK02.IMG`
 (A: stays the DOS boot disk; B: is M1TP “DISK B”).

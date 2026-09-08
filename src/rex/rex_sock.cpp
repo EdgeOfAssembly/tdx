@@ -4,6 +4,7 @@
  */
 
 #include "rex/rex_sock.h"
+#include "rex/rex_addr.h"
 
 #include "dos/dos_cga.h"
 #include "rex/rex_log.h"
@@ -110,34 +111,7 @@ static std::string b64_encode(const uint8_t *data, size_t n)
 static bool parse_addr(const std::string &s, uint64_t *lin, uint16_t *oseg = nullptr,
                        uint16_t *ooff = nullptr)
 {
-    unsigned seg = 0;
-    unsigned off = 0;
-    unsigned long v = 0;
-    assert(lin != nullptr);
-    if (std::sscanf(s.c_str(), "%x:%x", &seg, &off) == 2)
-    {
-        *lin = rex_segoff_to_linear((uint16_t)seg, (uint16_t)off);
-        if (oseg != nullptr)
-        {
-            *oseg = (uint16_t)seg;
-        }
-        if (ooff != nullptr)
-        {
-            *ooff = (uint16_t)off;
-        }
-        return true;
-    }
-    if (std::sscanf(s.c_str(), "%li", (long *)&v) == 1)
-    {
-        *lin = v;
-        return true;
-    }
-    if (std::sscanf(s.c_str(), "%lx", &v) == 1)
-    {
-        *lin = v;
-        return true;
-    }
-    return false;
+    return rex_parse_addr(s.c_str(), lin, oseg, ooff);
 }
 
 /** Hex bytes: `90CF`, `90 CF`, commas/spaces ignored. */
@@ -217,6 +191,7 @@ static json regs_json(rex_session *s)
     j["ip"] = r.ip;
     j["flags"] = r.flags;
     j["csip"] = json::array({r.cs, r.ip});
+    j["linear"] = rex_segoff_to_linear(r.cs, r.ip);
     return j;
 }
 
@@ -440,6 +415,25 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             resp["n"] = buf.size();
         }
     }
+    else if ((cmd == "getip") || ((cmd == "ip") && req.value("addr", "").empty()
+                                  && req.value("_rest", "").empty()))
+    {
+        rex_regs_i8086 r{};
+        char csip[16];
+        if (rex_session_get_regs_i8086(s, &r) != REX_OK)
+        {
+            resp["ok"] = false;
+            resp["error"] = "regs";
+        }
+        else
+        {
+            std::snprintf(csip, sizeof(csip), "%04X:%04X", r.cs, r.ip);
+            resp["cs"] = r.cs;
+            resp["ip"] = r.ip;
+            resp["csip"] = csip;
+            resp["linear"] = rex_segoff_to_linear(r.cs, r.ip);
+        }
+    }
     else if ((cmd == "setip") || (cmd == "ip"))
     {
         std::string addr = req.value("addr", "");
@@ -452,15 +446,36 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
             std::istringstream is(req["_rest"].get<std::string>());
             is >> addr;
         }
-        if (!parse_addr(addr, &lin, &seg, &off))
-        {
-            resp["ok"] = false;
-            resp["error"] = "bad addr";
-        }
-        else if (rex_session_get_regs_i8086(s, &r) != REX_OK)
+        if (rex_session_get_regs_i8086(s, &r) != REX_OK)
         {
             resp["ok"] = false;
             resp["error"] = "regs";
+        }
+        else if ((!addr.empty()) && (addr[0] == '.'))
+        {
+            /* Keep CS; ".A360" sets IP only. */
+            char *end = nullptr;
+            const char *p = addr.c_str() + 1;
+            unsigned long v = std::strtoul(p, &end, 16);
+            if ((end == p) || ((end != nullptr) && (*end != '\0')) || (v > 0xFFFFul))
+            {
+                resp["ok"] = false;
+                resp["error"] = "bad addr";
+            }
+            else
+            {
+                r.ip = (uint16_t)v;
+                if (rex_session_set_regs_i8086(s, &r) != REX_OK)
+                {
+                    resp["ok"] = false;
+                    resp["error"] = "setregs";
+                }
+            }
+        }
+        else if (!parse_addr(addr, &lin, &seg, &off))
+        {
+            resp["ok"] = false;
+            resp["error"] = "bad addr";
         }
         else
         {
@@ -471,6 +486,15 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
                 resp["ok"] = false;
                 resp["error"] = "setregs";
             }
+        }
+        if (resp.value("ok", true) && (rex_session_get_regs_i8086(s, &r) == REX_OK))
+        {
+            char csip[16];
+            std::snprintf(csip, sizeof(csip), "%04X:%04X", r.cs, r.ip);
+            resp["cs"] = r.cs;
+            resp["ip"] = r.ip;
+            resp["csip"] = csip;
+            resp["linear"] = rex_segoff_to_linear(r.cs, r.ip);
         }
     }
     else if (cmd == "dump")
@@ -1286,7 +1310,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     else if ((cmd == "help") || (cmd == "?"))
     {
         resp["cmds"] =
-            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem poke setip dump bp bpint bpinsn bpm bpdel bplist shot key type nav status cga ping floppy quit";
+            "step step-in over step-over run stop pause unpause delay faster slower reset regs disasm mem poke setip getip dump bp bpint bpinsn bpm bpdel bplist shot key type nav status cga ping floppy quit";
     }
     else
     {
@@ -1302,6 +1326,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     {
         resp["ip"] = regs_json(s)["ip"];
         resp["cs"] = regs_json(s)["cs"];
+        resp["linear"] = regs_json(s)["linear"];
     }
     try
     {

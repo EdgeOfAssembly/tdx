@@ -1,4 +1,4 @@
-.TH TDXCTL 1 "2026-09-07" "tdx 0.23" "User Commands"
+.TH TDXCTL 1 "2026-09-08" "tdx 0.24" "User Commands"
 .SH NAME
 tdxctl \- talk to tdx or tdxview over a UNIX socket
 .SH SYNOPSIS
@@ -67,7 +67,23 @@ One instruction (into CALL/INT).
 Step over CALL, INT, REP, LOOP.
 .TP
 .B regs , status , cga , ping
-JSON status / CGA frame.
+JSON status / CGA frame (includes 20-bit
+.B linear
+).
+.TP
+.BI setip " seg:off|linear"
+Set CS:IP.
+.I 0FDB:A360
+keeps that segment.
+.I 0xFE199
+uses the canonical split CS=lin>>4, IP=lin&0xF.
+.I .A360
+keeps current CS.
+.TP
+.B getip
+Print CS:IP and linear (alias:
+.B ip
+with no argument).
 .TP
 .BI "dump cga " [FILE]
 16 KiB from B800:0000 to

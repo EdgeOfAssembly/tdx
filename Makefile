@@ -48,7 +48,7 @@ TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src
 VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_shot.cpp \
 	src/tdx/tdx_agent_sock.cpp src/dos/dos_cga.c
 TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test_cli.cpp tests/test_bp.cpp \
-	tests/test_shot.cpp tests/test_int10.cpp tests/test_fault.cpp tests/test_bios.cpp \
+	tests/test_addr.cpp tests/test_shot.cpp tests/test_int10.cpp tests/test_fault.cpp tests/test_bios.cpp \
 	tests/test_pit.cpp tests/test_floppy.cpp tests/test_ibm_font.cpp
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)

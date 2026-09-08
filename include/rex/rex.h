@@ -12,6 +12,7 @@
 #define REX_H
 
 #include "rex_types.h"
+#include "rex_addr.h"
 
 #ifdef __cplusplus
 extern "C" {
