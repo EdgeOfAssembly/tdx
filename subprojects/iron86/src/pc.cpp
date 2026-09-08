@@ -332,6 +332,16 @@ void pc::type_scan(uint8_t make)
 {
     const uint8_t m = static_cast<uint8_t>(make & 0x7Fu);
     queue_scan(m);
+    /* INT 9 wrap (M1TP CGAGRPH) treats make+break in one poll as no key.
+     * Same pump as type_keys so the hook sees the make first. */
+    int n = 0;
+    for (n = 0; (n < 1200) && (!c.halted()); n++)
+    {
+        if (!c.step())
+        {
+            break;
+        }
+    }
     queue_scan(static_cast<uint8_t>(m | 0x80u));
 }
 

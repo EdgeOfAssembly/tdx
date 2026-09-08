@@ -163,6 +163,9 @@ int main()
          * M1TP CGAGRPH wraps ROM INT 9 this way. */
         iron86::pc p;
         p.wire_pc_hw();
+        p.c.set_cs(0x1000);
+        p.c.set_ip(0x0100);
+        p.c.mem_write8(0x10100u, 0xF4); /* HLT so type_scan pump does not run IVT */
         p.type_scan(0x1E);
         const uint8_t prog[] = {
             0xE4, 0x60, 0x88, 0xC3, 0xE4, 0x60, 0x38, 0xD8, 0x75, 0x17, 0x3C, 0x1E,
