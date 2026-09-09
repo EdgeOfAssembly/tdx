@@ -1,15 +1,17 @@
 /**
  * @file pc.h
- * @brief Tiny IBM PC: 360K/720K/1.44M floppy + INT 10h/13h/16h + INT 1Ah ticks.
+ * @brief Tiny IBM PC: floppy CHS table + INT 10h/13h/16h + INT 1Ah ticks.
  */
 #ifndef IRON86_PC_H
 #define IRON86_PC_H
 
 #include "iron86/cpu.h"
 #include "iron86/crtc.h"
+#include "iron86/hdc.h"
 #include "iron86/hw.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <string>
@@ -17,6 +19,35 @@
 
 namespace iron86
 {
+
+/** @brief 160K 5.25" SS/SD: 40 cyl × 1 head × 8 spt. */
+inline constexpr size_t k_floppy_bytes_160k = 163840u;
+/** @brief 180K 5.25" SS/DD: 40 cyl × 1 head × 9 spt. */
+inline constexpr size_t k_floppy_bytes_180k = 184320u;
+/** @brief 320K 5.25" DS/SD: 40 cyl × 2 heads × 8 spt. */
+inline constexpr size_t k_floppy_bytes_320k = 327680u;
+/** @brief 360K 5.25" DS/DD: 40 cyl × 2 heads × 9 spt. */
+inline constexpr size_t k_floppy_bytes_360k = 368640u;
+/** @brief 720K 3.5"/5.25" DD: 80 cyl × 2 heads × 9 spt. */
+inline constexpr size_t k_floppy_bytes_720k = 737280u;
+/** @brief 1.2M 5.25" HD: 80 cyl × 2 heads × 15 spt. */
+inline constexpr size_t k_floppy_bytes_1200k = 1228800u;
+/** @brief 1.44M 3.5" HD: 80 cyl × 2 heads × 18 spt. */
+inline constexpr size_t k_floppy_bytes_1440k = 1474560u;
+
+/**
+ * @brief IBM PC floppy CHS from image length.
+ *
+ * Exact sizes first (160K 40/1/8, 180K 40/1/9, 320K 40/2/8, 360K 40/2/9,
+ * 720K 80/2/9, 1.2M 80/2/15, 1.44M 80/2/18). Otherwise the nearest of those
+ * geometries. INT 13 AH=08 cylinder count is `n / (512 * spt * heads)`,
+ * not the table's nominal 40/80 when the file is short.
+ *
+ * @param[in]  n     Image size in bytes.
+ * @param[out] spt   Sectors per track (8, 9, 15, or 18).
+ * @param[out] heads Head count (1 or 2).
+ */
+void floppy_geom(size_t n, uint32_t *spt, uint32_t *heads);
 
 class pc
 {
@@ -60,12 +91,14 @@ public:
     uint8_t video_mode() const { return video_mode_; }
 
     /**
-     * @brief Optional INT intercept. With rom_bios(), INT 13h (720K CHS)
-     *        and INT 16h (tdxctl type queue). INT 10h AH=0Eh teletype is
-     *        handled here only while IVT[10h] is still F000:F065 (24APR81
-     *        VIDEO_IO) and BDA 40:49 is 80-column CGA text; AH=00 mode-set
-     *        and a hooked INT 10h go to the ROS. INT 8 / INT 1Ah are never
-     *        intercepted when the ROM is loaded.
+     * @brief Optional INT intercept. With rom_bios(), INT 13h (floppy CHS)
+     *        and INT 16h (tdxctl type queue). INT 13h with DL bit 7 set
+     *        (HDD) returns false so Xebec ROS / option ROM can run.
+     *        INT 10h AH=0Eh teletype is handled here only while IVT[10h]
+     *        is still F000:F065 (24APR81 VIDEO_IO) and BDA 40:49 is
+     *        80-column CGA text; AH=00 mode-set and a hooked INT 10h go
+     *        to the ROS. INT 8 / INT 1Ah are never intercepted when the
+     *        ROM is loaded.
      */
     bool bios_int(uint8_t vector);
 
@@ -133,6 +166,49 @@ public:
     /** @brief Mount a raw sector image as drive B: (unit 1). */
     bool attach_floppy_b(const uint8_t *img, size_t n);
 
+    /**
+     * @brief Attach a raw HDD image to the Xebec adapter (320h, IRQ5, DMA3).
+     *
+     * Does not map the image onto INT 13h floppy. INT 13 DL bit 7 still
+     * returns false so option ROM / 5160 ROS can run.
+     *
+     * @param[in] path       Host file (regular, at least 512 bytes).
+     * @param[in] cylinders  Type-1 default 306.
+     * @param[in] heads      Type-1 default 4.
+     * @param[in] spt        Type-1 default 17.
+     * @return false if path is missing, not a regular file, shorter than 512,
+     *         or the controller cannot open the file.
+     */
+    bool attach_hdc_path(const char *path, uint32_t cylinders = k_hdc_cyl_xt,
+                         uint32_t heads = k_hdc_heads_xt, uint32_t spt = k_hdc_spt_xt);
+
+    /**
+     * @brief Map an IBM option ROM at C800:0000 (55 AA header required).
+     * @param[in] data ROM bytes.
+     * @param[in] n    Length (length-byte × 512 is copied, capped at 8 KiB).
+     * @return false if signature or length is bad.
+     */
+    bool load_hdc_rom(const uint8_t *data, size_t n);
+
+    /**
+     * @brief Load @ref load_hdc_rom from a host file.
+     * @param[in] path ROM path (must not be NULL).
+     */
+    bool load_hdc_rom_path(const char *path);
+
+    /** @brief Host path last passed to attach_hdc_path, or empty. */
+    const std::string &hdc_path() const { return hdc_path_; }
+
+    /** @brief Byte length of the attached HDD image file (0 if none). */
+    size_t hdc_bytes() const { return hdc_bytes_; }
+
+    /** @brief True after a successful @ref load_hdc_rom. */
+    bool hdc_rom_loaded() const { return hdc_rom_loaded_; }
+
+    /** @brief Xebec controller (ports 320h–323h). */
+    hdc_xebec &hdc() { return hdc_; }
+    const hdc_xebec &hdc() const { return hdc_; }
+
 private:
     bool int10();
     bool int13();
@@ -145,6 +221,10 @@ private:
     void tty_scroll();
 
     std::vector<uint8_t> floppy_[2];
+    hdc_xebec hdc_{};
+    std::string hdc_path_;
+    size_t hdc_bytes_ = 0;
+    bool hdc_rom_loaded_ = false;
     std::string tty_;
     std::deque<uint8_t> kbd_;
     std::deque<uint8_t> scanq_;
@@ -162,6 +242,7 @@ private:
 
     uint8_t in_port(uint16_t port);
     void out_port(uint16_t port, uint8_t v);
+    void hdc_sync_irq();
     void after_insn();
     void pit_tick();
     void ppi_tick();

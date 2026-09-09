@@ -500,6 +500,41 @@ int main()
         expect_eq(c.ip(), 0xE05B, "bios target ip");
     }
     {
+        /* 64K 5160: whole F0000 block, reset vector already at FFFF0. */
+        uint8_t rom[65536];
+        std::memset(rom, 0, sizeof(rom));
+        rom[0xFFF0] = 0xEA;
+        rom[0xFFF1] = 0x5B;
+        rom[0xFFF2] = 0xE0;
+        rom[0xFFF3] = 0x00;
+        rom[0xFFF4] = 0xF0;
+        rom[0] = 0x90;
+        iron86::cpu c;
+        expect(c.load_bios(rom, sizeof(rom)), "bios 64k");
+        expect_eq(c.mem_read8(0xF0000u), 0x90, "64k at F0000");
+        expect_eq(c.mem_read8(0xFFFF0u), 0xEA, "64k ffff0");
+        expect(c.rom_bios(), "64k rom_bios");
+        expect(c.step(), "64k jmp far");
+        expect_eq(c.cs(), 0xF000, "64k target cs");
+        expect_eq(c.ip(), 0xE05B, "64k target ip");
+    }
+    {
+        /* 40K 08NOV82 concat: 8K U19 + 32K U18. */
+        uint8_t rom[40960];
+        std::memset(rom, 0, sizeof(rom));
+        rom[0] = 0xCC;
+        rom[40960 - 16] = 0xEA;
+        rom[40960 - 15] = 0x5B;
+        rom[40960 - 14] = 0xE0;
+        rom[40960 - 13] = 0x00;
+        rom[40960 - 12] = 0xF0;
+        iron86::cpu c;
+        expect(c.load_bios(rom, sizeof(rom)), "bios 40k");
+        expect_eq(c.mem_read8(0xF0000u), 0xCC, "40k U19");
+        expect_eq(c.mem_read8(0xFFFF0u), 0xEA, "40k ffff0");
+        expect(c.load_bios(rom, 12345u) == false, "bios bad size");
+    }
+    {
         /* 1 MiB exec-map: NOP+HLT at 1000:0100 land at linear 10100h. */
         iron86::cpu c;
         const uint8_t com[] = {0x90, 0xF4};

@@ -147,7 +147,20 @@ public:
     bool load_bios_5150_8k(const uint8_t *data, size_t n);
 
     /**
-     * @brief True after a successful load_bios_5150_8k.
+     * @brief Load a motherboard BIOS image by size.
+     *
+     * | Size | Map |
+     * |------|-----|
+     * | ≤8 KiB | 5150: @ref load_bios_5150_8k at FE000 |
+     * | 40 KiB | 5160 08NOV82: U19 8K at F0000 + U18 32K at F8000 |
+     * | 64 KiB | 5160: whole F0000–FFFFF (concat U19+U18) |
+     *
+     * @return false if @p data is null/empty or the size is not one of those.
+     */
+    bool load_bios(const uint8_t *data, size_t n);
+
+    /**
+     * @brief True after a successful load_bios_5150_8k / @ref load_bios.
      */
     bool rom_bios() const
     {

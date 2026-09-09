@@ -270,6 +270,50 @@ bool cpu::load_bios_5150_8k(const uint8_t *data, size_t n)
     return true;
 }
 
+bool cpu::load_bios(const uint8_t *data, size_t n)
+{
+    if ((data == nullptr) || (n == 0))
+    {
+        return false;
+    }
+    if (n <= 8192u)
+    {
+        return load_bios_5150_8k(data, n);
+    }
+    if ((n != 40960u) && (n != 65536u))
+    {
+        return false;
+    }
+    if (!mem_)
+    {
+        mem_ = std::make_unique<uint8_t[]>(k_mem_size);
+        ram_ = mem_.get();
+        std::memset(ram_, 0, k_mem_size);
+    }
+    ram_ = mem_.get();
+    if (n == 40960u)
+    {
+        /* 5160 08NOV82: 8K U19 at F0000 + 32K U18 at F8000. */
+        std::memcpy(ram_ + 0xF0000u, data, 8192u);
+        std::memcpy(ram_ + 0xF8000u, data + 8192u, 32768u);
+    }
+    else
+    {
+        std::memcpy(ram_ + 0xF0000u, data, 65536u);
+    }
+    cs_ = 0xFFFF;
+    ip_ = 0;
+    ds_ = 0;
+    es_ = 0;
+    ss_ = 0;
+    sp_ = 0xFFFE;
+    flags_ = k_flags_reset;
+    halted_ = false;
+    last_op_ = 0;
+    rom_bios_ = true;
+    return true;
+}
+
 void cpu::load_com(const uint8_t *bytes, size_t n, uint16_t cs)
 {
     const size_t cap = 0x10000u - 0x100u;
