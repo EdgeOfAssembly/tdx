@@ -1,0 +1,41 @@
+--- Page 1 ---
+6.4     Device Address Decoder
+6-4
+6.5     Bios ROM -
+6-4
+6.6     Configuration Jumpers -
+6-4
+6.7     WD11C00-17 Logic Array.
+6-4
+6.7.1   Status, Read, and Write Ports
+6-4
+6.7.2   Sector Buffer RAM Addressing and Control
+6-4
+6.7.3    ECC Circuitry
+6-5
+6.7.4    Reset Timing Circuitry
+6-5
+6.8    WD1015 Buffer Manager Control Processor
+6-5
+6.8.1     Exception Handling.
+6-6
+6.9     Sector Buffer.
+6-6
+6.10 WD1010A-05 Winchester Disk Controller
+6-6
+6.11 WD10C20 Self-Adjusting Data Separator
+6-7
+6.11.1 Clock Generator
+6-7
+6.11.2 Write Precompensation Circuit
+6-7
+6.11.3 Data Separator
+6-7
+SECTION 7     INSTALLATION
+7.1     Hardware and Software Installation
+7-1
+7.2    Jumper Installation and Locations
+7-1
+7.3     Bios ROM Installation.
+7-3
+V

@@ -1,0 +1,88 @@
+--- Page 1 ---
+SECTION 6      COMMANDS
+6.1   General
+6-1
+6.2 WD1002-05 Command Summary
+6-1
+6.2.1 Stepping Rates
+6-1
+6.3 TypelCommands
+6-2
+6.3.1 Test Command
+6-2
+6.3.2 Restore
+6-2
+6.3.3 Seek
+6-2
+6.4   Type II Commands
+6-2
+6.4.1 Read Sector
+6-2
+6.4.1.1 Readlong Command
+6-2
+6.4.1.2 DMA Read .
+6-3
+6.4.1.3 Normal Completion
+6-3
+6.5   Type III Commands
+6-3
+6.5.1 Write Sector .
+6-3
+6.5.1.1 Writelong Command .
+6-3
+6.5.2 Format Track
+6-3
+SECTION 7       PROGRAMMING
+7.1   General
+7-1
+7.2   Setting Up Task Files -
+7-1
+7.2.1 Cylinders and Tracks
+7-1
+7.3   Type I Command Programming
+7-1
+7.3.1 Use of Busy Bit
+7-1
+7.3.2 Use of Interrupts
+7-2
+7.3.3 Use of Error Bit .
+7-2
+7.3.4 Use of Corrected Bit -
+7-2
+7.4 Type II Command Programming
+7-2
+7.4.1 DMA Mode
+7-2
+7.4.2 Block Moves
+7-2
+7.4.3 Using DMA
+7-3
+7.4.4 Multiple Sector Transfers
+7-3
+7.4.4.1 Partial Sector Transfers .
+7-3
+7.4.4.2 Interrupt Source Selection
+7-3
+7.4.4.3 Clearing Hardware DRQ
+7-3
+7.4.4.4 Interrupt Selection Circuit
+7-3
+7.4.5 Simulated Completions
+7-4
+7.5 Type III Command Programming
+7-4
+7.5.1 Formatting
+7-4
+7.5.2 Interleaving
+7-5
+7.6   Bad Block Mapping
+7-5
+7.6.1 Sector Pre-Allocation
+7-5
+7.6.2 Alternate Tracks
+7-6
+7.6.3 Spare Sectors
+7-6
+7.6.4 Bad Block Bit
+7-6
+iv

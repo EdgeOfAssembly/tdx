@@ -1,0 +1,95 @@
+--- Page 1 ---
+5.2 I/O PORT DESCRIPTION
+There are four contiguous I/O ports addressed
+ports are listed in Table 5-2. These ports are used
+320 hexidecimal through 323 hexidecimal. Each        for all communication between the Host and
+port is bi-directional. The functions of the I/O
+Controller.
+TABLE 5-2. I/O PORT DESCRIPTIONS
+ADDRESS
+READ PORT FUNCTION
+WRITE PORT FUNCTION
+320
+READ DATA
+WRITE DATA
+321
+READ WD1002S-WX2 HRDWR STATUS       WD1002S-WX2 RESET*
+322
+READ DRIVE CONFIGURATION INFO       WD1002S-WX2 SELECT
+323
+Not Used
+WRITE DMA AND INTERRUPT MASK
+REGISTER
+*NOTE
+DRQ
+DMA request bit. Assertion (set to 1)
+The WD1015-14 automatically executes self-tests
+signals the Host that the WD1002S-WX2
+after either a Reset command or upon power-up.
+is ready for a DMA transfer to take
+The    WD1015-24    DOES   NOT   automatically
+place. The direction of the transfer is
+execute self-test after either a Reset command or
+defined by the I/O bit.
+upon power-up. A WD BIOS performs an Execute
+BSY
+Busy bit. Assertion (set to 1) signals the
+Controller Diagnostic command as part of the
+Host that the WD1002S-WX2 is busy
+install sequence after power-up regardless of the
+executing a command and is unable to :
+version of WD1015 on-board. If the Host software
+accept another command.
+interrogates   WD1015-24   after   a   Reset;   the
+C/D
+Control/Data. Tells the Host which type
+WD1015-24 returns good status. The Host must
+of transfer the WD1002S-WX2 is expect-
+issue an Execute Controller Diagnostic command
+ing. 0 = a command or status byte, 1 =
+to perform the WD1015-24 self-test.
+data.
+I/O
+Input/Output. Identifies the direction
+5.2.1 PORT 320
+of transfers between the   Host and
+WD1002S-WX2. The terms input and
+This is a bi-directional path    over which data,
+output are relative to the Host. 1 = input,
+commands, parameters, and status are passed.
+0 = output.
+REQ
+Request bit. A handshake signal for
+5.2.2 PORT 321
+data transfers between the Host and
+The Host reads this port to interrogate the hard-
+WD1002S-WX2.    The   WD1002S-WX2
+asserts (sets to 1) this bit when it is
+ware status. This status byte can be read at any
+time, including command exeuction. The status
+ready for data to be transferred between
+it and the Host. REQ must be valid for
+bits are identified in Table 5-3.
+every byte transferred to the Host.
+The Host writes to this port to generate a MR
+TABLE 5-3. HARDWARE STATUS
+(Master   Reset) on the WD1002S-WX2. When
+writing to this port, the data byte is ignored.
+BIT
+Resetting a WD1002S-WX2 with a WD1015-14
+7        6        5        4        3        2
+1        0
+causes automatic execution of a self-test. Auto-
+d        d      IRQ DRQ BSY C/D   I/O   REQ
+matic execution of self-test does not occur with
+the WD1015-24. If the Host software interrogates
+WD1015-24 after a Reset; the WD1015-24 returns
+d
+Not used.
+good status. The Host must issue an execute
+IRQ
+Interrupt Request. Assertion (set to 1)
+Controller Diagnostic command to perform the
+signifies that an interrupt is pending.
+WD1015-24 self-test.
+5-2

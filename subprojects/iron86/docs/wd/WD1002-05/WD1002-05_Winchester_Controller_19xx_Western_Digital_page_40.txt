@@ -1,0 +1,86 @@
+--- Page 1 ---
+7.6.2   ALTERNATE TRACKS
+Please note that when formatting the disk in this
+The alternate-track method works on most operating
+manner, at least one sector must have an illegal sec-
+systems but requires more software overhead. When-
+tor number Also, as one sector has been allocated to
+ever a read or write is attempted, the track number
+bad block mapping, a sector 1F no longer exists.
+(cylinder and head select) is checked against a table
+maintained by the operating system or driver. If the
+7.6.4   BAD BLOCK BIT
+track number matches the table, the driver knows
+The WD1002-05 allows the user to set a marker that is
+that there is a flaw somewhere on that track and
+recorded into the ID field. When the WD1002-05 at-
+looks up the alternate track for the flawed one. The
+tempts to read or write a sector with a bad-block mark
+read or write is then performed elsewhere.
+set, the operation will be aborted and the error bit in
+The primary disadvantage of this type of bad-block
+the status register and the bad-block bit in the error
+mapping is the high software overhead. When the
+register will be set. The size, head, cylinder, sector
+system is brought up, the alternate-track table has to
+and ID CRC fields of the selected sector must be
+be read from a flawless area of the disk. After it has
+correct in order to detect a bad-block mark. This
+been read, every read or write operation must check
+means the ID field must be error-free in order to de-
+the alternate-track table before performing its respec-
+tect the bad block mark.
+tive operation.
+Table 7-4 shows an interleave table where the
+7.6.3   SPARE SECTORS
+user has marked all the sectors with a bad-block
+The spare-sector method is probably the simplest to
+mark and recorded all sectors redundantly. The
+implement in most systems. Its primary disadvan-
+interleave is not very important here, because it is
+tage is that at least one sector must be set aside as a
+assumed that the driver will not attempt to read bad
+spare for each track. During format, the physical sec-
+sectors sequentially.
+tor that contains the flaw is written with some illegal
+Table 7-4.   Interleave Table with
+sector number The physical sector following it con-
+No
+Redundant Sectors,
+tains the real logical sector and its data. Table 7-3 is
+Interleave, and All Sectors Marked as
+Bad Blocks
+an interleave table that shows how the user mapped
+out the fifth physical sector by telling the WD1002-05
+80      00      80      01       80      02      80      03
+to write al logical sector number of FF to it.
+80      04      80      05      80      06      80      07
+Table 7-3.   Interleave Table with 32 Sectors and
+80      08      80      09      80      OA      80      OB
+80     OC     80      OD
+-
+4:1 Interleave     Physical Sector Five
+80      OE      80      OF
+Mapped Out
+80      10      80       11       80       12      80       13
+80       14      80       15      80       16      80       17
+00      00      00      08      00       10      00      18
+80       18      80       19       80      1A      80      1B
+00      FF     00      01       00      09      00      11
+80      1C      80      1D      80       1E      80       1F
+00       19      00      02      00      OA      00       12
+80      00      80      01       80      02      80      03
+00      1A      00       03      00      OB      00       13
+80      04      80       05      80      06      80      07
+00      1B      00      04      00      OC      00       14
+80      08      80      09      80      OA      80      OB
+00      1C     00      05      00      OD     00       15
+80      OC      80      OD      80      OE      80      OF
+00      1D      00      06      00      OE      00      16
+80       10      80       11      80       12       80       13
+00      1E      00      07      00      OF      00       17
+80       14      80       15       80       16      80       17
+80      18      80      19       80       1A      80      1B
+80      1C     80      1D      80      1E      80      1F
+1
+7-6

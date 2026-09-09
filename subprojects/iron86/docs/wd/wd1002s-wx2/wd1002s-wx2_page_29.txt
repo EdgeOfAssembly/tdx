@@ -1,0 +1,57 @@
+--- Page 1 ---
+5.6 READ STATUS OF LAST OPERATION
+BITS
+(CLASS 0, OP CODE 03)
+BYTE      7     6      5      4      3      2      1      0
+Upon termination of a command. the WD1002S-
+WX2 develops a Command Completion Byte, de-
+0        AV    0
+ERROR CODE
+asserts the BSY bit, and if IROEN had been
+1
+0     0      D
+HEAD NUMBER
+enabled, asserts IRQ5. If IROEN had not been
+CYLINDER
+asserted, it is the responsibility of the Host to read
+2        NUMBER MSB     SECTOR NUMBER
+port 321 to determine that the WD1002S-WX2 is
+no longer busy. Once the Host determines that a
+3
+CYLINDER NUMBER LSB
+command has terminated, it must read the Com-
+mand Completion Byte to learn which drive has        AV Address valid bit.       Indicates that the Head,
+terminated and whether an error had occurred.
+Cylinder, and Sector fields
+To do this the Host reads port 320. The format of
+are valid.
+the Command Completion Byte is as follows:
+Error Codes are shown in Table 5-5.
+All other bits are the same as those defined in the
+BIT
+Command Block definitions.
+7        6        5        4        3        2
+1
+0
+FIGURE 5-2. FOUR STATUS BYTES
+0        0        D        0        0        0        E        0
+D = Number of the drive terminating. 0 = drive 0.
+When an error occurs during a multiple sector data
+1 = drive 1. E = 1 if an error occurred.
+transfer (read or write), this command returns the
+address of the failing sector. If the Read Status
+If the Command Completion Byte indicates the
+command is issued after any of the format com-
+occurrence of an error, issue a Read Status com-
+mands or the Verify Desired Sectors command,
+mand for the drive indicating the error. Perfor-
+the   address   returned by the WD1002S-WX2
+mance of a Read Status command before any        points one sector beyond the last track formatted
+other command execution prevents loss of the        or checked, if there was no error. If there was an
+error status. When a Read Status of the last opera-
+error, then the address returned points to the track
+tion is written to port 320 the WD1002S-WX2
+in error.
+responds with four bytes of status as shown in
+Figure 5-2.
+5-5

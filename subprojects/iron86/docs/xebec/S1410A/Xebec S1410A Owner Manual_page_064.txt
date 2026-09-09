@@ -1,0 +1,51 @@
+--- Page 1 ---
+5.3.8
+Format Bad Track Class (Class 0, Opcode 07)
+This command is the same as FORMAT TRACK command
+except the BAD TRACK flag is set in the ID field. DATA
+fields are not written.   This command is used to prevent
+system access to defective tracks.   There is an alternate
+way to process bad tracks. See the ASSIGN ALTERNATE
+TRACK Command for details.
+d = drive, 0 or 1
+r = retries
+v = drive type
+S = seek option
+7
+6
+5
+4
+3
+2
+1
+0
+0
+0
+0
+0
+0
+l
+1
+1
+0
+0
+d
+High Address
+Middle Address
+Low Address
+0
+0
+0
+Interleave
+r
+0
+0
+V
+S
+S
+S
+S
+Interleave (Ref: Section 4.11)
+1 to 31 for 256 byte sectors
+1 to 16 for 512 byte sectors
+Page -56-

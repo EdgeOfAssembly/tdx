@@ -1,0 +1,56 @@
+--- Page 1 ---
+APPENDIX A
+I
+DISK DRIVER EXAMPLES
+A.1   INTRODUCTION
+The two sample disk drivers presented in this appendix are intended to serve as a catalyst to help the user set up
+his own first driver. Note that although the drivers shown are simplistic, they represent everything needed to
+satisfy WD1002-05 operating requirements. Retry software is not included in the examples because all
+necessary retries are performed by the WD1002-05.
+The first example shown is a programmed I/O and polled status driver using the 8-bit Intel 8085 microprocessor.
+The second example is of a programmed I/O and interrupt driven driver and is written for the 16-bit Western
+Digital WD16 microprocessor.
+A.2   POLLED STATUS DRIVER
+WD1002-05 Hard Disk Controller Driver
+Example for 8085 Microprocessor
+with programmed I/O and polled status
+;This driver is intended to demonstrate one simple approach to writing a
+;driver for the WD1002-05. It assumes that the WD1002-05 is interfaced using
+programmed I/O without interrupts.
+;The specifications of the imaginary demonstration drive are:
+;Sector size:
+256 bytes
+;Sectors per track:
+33
+;Surfaces per drive:
+4 (two platters)
+;Cylinders per drive:
+512
+;Stepping rate:
+2 milliseconds
+STRATE = 2
+;Define stepping rate for assembler
+;As the WD1002 is being allowed to map around the bad blocks, one
+;sector per track has to be sacrificed. This brings down the logical
+;sector per track count to 32.
+;Experienced systems programmers will note that the driver is not
+;being made as flexible as it should be. As WD1002-05 compatible drives will
+;be introduced in the future, and present manufacturers will be
+increasing the density of their current drives, the driver written
+;should be built with sufficient equates and conditional
+assemblies.
+;The imaginary operating system of this example can access up to 65536
+;logical records of 256 bytes each. It has three types of calls:
+initialize, read, and write. Three numerical parameters are passed
+in the following registers:
+Drive number
+C
+Logical record number
+DE
+Transfer address
+HL
+;Upon completion of all commands, the carry bit of the 8085 will be
+;reset if the operation terminated properly and set if there was an
+;error If there was an error during read or write, the error-handling
+;routine will decode it and print it out on the user console.
+A-1

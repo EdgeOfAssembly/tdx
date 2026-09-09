@@ -1,0 +1,54 @@
+--- Page 1 ---
+Next to Last Status Byte
+Bit
+7
+6
+5        4
+3
+2
+1
+0
+0
+0
+d
+0
+0        0
+ERR 0
+Bits 0,    Set to zero.
+2-4,6,7
+Bit 1        When set, error occurred during command execution.
+Bit 5        Logical unit number of drive, d=0 or 1.
+Last Status Byte
+Bit
+7
+6
+5        4
+3
+2
+1
+0
+0
+0
+0        0
+0
+0
+0
+0
+Bits
+Set to zero.
+0-7
+Figure 4-6 Completion Status Bytes
+4.5.1        The Control Byte.
+Bit 7 - If Bit 7 is set, the Controller will not retry the operation, but
+reports the error immediately.   If Bit 7 is reset, the Controller will
+retry the operation 3 times, then recalibrate the drive, seek back to
+the current track, and retry once more.      For example,   if an
+ADDRESS MARK (AM) NOT FOUND error occurs, the Controller
+attempts to reread the same sector 3 times. If the error persists, the
+Controller recalibrates the drive to track 0, seeks to the target track
+and rereads for the last time. If the error still persists the Controller
+aborts the command and reports the error to the host.   Set this bit
+only during the evaluation of a disk drive.
+Bit 6 - If Bit 6 is set, the Controller will not retry a read of a sector
+that contains a data error before attempting error correction. If Bit
+Page -37-

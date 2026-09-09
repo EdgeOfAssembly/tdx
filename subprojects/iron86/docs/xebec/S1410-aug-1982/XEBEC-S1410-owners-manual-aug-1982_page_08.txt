@@ -1,0 +1,48 @@
+--- Page 1 ---
+C.   EXPANDED COMMAND CODE EXPLANATION
+1. Test Drive Ready (Class 0, Opcode 00)
+This command selects the drive specified by the Byte 1 of DCB and
+read back the status from that drive. If all status bits are in the correct
+state, the command will not return an error code. If the drive status is
+not OK, the command will return an error code, usually DRIVE NOT
+READY, or DRIVE STILL SEEKING.
+This command is usually used in 2 occasions:
+a) When initially power on, the host should issue this command
+continuously with appropriate time out loop to insure the drive
+spins up to speed and comes ready.
+b) When implementing overlapped seeks. First, issue a seek com-
+mand to the 1st drive, then issue another seek command to the
+2nd drive. Now keep issuing a TEST DRIVE READY command to
+each drive until either drive finishes its seek operation. Then
+continue with the normal READ/WRITE operation on that drive.
+2. Recalibrate (Class 0, Opcode 01)
+This command will move the drive arm to the track 00 position. This
+command should only be used to attempt to correct a drive position
+error, since it is slower than a direct seek to track 0. Also, if retrys are
+enabled, the Controller will recalibrate automatically in case of error.
+The difference between this command and a direct seek to track 0 is
+this command steps the drive one cylinder at a time looking for the
+signal TRACKOOfrom the drive to become active. A direct seek to track
+0 is faster because the Controller steps the drive at the programmed
+step rate.
+3. Request Sense Status (Class 0, Opcode 03)
+This command must be executed immediately following a command
+in which the error bit is set in the completion status byte in order to
+determine the error code. This is necessary because the error code
+will be cleared when the Controller executes next command. (Refer to
+Owner's Manual page 21 for more detail)
+4. Format Drive (Class 0, Opcode 04)
+This command recalibrates the drive, then seeks to the starting
+address specified by the byte 1,2and 3 of the DCB.Ittimes the spindle
+speed, divides the track into equal size sectors, and writes out address
+mark (AM) and header field for all sectors. The logical sector layout is
+specified by the interleave value contained in byte 4 of the DCB. Then
+it reads back the AM and header field and writes the DATA field for all
+sectors. The data pattern is defaulted to 6C Hex or the host can ini-
+tialize the pattern by using OPCODE OF Hex (WRITE SECTOR
+BUFFER) and then set bit 5 of the Control Byte of the DCB to 1 in the
+FORMAT DRIVE command to tell the controller not to change the
+buffer contents. Note that if the format command gets a hard error
+while formatting a track, the format operation stops immediately and
+the error is reported. To continue, the host software must provide the
+data fields for all logical sectors following the sector in error, then

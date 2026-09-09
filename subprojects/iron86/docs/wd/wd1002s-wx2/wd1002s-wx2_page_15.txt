@@ -1,0 +1,101 @@
+--- Page 1 ---
+SECTION III
+INTERFACE CONNECTIONS
+3.1   ORGANIZATION
+resistor to ground.
+The WD1002S-WX2 has four on-board connectors
+J2, J3 Drive data: 20 pin dual row header con-
+for user application.
+nectors, radially connected each to its own
+P1 Host interface: 62 pin IBM PC compatible
+drive.
+card edge connector.
+J1 Drive control: 34 pin dual row header con-        3.2 HOST INTERFACE
+nector daisy-chained to two drives. The        Connector P1 pins A1 through A31 are on the
+control signals at the second drive from the        component side of the board and B1 through B31
+WD1002S-WX2 (no more than a total length        are on the artwork side. Table 3-1 describes the
+of 3 meters or 10 feet) are terminated with a
+Host interface connector (P1) pin assignments and
+220 ohm resistor to +5V and a 330 ohm
+functions.
+TABLE 3-1. HOST INTERFACE CONNECTOR (P1) PIN DESCRIPTION
+PIN
+NUMBER     MNEMONIC       SIGNAL NAME     I/O
+FUNCTION
+A1
+Not Connected
+A2
+D7
+DATA 7
+I/O   8-Bit, tri-state, bi-directional bus. It is used to
+thru
+thru
+thru
+transmit data between the Host and Sector Buffer,
+A9
+DO
+DATA 0
+the Command Block to the WD1015, status and
+drive configuration to the Host. The BIOS trans-
+mits parameter information and commands to
+the Host via this bus.
+A10
+Not Connected
+A11
+AEN
+ADDRESS
+I     AEN is asserted during a DMA mode of operation
+ENABLE
+making the I/O ports 320 hex thru 323 hex
+inaccessible to the Host. Data transfers and intra-
+bus control is initiated by asserting DACK3. The
+BIOS ROM can still be addressed via A0-A19.
+A12
+A19
+ADDRESS BUS
+I     AO thru A9 are used during programmed I/O
+thru
+thru
+A19 thru AO
+mode of operation to address ports 320 hex thru
+A31
+AO
+323 hex. They are inhibited during DMA by
+AEN. AO thru A19 addresses the BIOS ROM
+regardless of the state of AEN.
+B1
+GND
+GROUND
+B2
+RST
+RESET
+When asserted, RST places the WD1002S-WX2
+into its initial power-up state.
+B3
++5VDC
++5VDC
++5VDC
+B4
+IRO2
+INTERRUPT
+The WD1002S-WX2 asserts IRQ2 to interrupt the
+REQUEST
+Host upon the completion of a command. Use of
+LEVEL 2
+IRQ2 is jumper selectable. Use of IRQ5 is stan-
+dard. Refer to Section 7 for further details on
+jumper selectable options.
+B5
+thru
+Not Connected
+B8
+B9
++12VDC
++12VDC
++12VDC
+B10
+GND
+GROUND
+B11
+Not Connected
+3-1

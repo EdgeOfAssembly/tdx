@@ -1,0 +1,60 @@
+--- Page 1 ---
+DATA REQUEST        Functions the same as the DRQ
+READY
+Indicates condition of
+line. When set, it indicates that
+line on drive. WD1002-05 ready will
+the sector buffer is ready to ac-
+not execute any commands un-
+cept data or contains data to be
+less the ready bit is set. Normal-
+read by the host. The data re-
+ly this line is asserted for
+quest bit is reset when the
+Floppy drives when the SDH
+sector buffer has been fully
+register   selects   any
+read or written. Normally, the
+drive. A user available jumper floppy
+host need not consult this bit to
+option can be
+if
+determine if a byte should be
+the READY line implemented is available
+transferred.
+from the floppy drive.
+SEEK COMPLETE    Indicates the condition of the
+BUSY
+After issuing a
+or
+seek complete line on the se-
+initialing WD1002-05 command, internal
+lected Winchester drive. For
+diagnostics, this bit will be set
+Floppy drives, this line is as-
+indicating that the WD1002-05
+serted when the SDH register is
+is busy executing a command.
+reloaded.
+No other bits or registers are
+WRITE FAULTI
+Indicates the condition of the
+valid when this bit is set.
+WRITE PROTECT     write fault line on a selected
+Winchester drive. The WD1002-
+5.11   COMMAND REGISTER
+05 will not execute any com-
+All commands are loaded into this register after the
+mand if this bit is set.
+task files have been set. Writing to this register will
+If a write-protected disk is
+cause the INTRQ Line to be reset. The command reg-
+sensed in a selected floppy
+ister is a write-only register Refer to SECTION 6
+drive during a write operation,
+(COMMANDS), subsection 6.1 for further details.
+the write fault bit will be set.
+The command will then be a-
+borted and no writing will take
+place.
+5-4

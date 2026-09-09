@@ -1,0 +1,28 @@
+--- Page 1 ---
+tBS
+BUSY
+tiv- -
+INTRQ
+1 -tDV
+DRQ
+MR
+tMR
+tIRW -
+WE   (CMD. WRITE)
+LAST
+WE
+CMD.
+BYTE
+TIRR
+RE   (STATUS)
+RE
+LAST
+BYTE
+tDSW
+H        tDRW *     H
+INTRQ
+DRQ
+Figure 3-8.   Miscellaneous Timing
+à
+A
+3-6

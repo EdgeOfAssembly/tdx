@@ -1,0 +1,33 @@
+--- Page 1 ---
+SECTOR INTERLEAVING
+Variable sector interleaving is supported by the S1410A. When any format command
+is issued, any interleave value up to the number of sectors-per-track minus one may
+be passed in the Device Control Block (DCB byte 4). The interleave factor may be
+adjusted for maximum system performance.   Interleaving allows logical contiguous
+sectors of data on a given track to be mapped onto non-adjacent physical sectors.
+An interleave factor of five, for instance, means that every fifth physical sector is
+transferred as the next contiguous logical sector of data. If the operation is a read
+and the interleave factor is five then a sector of data is read into the sector buffer
+first and during the time that the heads are passing over the next three physical
+sectors of the disk, the data is being transferred to the host.   If the host cannot
+transfer the full sector of data during the three sector times available, then the
+S1410A has to wait a full revolution before the next logical sector can be read from
+the disk.   If this happens, the interleave factor is too low and should be increased
+until an increase in system speed is noticed.
+In order to take full advantage of the interleaving feature of the S1410A, the
+operating system should perform multiple sector data transfers.    If single sector
+transfers are employed, the difference in speed with various interleave factors may
+not be dramatic.
+The interleave value can be set to improve system throughput based on overhead
+time of the host software, overhead time in the disk driver, and overhead time for
+the S1410A to process a command.    If the host system is capable of multisector
+transfers, system throughput can be optimized by setting the interleave value such
+that the next logical sector comes under the heads just as the S1410A completes the
+data transfer of the previous sector.   If the host is capable of passing a sector of
+data at DMA speed (one millisecond for a 256 byte sector), then the interleave value
+should be set to four to optimize multisector transfers.   This is the minimum value
+for continuous sector transfers. If a sector data transfer takes between one and two
+milliseconds, set the interleave value to five. The best method is to experimentally
+determine   the best interleave value for your system   using   a representative
+benchmark.
+Page -85-

@@ -1,0 +1,30 @@
+--- Page 1 ---
+CHAPTER 3
+BOARD SETUP
+GENERAL
+This chapter contains the information for setting up and installing the controller
+before placing it in operation.      These   preparatory   steps require the proper
+placement of jumpers, mounting the controller in its operating environment, and
+properly connecting the cables.   In addition, the user has the option of using more
+than one controller with the host adapter in his system. Instructions for connecting
+multiple controllers appear later in the chapter.
+BOARD SETUP
+Setting up the Controller for operation requires checking that the factory-installed
+jumpers are according the listing in Table 3-1. Figure 3-1 shows the locations of the
+jumpers on the Controller.
+TABLE 3-1 JUMPER LOCATIONS
+Designation
+Function
+Connection and Result
+W1
+Selects sector size
+SS to 2: 256-byte sector
+32 Sectors/Track
+SS to 5: 512-byte sector
+17 Sectors/Track
+MOUNTING CONTROLLER
+The controller board has eight mounting locations.   The four mounting holes match
+those of the original S1410, while the four sloted mounting locations allow for easy
+mounting on the drive.   The controller should be mounted to receive convection air
+flow.
+Page -12-

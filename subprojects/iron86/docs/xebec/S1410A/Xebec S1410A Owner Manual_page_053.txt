@@ -1,0 +1,26 @@
+--- Page 1 ---
+5 TYPE 0 ERROR CODES, DISK DRIVE (CONTINUED)
+DEFINITION
+Disk Drive Not Ready. This error occurs if the controller fails
+to the seiect the drive, or the drive indicates not ready after
+selection. Possible error causes:
+Drive power supply voltages out of range
+Drive not yet up to operating speed following power on
+Bad drive
+Control Cable (J1)
+Controller
+Not used
+Track 00 Not Found.   After stepping the drive 200 more steps
+than the number of configured cylinders during a recalibrate
+command, the Track 00 Signal was not received fron the drive.
+Possible causes are:
+Incorrect drive size initialization (too few cylinders)
+Bad Drive
+Control Cable (J1)
+Bad controller
+Not used
+Disk Drive is Seeking.   This code is returned in response to a
+test drive ready command if the drive had previously been
+issued a buffered seek command that has not yet completed.
+Not used
+Page -45-

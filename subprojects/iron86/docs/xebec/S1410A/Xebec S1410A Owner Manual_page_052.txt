@@ -1,0 +1,31 @@
+--- Page 1 ---
+3LE 4-6 TYPE 0 ERROR CODES, DISK DRIVE
+DEFINITION
+No Error Occurred. This code is always returned if no error had
+occurred during the previous command.
+No Index Signal from the Drive.   This error occurs during any
+data transfer or format command if a normal drive select
+occurs, the drive is ready, but no index signal is detected from
+the drive within two revolutions of the disk.    Possible error
+causes are:
+Bad Drive
+Control Cable (J1)
+Controller
+No Seek Complete Signal from the Drive. This error occurs on
+non-buffered seek processing if the controller does not receive
+the Seek Complete Signal from the Drive within one second
+following the last step pulse. Possible error causes are:
+Bad Drive
+Control Cable (JI)
+Controller
+Write Fault Signal Received from the Drive. This error occurs
+if the controller detects an active write fault signal from the
+disk drive either at the completion of a sector data transfer or
+initially after a successful drive select and the drive indicates
+ready. Possible error causes:
+Drive power supply voltage out of range
+Bad Drive
+Control Cable (J1)
+Unit Cable (J2, J3)
+Controller
+Page -44-

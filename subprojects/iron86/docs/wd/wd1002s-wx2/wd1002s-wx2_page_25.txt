@@ -1,0 +1,186 @@
+--- Page 1 ---
+SECTION - V
+COMMAND DESCRIPTION
+5.1 GENERAL
+This section provides a detailed description of the        five are diagnostic. An explanation of how the
+Command Block format and function of the 19        commands perform their function is discussed in
+commands   supported   by the WD1002S-WX2.
+Section 6 Theory of Operation. Table 5-1 lists a
+Fourteen of the commands are operational and
+summary of the commands.
+TABLE 5-1. COMMAND SUMMARY
+PARAMETERS (Refer to Figure 5-1)
+COMMAND
+OP CODE     DRV.    HD    CYL     SEC     BLK/INT     R1     R2   STEP
+TEST DRIVE READY
+00
+V
+n
+n
+n
+n
+n        n
+n
+RECALIBRATE
+01
+V
+n
+n
+n
+n
+V        n
+n
+READ STATUS OF
+03
+V
+n
+n
+n
+n
+n        n
+n
+LAST OPERATION
+FORMAT DRIVE
+04
+V
+V
+V
+DR        V (INT)        V        n
+V
+VERIFY SECTORS
+05
+V
+V
+V
+V        V (BLK)       V        V
+V
+FORMAT TRACK
+06
+V
+V
+V        DR       V (INT)        V        n
+V
+FORMAT BAD TRACK
+07
+V
+V
+V        DR       V (INT)        V        n
+V
+READ SECTORS
+08
+V
+V
+V
+V        V (BLK)       V        V
+V
+WRITE SECTORS
+OA
+V
+V
+V
+V        V (BLK)       V        n
+V
+SEEK
+OB
+V
+V
+V
+DR
+n
+V        n
+V
+INITIALIZE DRIVE
+PARAMETERS
+OC
+V
+n
+n
+n
+n
+n        n
+n
+READ ECC BURST
+OD
+V
+n
+n
+n
+n
+n        n
+n
+ERROR LENGTH
+READ SECTOR BUFFER
+OE
+n
+n
+n
+n
+n
+n        n
+n
+WRITE SECTOR BUFFER
+OF
+n
+n
+n
+n
+n
+n        n
+n
+EXECUTE SECTOR
+BUFFER DIAGNOSTIC
+EO
+n
+n
+n
+n
+n
+n        n
+n
+EXECUTE DRIVE
+E3
+V
+n
+n
+n
+n
+V        n
+V
+DIAGNOSTIC
+EXECUTE CONTROLLER
+DIAGNOSTIC
+E4
+n
+n
+n
+n
+n
+n        n
+n
+READ LONG
+E5
+V
+V
+V
+V        V (BLK)       V        n
+V
+WRITE LONG
+E6
+V
+V
+V
+V
+V (BLK)       V        n
+V
+LEGEND:
+V
+Must be a valid parameter.
+DR
+Not used but must be within a valid parameter range.
+n
+Not used (should be 0 for future compatibility).
+INT
+Interleave
+BLK
+Block Count
+5-1

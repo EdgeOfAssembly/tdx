@@ -1,0 +1,25 @@
+--- Page 1 ---
+4.5.3.16       Write Sector Buffer (Class 0, Opcode OF)
+This command is usually used in 2 ways:
+A)      Write a test pattern to the Controller and read it
+back to verify the Controller's buffer memory is
+functioning.
+B)       If the user wants another data field pattern for
+format such as E5 Hex for CP/M compatibility, the
+user can initialize the data pattern by writing the
+data pattern to the Controller. Then, before issuing
+the     FORMAT     DRIVE     or     FORMAT     TRACK
+command, set bit 5 of the byte 5 of the DCB high to
+tell the Controller to use the data pattern in the
+buffer instead of the default format data pattern.
+7
+6
+5
+4        3
+2
+1
+0
+0
+0
+0
+Page -67-

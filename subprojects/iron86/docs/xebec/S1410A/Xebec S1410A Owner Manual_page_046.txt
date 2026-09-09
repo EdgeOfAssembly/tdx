@@ -1,0 +1,44 @@
+--- Page 1 ---
+6 is reset, the Controller will reread the sector before attempting
+error correction. It is faster and more reliable to read the data again
+than apply error correction   immediately.      If the data error is
+transient in nature, such as noise or electrical interference in the
+disk heads or read amplifier, noise in cable, or a power supply
+transient, then another read of the sector will be successful.   If the
+error occurs twice in succession, the error is usually caused by a
+media defect, so ECC correction is used to recover the data.
+Bit 5 -
+Not used.
+Bit 4 -
+If set to one, indicates the disk drive has disk servo
+information prior to index on each track.   The "Imbedded
+Servo" drives use this servo information to control the
+rotational speed of the drive and to control position of the
+read/write head over the track.
+Bit 0-3 -     Bits 0-3 will set the step rate for the disc drive.    The
+following describes the step rates provided.
+DESCRIPTION
+BITS
+3      2      1     0
+Default 3 msec step rate
+0      0      0      0
+Reserved
+0      0      0      1
+Reserved
+0      0       1      0
+Reserved
+0      0      1      1
+200 usec buffered step
+0       1      0      0
+70 usec buffered step
+0       1      0      1
+30 usec buffered step
+0       1        1       0
+15 usec buffered step
+0      1       1      1
+12 usec buffered step
+l       0      0      0
+Spare (for future use)
+1      0      0      1 thru
+1        1       1       l
+Page -38-

@@ -1,0 +1,77 @@
+--- Page 1 ---
+ADDENDUM A
+S1410 REV E FIRMWARE
+There are major changes onthe S1410 Rev E firmware from Rev. D.All changes are
+downward compatible with software for Rev. D.
+A.   NEW COMMANDS ADDED
+1. Format Alternate Track (OPCODE 'OE' Hex)
+Format Alternate Track will format the header fields of the "Bad Track" with
+the alternate track information(assigned by the host). The alternate track is
+formatted to identify it as an alternate. The command bytes for Format
+Alternate Track are:
+7
+6
+5
+4
+3
+2
+1
+Byte 0
+0
+0
+0
+0
+1
+1
+1
+0
+Byte 1
+0
+d
+d
+LOGICAL ADDRESS HI
+Byte 2
+LOGICAL ADDRESS MIDDLE
+Byte 3
+LOGICAL ADDRESS LO
+Byte 4
+0
+0
+0
+INTERLEAVE
+Byte 5
+r
+r
+F
+0
+S
+S
+S
+S
+d = drive, 0 or 1 S = step option, r = retries.
+The logical address in the command bytes point to the "Bad Track".
+Sector address is ignored, defaulting to sector 0.
+The interleave byte(4) is programmed the same as inthe format command,
+and is used on the alternate track.
+If Bit 5 of Control Byte (5) is set, the data in the existing sector buffer is used
+to fill the data field. If not set, the data field is written with hex 6C.
+After issuing the command the controller will ask for 3 bytes. These bytes
+point to the host assigned alternate logical address. Again sector address is
+ignored.
+7
+6
+5
+4
+3
+2
+1
+0
+Byte 0
+0
+0
+0
+LOGICAL ADDR HI
+Byte 1
+LOGICAL ADDRESS MIDDLE
+Byte 2
+LOGICAL ADDRESS LO

@@ -1,0 +1,42 @@
+--- Page 1 ---
+From the 3 pattern read above, the first and second patterns are cor-
+rectable because the error bit span is less than or equal to 11 bits. The
+third pattern is uncorrectable since it exceeds the Controller's Correc-
+tion capability, which is 11 bits.
+13.Format Alternate Track (Class 0, Opcode OE)
+This command is fully descripted in the S1410 OWNER'S MANUAL
+Rev. E-1 (in the S1410 OWNER'S MANUAL Supplement)
+14.Write Sector Buffer (Class 0, Opcode OF)
+This command is usually used in 2 ways:
+a) Write a test pattern to the Controller and read it back to verify the
+Controller's buffer memory is functioning.
+b) If the user wants another data field pattern for format such as E5
+Hex for CP/M compatability, the user can initialize the data
+pattern by writing the data pattern to the Controller. Then, before
+issuing the FORMAT DRIVE or FORMAT TRACK command, set
+byte 5 of the DCB high to tell the Controller to use the data pattern
+in the buffer instead of the default format data pattern.
+15.Read Sector Buffer (Class 0, Opcode 10)
+This command is also usually used in 2 ways:
+a) Read the contents of the data buffer after writing it using WRITE
+SECTOR BUFFER command to test the RAM.
+b) If an uncorrectable data error occurs, the Controller will not send
+data to the host, but reports the error immediately. If the host
+wants to corrupt data, then the host issues this command to
+retrieve it.
+16.Ram Diagnostic (Class 7, Opcode 00)
+This command does a walking 1 and walking 0 pattern test of its
+internal RAM buffer.
+17.Drive Diagnostic (Class 7, Opcode 04)
+This commands recalibrates the disk drive, then reads sector Oofeach
+track to verify that both ID and data field are correct.
+18.Controller Internal Diagnostic (Class 7, Opcode 04)
+This command checksums the EPROM by adding the value of each
+memory location modulo 256 across the programmed area. The newly
+calculated checksum is compared to the checksum stored perma-
+nently in the EPROM. If the checksums do not compare, then a
+CHECKSUM ERROR (Error Code 31 Hex) is returned. The data buffer
+test is the same as RAM DIAGNOSTIC. The ECC circuitry is tested by
+introducing an artificial error to the data and check that the ECC
+circuitry detects the error. It also passes a good pattern and sees if the
+ECC circuitry detects no ECC error.

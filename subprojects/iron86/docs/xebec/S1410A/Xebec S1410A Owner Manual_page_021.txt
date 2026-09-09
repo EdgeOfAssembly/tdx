@@ -1,0 +1,24 @@
+--- Page 1 ---
++    CONNECTING CABLES
+Before the controller can be placed in operation, the cables to the drive and host
+must be connected. These cables are listed below:
+JI
+Control Cable (controiier to iast drive): maximum 20 feet
+J2
+Data Cable: maximum 20 feet
+J3
+Data Cable: maximum 20 feet (optional second drive)
+Pl
+Power Cable
+P2
+Host Interface Cable: maximum 15 feet
+NOTE:    Do not attempt to connect a cable to connector J4 or J5. Connector J4 is
+for factory test only. Connector J5 sets the controller SASI address.
+Figure 3-1 shows the connector locations.
+MULTIPLE CONTROLLERS
+A separate Controller is required for each additional pair of drives.    Figure 3-2
+shows two operating setups;   (A) using one Controller and (B) using two Controllers.
+Notice the terminator (resistor pack) in both drawings. The terminator is at position
+6F on the board.    When multiple Controllers are used, the terminator must be
+installed only in the last board in the daisy chain.
+Page -13-

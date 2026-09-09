@@ -1,0 +1,33 @@
+--- Page 1 ---
+IE
+Whenthe controller attempted to access an alternate
+track from a spared track, the alternate track was not
+flagged as an alternate.
+IF
+On a format alternate track command, the bad track
+equalled the alternate track.
+TIMING CLARIFICATIONS
+A.   CONTROLLER SELECTION
+The SELECTION signal should NEVER be activated (SEL - =0) within 1
+microsecond of the deactivation of the BUSY signal (BUSY - =1) or within 10
+microseconds after a RESET;ifthis timing is violated, the controller may not be
+able to accept the selection sequence.
+B.   OTHER TIMING CONSIDERATIONS
+FROM
+TO
+TIME
+SEL
+REQ
+100 microseconds
+RESET OR
+CONTROLLER
+2 milliseconds
+POWER ON.
+READY
+WRITE COMMAND
+1ST DATA
+200 microseconds
+REQUEST
+MESSAGE BYTE
+END OF BUSY
+10 microseconds

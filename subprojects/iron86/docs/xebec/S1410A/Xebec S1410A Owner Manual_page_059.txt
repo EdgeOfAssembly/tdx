@@ -1,0 +1,38 @@
+--- Page 1 ---
+Format Drive (Class 0, Opcode 04)
+This command recalibrates the drive, then seeks to the
+starting address specified by the byte 1, 2 and 3 of the
+DCB.   It times the spindle speed, divides the track into
+equal size sectors, and writes out address mark (AM) and
+header field for all sectors.   The logical sector layout is
+specified by the interleave value contained in byte 4 of
+the DCB. Then it reads back the AM and header field and
+writes the DATA field for all sectors. The data pattern is
+defaulted to 6C Hex or the host can initialize the pattern
+by using the WRITE SECTOR BUFFER command and then
+set bit 5 of the Control Byte of the DCB to 1 in the
+FORMAT DRIVE command to tell the Controller not to
+change the buffer content.     Note that if the format
+command gets a hard error while formatting a track, the
+format operation stops immediately and the error is
+reported.    To continue, the host software must provide
+the data fields for all logical sectors following the sector
+in error, then continue with the format command at the
+beginning of the next track.   Also note that the format
+operation always start at the first sector of a track, even
+though the address specified in the DCB did not point to a
+track boundary.
+Bit 4 of the control byte (v bit) determines the format
+type.   If the V bit is set to one, the controller leaves an
+"Imbedded Servo" gap at the end of the track.   This gap
+accommodates the servo area required by higher capacity
+drives.    This "Imbedded Servo" allows the drive to more
+accurately position the heads and control the spindle
+speed.    If the disk is not an "Imbedded Servo" drive, set
+the V bit to zero.     If the imbedded servo format is
+selected, the firmware times the disk rotation, subtracts
+off a 300 microsecond gap for the servo area, and formats
+the track.   This firmware will work properly with drives
+that   have a servo area   that   is   smaller   than    300
+microseconds   preceeding   index   and   40   microseconds
+Page -51-

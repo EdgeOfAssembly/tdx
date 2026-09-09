@@ -1,0 +1,48 @@
+--- Page 1 ---
+CONTENTS
+INTRODUCTION
+GENERAL
+DESCRIPTION
+FUNCTIONAL ORGANIZATION
+1.3.1
+Host Interface
+1.3.2        Processor
+1.3.3        State Machine
+1.3.4
+SERDES
+1.3.5
+Phase Lock Loop
+1.3.6        Sector Buffer
+SPECIFICATIONS
+GENERAL
+ELECTRICAL
+PHYSICAL SPECIFICATIONS
+ENVIRONMENTAL REQUIREMENTS
+CONNECTORS
+CONNECTOR PIN ASSIGNMENTS
+BOARD SET-UP
+GENERAL
+BOARD SETUP
+MOUNTING CONTROLLER
+CONNECTING CABLES
+MULTIPLE CONTROLLERS
+ADDRESS JUMPER GROUP
+THEORY OF OPERATION
+GENERAL
+4.1.1
+SASI Conventions
+4.1.2        SASI Names and Abbreviations
+4.1.3        SASI Signal Definitions
+4.1.4        Drive Control Signals
+4.1.4.1     Reduced Write Current
+4.1.4.2     Write Select Gate
+4.1.4.3    Head Select Signals
+4.1.4.4    Step
+4.1.4.5    Direction In
+4.1.4.6    Drive Select 0, Drive Select 1
+4.1.5        Drive Output Signals
+4.1.5.1     Seek Complete
+4.1.5.2    Track 000
+4.1.5.3    Write Format
+4.1.5.4    Index
+-ii-

@@ -1,0 +1,33 @@
+--- Page 1 ---
+BASIC OPERATING CONFIGURATION
+The basic operating configuration consists of a host adapter, S1410A Controller, and
+a Winchester disk drive with an industry standard Seagate interface.    Figure 4-1
+shows the basic setup. Also shown is an additional, optional drive; the controller can
+control a maximum of two drives.
+The host can be one of a number of computer systems; the host
+is
+adapter       an
+interface between the host's bus and the controller.
+DETAILED DESCRIPTION (HANDSHAKING AND TIMING)
+The following paragraphs describe the interaction between the controller and the
+host adapter.
+4.3.1 Controller Selection
+Before the host adapter can begin a transaction, it must select the controller.
+The host adapter selects the controller by activating the SEL- control signal
+and the address bit of the controller. Any bit, DBO- through DB7-, can be the
+address bit in a system with multiple controllers (all controllers leave the
+factory with DBO- connected to the controller's address logic).     For this
+discussion, the controller's address is 0. Only one controller may be selected
+at a time. BUSY- must not be active at the start of the selection
+process.
+The timing diagram in Figure 4-2 shows the basic timing requirements. Upon
+receiving both the SEL- signal and DBO-, the controller activates the BUSY-
+signal. As shown in the timing diagram, both SEL- and DBO- must be active
+(low) before the controller can activate the BUSY- signal. The data bus must
+be stable a minimum of 100 nanoseconds before SEL- is set, and held stable for
+100 nanoseconds after SEL- is reset.   Do not issue a select for at least 25
+microseconds following a controller reset.   During the selection process, the
+host has control of the data bus as signified by the deactivation of the I-/O
+line. Selection is complete when BUSY-becomes active.   The controller then
+enters the command mode.
+Page -29-

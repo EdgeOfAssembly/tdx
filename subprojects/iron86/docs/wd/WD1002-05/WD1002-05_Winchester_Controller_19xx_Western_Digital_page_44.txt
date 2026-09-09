@@ -1,0 +1,102 @@
+--- Page 1 ---
+it on, unaltered, to the WD1010 to be recorded on the        WD1002-05 uses a
+disk. This permits the host to induce errors anywhere
+share SB
+multiplexed dataladdress bus to
+in the data stream SO that the operation of the EDS
+access and control lines with the WD1010.
+can be validated during a subsequent READSHORT
+Proper use of this interface results in having only a
+operation.
+presettable counter to control the buffer and a
+latch/decoder to control up to three
+During a READLONG operation, the EDS is inhibited        drives. The counter is
+Winchester
+from
+preset using two separate
+producing a syndrome. Instead, it copies the re-
+strobes, one for each byte of the
+corded ECC check bits and passes them unaltered to
+counter package provides addressing address, one 8-bit
+the host, appended to the end of the sector data
+128 or 256 byte sector buffer size. By using capability more for than a
+being read. As with WRITELONG, this command is
+one counter package, the WD1002-05
+useful when validating EDS performance.
+ple sector buffer size of 64K bytes. The permits SDH a latch multi- is
+The EDS uses a 2-bit serial implementation of the
+used to provide drive selects 1-3 and head selects 0-7.
+generator polynomial during ECC generation and
+error detection. During correction operations, a serial
+8.2.5.1   Write Precompensation (WPC)
+reverse polynomial is used by the CP to compute the        The generation of Modified Frequency
+error vector and displacement. Correctable errors are
+(MFM) write data takes place in the WD1010. Modulation This
+corrected in the buffer without host intervention. Un-
+device accepts a byte of data and a WCLK to
+correctable errors are reported to the host and the un-
+MFM data through internal circuitry which produce
+corrected data is transferred to the host for further
+when and where to write clocks and data on the decides data
+action.
+stream under the MFM encoding rules. The MFM
+data stream is now totally compatible with
+8.2.3.2   Support Logic
+recording rules and may be sent to suitable line the
+The support logic consists of two 8-bit latches (com-
+drivers for transmission to the drive except for one
+mand/error register and SDH latch). Data requests,
+modification. Due to the decreasing radius on the
+interrupts, BUSY, multiple mode, and read command
+physical surface of the disk, the inside tracks have
+information is also maintained and updated in the
+less circumference and therefore exhibit a increase
+WD1014 to enhance the capability of the CP to
+in recording flux density over the outside tracks. This
+handle control functions in real time.
+increase in flux density aggravates a problem in
+The EDS controls the buffer counter,
+magnetic recording known as 'dynamic bit shift.'
+incrementing
+and presetting due to commands from the host, and
+Dynamic bit shift comes about as the result of one bit
+contains all the necessary logic to handle sector buf-
+on the disk (a flux reversal) influencing an adjacent
+fer overflow. Data, buffer addresses, and Drive/Head
+bit. The effect is to shift the leading edge of both bits
+select control are handled by the same multiplexed
+closer together or further apart than recorded. The
+8-bit address and data bus.
+net result is that enough jitter is added to the data
+recorded on the inside tracks to make them harder to
+8.2.4   SECTOR BUFFER (SB)
+recover without error
+The SB is used to buffer a sector of data being trans-
+Write precompensation is used to reduce the effect
+ferred to or from the host. The sector size may be        of dynamic bit shift. It is a way of predicting which
+programmed for 128, 256, 512, or 1024 bytes. Thus,
+direction a particular bit will be shifted and inten-
+the minimum RAM size required is 1KX8. The ad-
+tionally writing that bit out of position in the opposite
+dress counters are controlled by the CP and EDS. All
+direction to the expected shift. This is done by
+control signals for SB access are provided by 'the
+examining the next two data bits, the last and the
+WD1010, or the CP when communicating with the
+present bits to be written and producing three sig-
+floppy controller (WD2797).
+nals depending on what these bits are. The three
+signals are EARLY, LATE and NOMINAL. They are
+8.2.5   WINCHESTER DRIVE AND BUFFER
+used in conjunction with a delay line to cause the
+INTERFACE (WDBI)
+leading edge of a data or clock bit to be written
+The WDBI consists of the Winchester Disc Controller
+earlier, later, or on time.
+(WD1010), an 8-bit SDH latch, write precomp logic        The processor can enable or disable the generation
+(WPC), data separator, and appropriate drivers and re-        of these signals by controlling the Write Pre-Comp
+ceivers. The WD1010 is connected to the Winchester        (WPC) line from the addressable latch. When WPC is
+drives and the SB by means of 20 signal lines that        high, precomp is in effect. When WPC is low, no
+form the WDBI. As previously mentioned, the        precomp is generated and the nominal output of the        1
+device is held true.
+8-4

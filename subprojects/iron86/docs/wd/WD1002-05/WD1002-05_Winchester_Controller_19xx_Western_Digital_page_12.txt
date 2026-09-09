@@ -1,0 +1,84 @@
+--- Page 1 ---
+the real-time function is provided for Winchester disk
+The Master Reset strobe (MR) must be used to
+operation only (real-time function is not available for
+initialize the WD1002-05 on power-up. This always
+Floppy disk operation).
+initiates the internal diagnostics of the WD1002-05
+If CRC format Winchester disks are used, CRC is se-
+and no command may be processed until the BUSY
+lected by the WD1010 by setting SDH7 = 0. CRC for
+bit is cleared (approx. 1-2 seconds).
+the floppy disks is performed by the WD2797, a de-
+To communicate with the WD1002-05, the host pro-
+vice that furnishes all control functions for floppy
+cessor must first access a set of registers called the
+disk drives, including necessary data separation and
+task files (see SECTION 5 for a description of the task
+write precompensation. SDH7 must be set to zero for
+file registers and SECTION 7 for programming in-
+floppy disk operation.
+formation). All parameters necessary for a command
+A simplified data flow and command flow block dia-
+to be executed are set into the task files. The task
+gram is illustrated in Figure 1-1.
+files tell the WD1002-05 what is to be done, i.e. sector
+size to be selected, disk drive selected and head or
+1.1.2 COMMUNICATIONS BETWEEN HOST
+side   desired,   sector   number,   and   any other
+AND WD1002-05
+information needed to execute the command.
+Two-way communications between the host pro-
+After a command has been issued, the host can
+cessor and the WD1002-05 is via a parallel access
+verify that the command has been executed either by
+port and an 8-bit, bi-directional bus. Appropriate con-
+polling the BUSY bit in the task file or by waiting for
+trol signals are used to transmit disk READAWRITE
+an interrupt request (See SECTION 6 for description
+data, status information, and macro commands over
+of commands).
+the data bus.
+For all write operation commands, including format,
+Communications between the host processor and
+the host must fill up the sector buffer no less than
+the WD1002-05 uses eight data bus lines (DAL7-
+the sector size chosen, otherwise the WD1002-05 will
+DALO), a Card Select (CS), a Read Enable (RE), a Write
+not execute the command. The sector buffer need
+Enable (WE), three address lines (A2-AO), a Master
+only contain the required valid data to execute the
+Reset (MR), a Data ReQuest (DRQ), and an INTerrupt
+command while the rest of the bytes serve as fillers
+ReQuest (INTRQ). (See SECTION 2 for a complete
+(especially for a format operation). Once the sector
+description of control signals.)
+buffer is filled all communications with the host are
+HOST
+WD2797
+FLOPPY
+INTERFACE
+DATA BUS
+FLOPPY
+IFC
+LOGIC
+CONTROLLER
+WD1015
+*NOT ON WD1002-HDO
+CONTROL
+PROCESSOR
+WD1010
+DATA
+ADDR
+SECTOR
+WINCHESTER
+SEP
+LOGIC
+BUFFER
+CONTROLLER
+LOGIC
+WD1014
+EDS
+CONTROL BUS
+Figure 1-1.   WD1002-05 Simplified Data/Command Flow Block Diagram
+1-2

@@ -1,0 +1,33 @@
+--- Page 1 ---
+8.2.5.2   Data Separator
+8.2.6   FLOPPY DRIVE AND BUFFER
+INTERFACE (FDBI)
+Data is recorded on Winchester discs using an MFM
+technique. This technique requires clock bits to be
+The FDBI consists of a Floppy Disc Controller
+recorded only when two successive data bits are
+(WD2797), a drive select latch, head load, motor-on,
+missing in the serial data stream. The fact that clock
+buffer management logic, and appropriate drivers
+bits are not recorded with every data bit cell requires
+and receivers. The write precomp and data separator
+circuitry that can remain in sync with data during the
+are internal to the WD2797. The WD1002-05 can
+absence of clock bits. Synchronous decoding of
+support up to four 5.25" floppy drives, double density
+MFM data streams requires the decoder circuitry to
+and single or double sided (WD1002-05 only).
+synthesize clock bit timing when clock bits are miss-
+ing and synchronize to clock bits when they are pres-
+ent. This is accomplished by using a phase-locked
+oscillator employing an error amplifier and filter to
+sync onto and hold a specific phase relationship to
+the data and clock bits in the data stream. The phase-
+lock occurs at 2x average data rate frequency (fo),
+which in turn is used to synthesize a clock called
+RCLK with a frequency = 1/2 fo. This synthesized
+clock can then be used to separate data bits from
+clock bits with external logic to shift the resultant
+serial data into registers for byte parallelization
+within the WD1010.
+8-5

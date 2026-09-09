@@ -1,0 +1,82 @@
+--- Page 1 ---
+TABLE 2-7
+CONNECTOR P2, HOST INTERFACE, PIN ASSIGNMENTS
+Signal Pin
+Ground Return
+Signal Name
+2
+1
+DATAO-
+4
+3
+DATAI-
+6
+5
+DATA2-
+8
+7
+DATA3-
+10
+9
+DATA4-
+12
+11
+DATA5-
+14
+13
+DATA6-
+16
+15
+DATA7-
+18
+17
+Spare
+20
+19
+Spare
+22
+21
+Spare
+24
+23
+Spare
+26
+25
+Reserved
+28
+27
+Spare
+30
+29
+Spare
+32
+31
+Spare
+34
+33
+Spare
+36
+35
+BUSY-
+38
+37
+ACK-
+40
+39
+RST-
+42
+41
+MSG-
+44
+43
+SEL-
+46
+45
+C-/D
+48
+47
+REQ-
+50
+49
+I-/0
+Page -10-

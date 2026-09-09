@@ -1,0 +1,50 @@
+--- Page 1 ---
+A)      Use the normal READ command to find a sector
+that does not have any data errors.
+B)      Use READ LONG to read that sector plus ECC into
+the host.
+C)      Modify the data pattern in a known way.
+D)      Use WRITE LONG to write the pattern to the same
+sector.
+Use the READ command to read the same sector
+again.
+F)       If the pattern change is less than or equal to 11 bits
+in length, the Controller flags it as a correctable
+data error.   If the change is greater than 11 bits in
+length,    the    Controller    will     flag    it     as     an
+uncorrectable data error.
+G)      Use a WRITE command to restore the sector for
+system use.
+d = drive, 0 or 1
+r = retries
+S = step option
+7
+6
+5
+4
+3
+2
+1
+0
+1
+A
+1
+0
+0
+1
+0
+1
+0
+0        d
+HIGH ADDRESS
+MIDDLE ADDRESS
+LOW ADDRESS
+0
+BLOCK COUNT
+r
+0        0
+0        S
+S
+S
+S
+Page -72-

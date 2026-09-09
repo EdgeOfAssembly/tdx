@@ -1,0 +1,3170 @@
+===== wd1002s-wx2_page_01.txt =====
+--- Page 1 ---
+WD1002S-WX2
+Winchester
+Disk     Controller
+OEM     Manual
+Making the
+leading edge
+work for
+you
+WESTERN      DIGITAL
+C      0       R       P       0       R       A       T     /       0       N
+
+===== wd1002s-wx2_page_02.txt =====
+--- Page 1 ---
+WD1002S-WX2
+Winchester
+Disk   Controller
+OEM    Manual
+Document No.: 79-000029
+2445 McCabe Way
+Irvine, California 92714
+(714) 863-0503
+(714) 863-0102
+TWX 910-595-1139
+July 1985
+
+===== wd1002s-wx2_page_03.txt =====
+--- Page 1 ---
+COPYRIGHT O 1985 WESTERN DIGITAL CORP.
+ALL RIGHTS RESERVED
+This document is protected by copyright, and contains information proprietary to Western Digital Corp. Any copying,
+adaptation, distribution, public performance, or public display of this document without the express written consent of
+Western Digital Corp. is strictly prohibited. The receipt or possession of this document does not convey any rights to repro-
+duce or distribute its contents, or to manufacture, use, or sell anything that may describe, in whole or in part, without the
+specific written consent of Western Digital Corp.
+ii
+
+===== wd1002s-wx2_page_04.txt =====
+--- Page 1 ---
+TABLE OF CONTENTS
+SECTION 1      INTRODUCTION
+1.1     Document Scope.
+1-1
+1.2     Description
+1-1
+1.3     Features
+1-1
+1.4     Operation
+1-3
+1.4.1    Bi-Directional Control/Data Bus
+1-3
+1.4.2   Address Decoding Logic
+1-3
+1.4.3    Configuration Jumpers -
+1-3
+1.4.4    Bios ROM -
+1-3
+1.4.5   WD11C00-17 Logic Array
+1-3
+1.4.6   WD10C20 Winchester Data Separator and Write
+Precompensation Device
+1-3
+1.4.7    Sector Buffer RAM.
+1-3
+1.4.8   WD1010A-05 Winchester Disk Controller.
+1-4
+1.4.9   WD1015 Buffer Manager Control Processor
+1-4
+1.4.10 Reset Logic
+1-4
+SECTION 2     SPECIFICATIONS
+2.1     General
+2-1
+2.2     Electrical..
+2-1
+2.2.1    Host Interface
+2-1
+2.2.2    Drive Interface
+2-1
+2.2.3   WD10C20.
+2-1
+2.2.4   Power
+2-1
+2.3     Physical...
+2-2
+2.4     Environmental.
+2-2
+SECTION 3     INTERFACE CONNECTIONS
+3.1     Organization
+3-1
+3.2     Host Interface
+3-1
+3.3     Drive Interface
+3-2
+3.3.1    Drive Control
+3-2
+3.4     Drive Data Connector
+3-4
+SECTION 4     INTERFACE TIMING
+4.1     Timing.
+4-1
+SECTION 5     COMMAND DESCRIPTION
+5.1     General .
+5-1
+5.2     I/O Port Description
+5-2
+5.2.1    Port 320
+5-2
+5.2.2    Port 321
+5-2
+5.2.3    Port 322
+5-3
+5.2.4    Port 323
+5-3
+5.3     Command Block
+5-3
+5.4    Test Drive Ready (Class 0, OP Code 00)
+5-4
+5.4.1    Possible Error Codes
+5-4
+iii
+
+===== wd1002s-wx2_page_05.txt =====
+--- Page 1 ---
+5.5.    Recalibrate (Class 0, OP Code 01).
+5-4
+5.5.1    Possible Error Codes -
+5-4
+5.6     Read Status of Last Operation (Class 0, OP Code 03).
+5-5
+5.7     Format Drive Starting at Desired Track (Class 0, OP Code 04)
+5-7
+5.7.1    Possible Error Codes
+5-8
+5.7.2    Interleaving.
+5-8
+5.8     Verify Sectors (Class 0, OP Code 05)
+5-8
+5.8.1    Possible Error Codes -
+5-8
+5.9     Format Track (Class 0, OP Code 06).
+5-9
+5.10   Format Bad Track (Class 0, OP Code 07)
+5-9
+5.11   Read Sectors (Class 0, OP Code 08)
+5-9
+5.11.1 Possible Error Codes
+5-9
+5.12 Write Sectors (Class 0, OP Code OA)
+5-9
+5.12.1 Possible Error Codes .
+5-9
+5.13 Seek (Class 0, OP Code OB).
+5-9
+5.13.1 Possible Error Codes -
+5-9
+5.14 Initialize Drive Parameters (Class 0, OP Code OC) -
+5-10
+5.15 Read ECC Burst Error Length (Class 0, OP Code OD).
+5-10
+5.16   Read Sector Buffer (Class 0, OP Code OE)
+5-10
+5.17 Write Sector Buffer (Class 0, OP Code OF)
+5-10
+5.18 Execute Sector Buffer Diagnostic (Class E, OP Code 00)
+5-10
+5.18.1 Possible Error Codes -
+5-10
+5.19 Execute Drive Diagnostic (Class E, OP Code 03).
+5-10
+5.19.1 Possible Error Codes -
+5-10
+5.20 Controller Diagnostics (Class E, OP Code 04)
+5-10
+5.20.1 WD1010A-05 Test.
+5-11
+5.20.2 WD11C00-17 ECC Test.
+5-11
+5.20.3 Sector Buffer Test.
+5-11
+5.20.4 WD1015 RAM Test.
+5-11
+5.20.5 WD1015 ROM Test.
+5-11
+5.20.6 Possible Error Codes -
+5-11
+5.21   Read Long (Class E, OP Code 05)
+5-11
+5.21.1 Possible Error Codes
+5-11
+5.22 Write Long (Class E, OP Code 06).
+5-11
+5.22.1 Possible Error Codes -
+5-11
+SECTION 6     THEORY OF OPERATION
+6.1     General
+6-1
+6.2     Buses..
+6-1
+6.2.1    Host Interface Address Bus AO through A19.
+6-1
+6.2.2    Host Interface Data/Command Bus DO through D7
+6-1
+6.2.3   WD1002S-WX2 Intraboard Command/Status Bus BDO through BD7 .
+6-1
+6.2.4   WD1002S-WX2 Intraboard Command/Data Bus ADO through AD7.
+6-1
+6.2.5   WD1002S-WX2 Intraboard Address Bus RAO through RA10
+6-1
+6.3     Bus Protocol
+6.3.1    Selection Phase
+6-3
+6.3.2    Command Phase
+6-3
+6.3.3    Data Phase.
+6-3
+6.3.3.1   Programmed I/O Data Transfer
+6-3
+6.3.3.2   DMA Data Transfer.
+6-3
+iv
+
+===== wd1002s-wx2_page_06.txt =====
+--- Page 1 ---
+6.4     Device Address Decoder
+6-4
+6.5     Bios ROM -
+6-4
+6.6     Configuration Jumpers -
+6-4
+6.7     WD11C00-17 Logic Array.
+6-4
+6.7.1   Status, Read, and Write Ports
+6-4
+6.7.2   Sector Buffer RAM Addressing and Control
+6-4
+6.7.3    ECC Circuitry
+6-5
+6.7.4    Reset Timing Circuitry
+6-5
+6.8    WD1015 Buffer Manager Control Processor
+6-5
+6.8.1     Exception Handling.
+6-6
+6.9     Sector Buffer.
+6-6
+6.10 WD1010A-05 Winchester Disk Controller
+6-6
+6.11 WD10C20 Self-Adjusting Data Separator
+6-7
+6.11.1 Clock Generator
+6-7
+6.11.2 Write Precompensation Circuit
+6-7
+6.11.3 Data Separator
+6-7
+SECTION 7     INSTALLATION
+7.1     Hardware and Software Installation
+7-1
+7.2    Jumper Installation and Locations
+7-1
+7.3     Bios ROM Installation.
+7-3
+V
+
+===== wd1002s-wx2_page_07.txt =====
+--- Page 1 ---
+LIST OF TABLES
+TABLE
+TITLE
+PAGE
+1-1.
+WD1015 Description.
+1-4
+3-1
+Host Interface Connector (P1) Pin Description
+3-1
+3-2
+Drive Control Connector (J1) Pin Description.
+3-3
+3-3
+Drive Data Connectors - J2, J3
+3-5
+4-1
+Host I/O or BIOS Read Timing
+4-1
+4-2
+DMA I/O Read Timing
+4-2
+4-3
+Host I/O Write Timing.
+4-3
+4-4
+DMA I/O Write Timing
+4-4
+5-1
+Command Summary
+5-1
+5-2
+I/O Port Descriptions
+5-2
+5-3
+Hardware Status
+5-2
+5-4
+Stepping Rate Codes.
+5-4
+5-5
+Controller Returned Error Codes -
+5-6
+7-1
+Jumper Selectable Options (W1 through W5)
+7-1
+7-2
+SW1 Jumper Block Description.
+7-2
+vi
+
+===== wd1002s-wx2_page_08.txt =====
+--- Page 1 ---
+LIST OF ILLUSTRATIONS
+FIGURE
+TITLE
+PAGE
+1-1
+WD1002S-WX2 Functional Block Diagram
+1-2
+4-1
+Host I/O or BIOS Read Timing
+4-1
+4-2
+DMA I/O Read Timing
+4-2
+4-3
+Host I/O Write Timing.
+4-3
+4-4
+DMA I/O Write Timing
+4-4
+5-1
+Command Block Description.
+5-3
+5-2
+Four Status Bytes
+5-5
+5-3
+Format
+5-7
+5-4
+17 Sectors with a 3:1 Interleave
+5-8
+6-2
+WD1002S-WX2 Detailed Block Diagram
+6-2
+7-1
+Jumper Locations -
+7-3
+7-2
+Bios Rom Socket Connections .
+7-3
+vii
+
+===== wd1002s-wx2_page_09.txt =====
+--- Page 1 ---
+SECTIONI
+INTRODUCTION
+1.1 DOCUMENT SCOPE
+WD10C20 WINCHESTER DATA SEPARATOR
+This document provides the user with the informa-
+AND WRITE PRECOMPENSATION DEVICE
+tion required to design related software drivers and
+WD11C00-17 LOGIC ARRAY
+interface connections for efficient use of the
+DATA RATES UP TO 5 MBITS/SEC
+WD1002S-WX2 Winchester Disk Controller Board.
+It is to the user's advantage to become familiar
+CONTROLS UP TO 2 DRIVES USING
+with the following related documents:
+SEAGATE TECHNOLOGY ST506
+WD11C00-17 Logic Array.
+Data Sheet
+SUPPORTS DRIVES OF ANY
+WD10C20 Winchester Data Separator and
+CONFIGURATION UP TO 1024 CYLINDERS
+Write Precompensation Device
+Data Sheet
+AND 16 R/W HEADS WITH THE WD1015-24
+WD1010-05 Winchester Disk
+OR 8 R/W HEADS WITH THE WD1015-14
+Controller
+Data Sheet
+THE CONTROLLED DRIVES NEED NOT BE
+WD1010 Winchester Disk
+OF THE SAME CAPACITY OR
+Controller
+Application Note
+CONFIGURATION
+WD1015 Buffer Manager Control
+ERROR CORRECTION ON DATA FIELD
+Processor.
+Data Sheet
+ERRORS, CRC ID FIELD VERIFICATION
+ST-506 Micro Winchester Disk
+Interface
+ST506
+32 BIT ECC POLYNOMIAL FORERROR
+Seagate Technology
+DETECTION AND CORRECTION
+Scotts Valley, Cal.
+READ AND WRITE LONG COMMANDS FOR
+CHECKING ERROR CORRECTION
+1.2 DESCRIPTION
+CIRCUITRY
+The   WD1002S-WX2   is a stand-alone, general
+SELECTABLE AUTOMATIC RETRIES ON
+purpose Winchester Disk Controller. The WD1002S-
+ALL ERRORS
+WX2 interfaces up to two Winchester Disk drives
+AUTOMATIC RESTORE AND RE-SEEK ON
+and a Host Processor, e.g. an IBM XT.
+ALL SEEK ERRORS
+The Winchester interface conforms to the Seagate
+AUTOMATIC FORMATTING
+Technology ST506 interface. All necessary receivers
+512 BYTES PER SECTOR
+and drivers are included on the board, allowing
+direct connection to the disk drive(s).
+SECTOR INTERLEAVE CAPABILITY
+A separate computer access port enables com-
+MULTIPLE SECTOR READS AND WRITES
+munications between the Host and disk controller.
+OVERLAPPED SEEK CAPABILITY ON
+An 8-bit bi-directional bus and appropriate control
+BUFFERED-STEP DRIVES
+signals comprise this port. Disk read or write data,
+SUPPORTS IMPLIED SEEKS ON ALL
+status information, and command parameters are
+COMMANDS
+transferred via this bus. An on-board data buffer
+allows bus transfers to be executed independently
+INTERNAL DIAGNOSTICS
+of the drive's data transfer.
+DMA TRANSFER CAPABILITY
+The WD1002S-WX2 is based on a proprietary chip
+SUPPORTS INTERRUPTS, INTERRUPT
+set consisting of the WD11C00-17, WD1010A-05,
+REQUESTS, AND DMA REQUEST SHARING
+WD10C20, and WD1015.
+INCLUDES SOCKET FOR USER SUPPLIED
+2716, 2732, OR 2764 ROM
+1.3 FEATURES
+BIOS AVAILABLE
+8-BIT BI-DIRECTIONAL BUS HOST
+INTERFACE
+IBM XT WINCHESTER CONTROLLER
+EMULATION, IBM PC HOST INTERFACE
+1-1
+
+===== wd1002s-wx2_page_10.txt =====
+--- Page 1 ---
+1.4 OPERATION
+1.4.5 WD11C00-17
+This section provides an operational overview of       The WD11C00-17 incorporates several functions in
+the WD1002S-WX2 Winchester Disk Controller.        a single package. Implementation of these functions
+For a detailed explanation, refer to Section 6        occurs by combining random logic and specialized
+(Theory of Operation). As illustrated in Figure 1-1,        circuits. The WD11C00-17 contains the following
+the WD1002S-WX2 consists of the following        circuits:
+components:
+Status ports
+Bi-directional Control/Data Bus
+Read and write ports
+Address Decoding Logic
+Sector Buffer RAM addressing and control
+Configuration Switches
+ECC
+Basic Input/Output System (BIOS) ROM
+Reset timing
+WD11C00-17
+The WD11C00-17 connects directly to the Host
+WD10C20
+Interface Data/Command and Intraboard Com-
+Sector Buffer RAM
+mand/Data (ADO-AD7) buses.
+WD1010A-05
+WD1015
+1.4.6 WD10C20
+Reset Logic
+The WD10C20 performs phase-locked loop data
+1.4.1 BI-DIRECTIONAL CONTROL/DATA BUS
+synchronization on read data from the Winchester
+drives. This device also conditions write data to be
+The 8-bit, bi-directional bus transmits addresses,
+recorded on the disk. The WD10C20 includes both
+commands, data, and status information. This bus        frequency and phase detection. Zero phase error
+links the WD1002S-WX2 to the Host. Specifically,
+start-up   circuitry   eliminates problems due to
+this bus transmits data between the Host and        asymmetry. The WD10C20 requires no adjustments
+Sector Buffer RAM.
+and contains all data synchronization and write
+precompensation circuitry in a single device.
+1.4.2 ADDRESS DECODING LOGIC
+The puspose of this logic is to decode a valid device        1.4.7 SECTOR BUFFER RAM
+address from the Host.
+The Sector Buffer RAM is a 2K X 8 RAM. The
+Sector Buffer allows Host data transfers indepen-
+1.4.3 CONFIGURATION JUMPERS
+dent of the actual drive data transfer rate. The
+These jumpers configure the WD1002S-WX2 for        Sector Buffer temporarily stores the following
+different disk drive capacities.
+information:
+Sector data during Read and Write Commands
+1.4.4 BIOS ROM
+Disk format information during a Format
+The Host, after powering up, interrogates its ports
+Command
+to determine what devices are connected. The Host
+Drive characteristics during a Set Parameters
+uses information supplied by the BIOS ROM to
+Command
+perform an install operation. Then, during normal
+operation, the BIOS operates much like a driver
+that is resident in the Host's memory space. The
+BIOS ROM is addressed at Host memory locations
+C8000-C8FFF. The BIOS is addressed by the AO
+through A19 bus. Outputs to the Host are via the
+Intraboard Command/Status bus (BDO through
+BD7) and Host Interface Data/Command bus (DO
+through D7).
+1-2
+
+===== wd1002s-wx2_page_11.txt =====
+--- Page 1 ---
+BIOS
+ROM
+BUFF.
+DATA
+H
+O
+H
+S
+O
+T
+S    ADDR.
+DECODE
+T
+DATA
+CONFIG.
+WD
+CONTROL
+11C00-17
+CONTROL
+RA
+RAM
+LOGIC    R/W
+ARRAY
+ADO-AD7
+RDATA
+WI DATA
+D
+D
+WD
+-
+I
+10C20
+S
+S
+DATA/TIMING
+K
+K
+WD
+DATA
+WD
+1010A-05
+SEPARATOR
+1015
+CLOCK
+STATUS
+CONTROL
+CONTROL
+DISK
+CONTROLLER
+PROCESSOR
+RESET
+FIGURE 1-1. WD1002S-WX2 FUNCTIONAL BLOCK DIAGRAM
+1-3
+
+===== wd1002s-wx2_page_12.txt =====
+--- Page 1 ---
+1.4.8 WD1010A-05
+1.4.9 WD1015
+The primary function of the WD1010A-05 is to        The WD1015 manages and controls all commands
+control data transfers between the disk and the        and   communications   between   the   Host and
+Sector Buffer. Data transfers take place after        WD1010A-05. The WD1015 controls ECC and
+the WD1015 Buffer Manager Control Processor        CRC functions.
+positions the selected head over the desired track.        There are two versions of the WD1015. Table 1-1
+The WD1010A-05 receives the parameters and
+describes the differences between the two versions
+commands from the WD1015 via the ADO through        of the WD1015. The acronym WD1015 refers to
+AD7 bus. The WD1010A-05 interprets the param-
+both versions. When a specific reference is made to
+eter or command, determines which sectors are        a specific version, the appropriate acronym is used.
+involved, and whether a read, write, or format
+function is required.
+TABLE 1-1. WD1015 DESCRIPTION
+FUNCTION
+WD1015-14     WD1015-24
+REMARKS
+Execution of automatic
+Yes
+No
+self-test after Reset
+command or power-up
+Supports 16 heads
+No
+Yes
+The WD1015-14 supports up to eight heads.
+The WD1015-14 uses the REDUCED WRITE
+CURRENT (RWC) signal. The WD1015-24
+supports up to 16 heads. The WD1015-24
+uses the RWC pin on J1 as HEAD SELECT 3
+(HS3). Refer to Sections 3 and 7 for further
+details.
+3.5 seconds time-out on
+No
+Yes
+3.5 seconds time-out allows removable/servo
+single track steps
+drives time to create servo map. WD1015-14
+allows 1 second.
+Bit 4 of opcode in
+Valid
+Don't care      Refer to Section 5 for further details.
+Command Control
+Step rates
+Refer to Section 5 for further details.
+Format Bad Track
+Refer to Section 5 for further details.
+1.4.10 RESET LOGIC
+The Reset Logic initializes the internal circuitry
+of the WD1002S-WX2 during the power-up process
+or a low voltage condition. The Reset Logic also
+disables   the WRITE   GATE signal.   Disabling
+WRITE GATE prevents writing spurious data to
+the disk drive during power up, power down or a
+low voltage condition.
+1-4
+
+===== wd1002s-wx2_page_13.txt =====
+--- Page 1 ---
+SECTION II
+SPECIFICATIONS
+2.1 GENERAL
+This section contains the overall specifications
+for the WD1002S-WX2 Winchester Disk Controller.
+2.2 ELECTRICAL
+2.2.1   HOST INTERFACE
+Type
+IBM PC
+Max Cable Length
+Connects directly to Host motherboard with a
+62 pin card edge connector
+2.2.2 DRIVE INTERFACE
+Encoding Method
+MFM
+Cylinders per Drive
+Up to 1024
+Sectors per Track
+17
+Bytes per Sector
+512
+Heads
+8 with WD1015-14
+16 with WD1015-24
+Drive Selects
+2
+Stepping Rates
+70usec, 200usec, 3msec (WD1015-14)
+18 usec, 30 usec, 45usec, 60usec, 75usec,
+210usec, 3msec (WD1015-24)
+Data Transfer Rate
+5Mbits/sec (ST506)
+Write Precomp Time
+12nsec
+Sectoring
+Soft
+CRC Polynomial
+X16 + X12 + X5 + 1
+ECC Polynomial
+X32 + X28 + X26 + X19 +
+X17 + X10 + X6 + X2 + 1
+Reciprocal ECC Polynomial
+X32 + X30 + X26 + X22 +
+X15 + X13 + X6 + X4 + 1
+Miscorrection Prob.
+5 bit correction = <1.6 E-5
+Non-detection Prob.
+< 2.3 E-10
+Correction Span
+Up to 11-bit burst
+Max Cable Length:
+Control (Total Daisy Chain)
+3 meters (10 ft.)
+Data (Radial-each)
+3 meters (10 ft.)
+2.2.3 WD10C20
+Acquisition Time
+< or = 12.8us
+Capture Range
+t 2.2% to 1ns after 12.8us acquisition
+Bit Jitter Tolerance
+t -34ns (min. of 40 db after acquisition)
+Asymmetry Tolerance
+34ns (write precompensation turned off; as
+measured over constant RCLK pattern)
+2.2.4 POWER
+Voltage
+5V +5%
+Current
+0.8 amps max.
+Ripple
+0.1 volts max., 25 mV typical
+Voltage
++12V +10%
+Current
+10 mA. max.
+2-1
+
+===== wd1002s-wx2_page_14.txt =====
+--- Page 1 ---
+2.3 PHYSICAL
+Form factor
+IBM PC
+Length
+20.6 centimeters (8.1 inches)
+Width
+9.78 centimeters (3.85 inches)
+Height (max. including board, components & leads)    1.27 centimeters (0.50 inches)
+2.4 ENVIRONMENTAL
+Ambient Temperature
+O°C (32°F) to 55°C (131°F)
+Relative Humidity
+10% to 95% non-condensing
+Altitude
+0 to 3000 meters (10,000 ft.)
+Air Flow
+100 lin ft/min. at 0.5" from component surfaces.
+MTBF
+10,000 POH
+MTTR
+30 Minutes
+2-2
+
+===== wd1002s-wx2_page_15.txt =====
+--- Page 1 ---
+SECTION III
+INTERFACE CONNECTIONS
+3.1   ORGANIZATION
+resistor to ground.
+The WD1002S-WX2 has four on-board connectors
+J2, J3 Drive data: 20 pin dual row header con-
+for user application.
+nectors, radially connected each to its own
+P1 Host interface: 62 pin IBM PC compatible
+drive.
+card edge connector.
+J1 Drive control: 34 pin dual row header con-        3.2 HOST INTERFACE
+nector daisy-chained to two drives. The        Connector P1 pins A1 through A31 are on the
+control signals at the second drive from the        component side of the board and B1 through B31
+WD1002S-WX2 (no more than a total length        are on the artwork side. Table 3-1 describes the
+of 3 meters or 10 feet) are terminated with a
+Host interface connector (P1) pin assignments and
+220 ohm resistor to +5V and a 330 ohm
+functions.
+TABLE 3-1. HOST INTERFACE CONNECTOR (P1) PIN DESCRIPTION
+PIN
+NUMBER     MNEMONIC       SIGNAL NAME     I/O
+FUNCTION
+A1
+Not Connected
+A2
+D7
+DATA 7
+I/O   8-Bit, tri-state, bi-directional bus. It is used to
+thru
+thru
+thru
+transmit data between the Host and Sector Buffer,
+A9
+DO
+DATA 0
+the Command Block to the WD1015, status and
+drive configuration to the Host. The BIOS trans-
+mits parameter information and commands to
+the Host via this bus.
+A10
+Not Connected
+A11
+AEN
+ADDRESS
+I     AEN is asserted during a DMA mode of operation
+ENABLE
+making the I/O ports 320 hex thru 323 hex
+inaccessible to the Host. Data transfers and intra-
+bus control is initiated by asserting DACK3. The
+BIOS ROM can still be addressed via A0-A19.
+A12
+A19
+ADDRESS BUS
+I     AO thru A9 are used during programmed I/O
+thru
+thru
+A19 thru AO
+mode of operation to address ports 320 hex thru
+A31
+AO
+323 hex. They are inhibited during DMA by
+AEN. AO thru A19 addresses the BIOS ROM
+regardless of the state of AEN.
+B1
+GND
+GROUND
+B2
+RST
+RESET
+When asserted, RST places the WD1002S-WX2
+into its initial power-up state.
+B3
++5VDC
++5VDC
++5VDC
+B4
+IRO2
+INTERRUPT
+The WD1002S-WX2 asserts IRQ2 to interrupt the
+REQUEST
+Host upon the completion of a command. Use of
+LEVEL 2
+IRQ2 is jumper selectable. Use of IRQ5 is stan-
+dard. Refer to Section 7 for further details on
+jumper selectable options.
+B5
+thru
+Not Connected
+B8
+B9
++12VDC
++12VDC
++12VDC
+B10
+GND
+GROUND
+B11
+Not Connected
+3-1
+
+===== wd1002s-wx2_page_16.txt =====
+--- Page 1 ---
+TABLE 3-1. HOST INTERFACE CONNECTOR (P1) PIN DESCRIPTION (CONT'D.)
+PIN
+NUMBER     MNEMONIC      SIGNAL NAME    I/O
+FUNCTION
+B12
+MEMR
+MEMORY
+I     The Host, to read the BIOS ROM places the
+READ
+address on AO thru A19, asserts MEMR and
+receives the data via DO thru D7 data bus.
+B13
+IOW
+1/O WRITE
+The Host or DMA controller asserts IOW when a
+data byte is to be written to the WD1002S-WX2.
+B14
+IOR
+I/O READ
+The Host or DMA controller asserts IOR when
+a data or status byte is to be read from the
+WD1002S-WX2.
+B15
+DACK3
+DMA
+The DMA controller asserts DACK3 in response
+ACKNOWLEDGE
+to DRQ3 sent by the WD1002S-WX2. DACK3
+CHANNEL3
+enables DMA data transfer, bypassing port 320
+which was disabled by AEN.
+B16
+DRQ3
+DMA REQUEST
+WD1002S-WX2 asserts DRQ3 to inform the DMA
+CHANNEL3
+controller that data is available for transfer.
+B17
+thru
+Not Connected
+B22
+B23
+IRQ5
+INTERRUPT
+O    The WD1002S-WX2 asserts IRQ5 to interrupt the
+REQUEST
+Host upon the completion of a command.
+LEVEL5
+B24
+thru
+Not Connected
+B28
+B29
++5VDC
++5VDC
++5VDC
+B30
+Not Connected
+B31
+GND
+GROUND
+3.3 DRIVE INTERFACE
+3.3.1 DRIVE CONTROL
+Control signals are common to all drives and are
+daisy-chained to the drives from a single connector,
+J1. To terminate the control signals properly, the
+last drive in the daisy-chain must have a 220/330
+ohm resistor pack installed. Table 3-2 describes the
+drive control connector (J1) pin assignments and
+functions.
+3-2
+
+===== wd1002s-wx2_page_17.txt =====
+--- Page 1 ---
+TABLE 3-2. DRIVE CONTROL CONNECTOR (J1) PIN DESCRIPTION
+SIG.     SIG.
+SIGNAL
+GND.    PIN      MNEMONIC
+NAME
+I/O
+DESCRIPTION
+1
+2      RWC/HS3
+REDUCE
+O       The WD1015-14 allows this pin to be used
+WRITE
+as the RWC pin. The WD1015-24 uses this
+CURRENT/HEAD
+pin as HS3. Refer to Section 7 for further
+SELECT3
+details. RWC is used by the drive to reduce
+the write current on the inner cylinders.
+This lessens the bit shift caused by the
+greater bit density on these cylinders. RWC
+is asserted when the specified cylinder is
+reached. HS3 is one of four Head Select
+signals decoded by the drive to select one
+of 16 R/W heads.
+3
+4      HS2
+HEAD
+HS2 is one of three (or four) Head Select
+SELECT 2
+signals decoded by the drive to select one
+of eight (or 16) R/W heads.
+5
+6     WG
+WRITE GATE
+WG is asserted when valid data is to be
+written. It is used by the drive to enable
+the write current to the head. WD1002S-
+WX2 de-asserts this signal when a WF is
+detected. Circuitry is included to ensure
+the output does not glitch during power
+on, power down or power failure.
+7
+8      SC
+SEEK
+SC informs the WD1002S-WX2 that the
+COMPLETE
+selected   head has reached the desired
+cylinder and has stabilized. Since SC is not
+checked after a Seek Command, overlapped
+seeks are allowed.
+9        10     TKO0O
+TRACK 000
+The drive asserts this signal when the heads
+are positioned over the outermost cylinder,
+cylinder 0.
+11
+12     WF
+WRITE FAULT
+WF is asserted by the drive when a write
+error occurs. The command in progress
+aborts and no other command can be
+executed while this signal is asserted.
+13        14      HSO
+HEAD
+O        HSO is one of three (or four) Head Select
+SELECTO
+signals decoded by the drive to select one
+of eight (or 16) R/W heads.
+15
+GND
+GROUND
+16
+Not Connected
+17        18      HS1
+HEAD
+HS1 is one of three (or four) Head Select
+SELECT1
+signals decoded by the drive to select one
+of eight (or 16) R/W heads.
+19        20      INDEX
+INDEX PULSE
+This signal indicates the start of a track.
+It is used as a synchronization point during
+formatting and as a time out mechanism
+for retries. This signal pulses once for each
+revolution of the disk.
+3-3
+
+===== wd1002s-wx2_page_18.txt =====
+--- Page 1 ---
+TABLE 3-2. DRIVE CONTROL CONNECTOR (J1) PIN DESCRIPTION (CONT'D.)
+SIG.     SIG.
+SIGNAL
+GND.    PIN      MNEMONIC
+NAME
+I/O
+DESCRIPTION
+21
+22      DRDY
+DRIVE READY
+I        The drive asserts this signal when the motor
+is up to speed. No Read or Write com-
+mands can be performed if this signal is
+not asserted.
+23        24     STEP
+STEP PULSE
+O       STEP, along with DIRIN, positions the
+heads to the desired cylinder. STEP pulses
+the stepping motor at the rate specified by
+the SP bits in the Command Block and is
+controlled by the WD1015. DIRIN spec-
+ifies the direction.
+25        26      DSELO
+DRIVE
+DSEL 0 is the decoded output of the SDH
+SELECTO
+Register within the WD1010A-05, latched
+and sent to the drive by the WD1015 to
+select drive 0.
+27        28      DSEL1
+DRIVE
+DSEL 1 is the decoded output of the SDH
+SELECT 1
+Register within the WD1010A-05, latched
+and sent to the drive by the WD1015 to
+select drive 1.
+29
+thru
+Not Connected
+32
+33        34      DIRIN
+DIRECTION IN
+O       DIRIN determines the direction the R/W
+heads take when stepped. Asserted = in,
+de-asserted = out.
+3.4 DRIVE DATA CONNECTOR
+The data is differential in nature and must be
+connected to each drive with its own cable, drive 0
+to J2 and drive 1 to J3. It should be a flat ribbon
+cable, or twisted pair, less than 3 meters (10 feet)
+in length. The connector is a 20 pin vertical header
+on 0.25 centimeter (0.1 inch) center. Table 3-3
+describes the drive data connectors (J2 and J3)
+pin assignments and functions.
+3-4
+
+===== wd1002s-wx2_page_19.txt =====
+--- Page 1 ---
+TABLE 3-3. DRIVE DATA CONNECTORS 1 J2, J3
+SIG.
+SIG.
+GND.
+PIN
+I/O
+SIGNAL NAME
+1
+NC
+2
+GND
+3
+NC
+4
+GND
+5
+NC
+6
+GND
+7
+NC
+8
+GND
+9
+NC
+10
+NC
+11
+GND
+12
+GND
+13
+O
++ MFM Write Data
+14
+O
+- MFM Write Data
+15
+GND
+16
+GND
+17
+I
++ MFM Read Data
+18
+I
+MFM Read Data
+19
+GND
+20
+GND
+3-5
+
+===== wd1002s-wx2_page_20.txt =====
+--- Page 1 ---
+
+===== wd1002s-wx2_page_21.txt =====
+--- Page 1 ---
+SECTION IV
+INTERFACE TIMING
+4.1   TIMING
+Timing diagrams are shown in Figures 4-1 through        for both cases. The processor executes I/O and
+4-4 and their values are listed in Tables 4-1 through        memory reads from the ports and the on-board
+4-4 respectively. Since the Controller I/O ports        BIOS ROM, and writes to the ports. DMA is
+can be accessed by either the Host system DMA        used for data transfers between the data I/O port
+Controller or the Host processor, timing is given        and the Host RAM.
+A19-A0,
+ADDRESS WILL BE VALID
+AEN
+IOR , MEMR
++t AS1
+OE
+I-toHI
+D7 - DO
+DATA. MUST
+I
+BE VALID
+*ACC(BIOS)
+FIGURE 4-1    HOST I/O OR BIOS READ TIMING
+TABLE 4-1    HOST I/O OR BIOS READ TIMING
+SYMBOL
+CHARACTERISTIC
+MIN.
+MAX.
+tAS1
+Address Setup Time
+50
+tACC
+Address Access Time    (BIOS)
+250
+toe
+Output Enable Time
+175
+DH1
+Data Hold Time
+0
+NOTE: All units in Table 4-1 are in nsec.
+4-1
+
+===== wd1002s-wx2_page_22.txt =====
+--- Page 1 ---
+DACK3
+*DDRQ
+DRQ3
+IOR
+I
+I
+RSU
+tDOE
+DH3
+D7 - DO
+DATA MUST BE VALID
+FIGURE 4-2   DMA I/0 READ TIMING
+Table 4-2   DMA I/O READ TIMING
+SYMBOL
+CHARACTERISTIC
+MIN.
+MAX.
+*DDRQ
+DRQ3 De-assert Delay
+20
+45
+tRSU
+Read Setup Time
+7
+*DOE
+Data Output Enable
+175
+*DH3
+Data Hold Time
+0
+NOTE: All units in Table 4-2 are in nsec.
+4-2
+
+===== wd1002s-wx2_page_23.txt =====
+--- Page 1 ---
+A19-A0,
+ADDRESS WILL BE VALID
+AEN
+tASU2" +
+twp
+IOW
+DSU
+'DH2
+D7     DO
+DATA WILL BE VALID
+FIGURE 4-3   HOST I/O WRITE TIMING
+TABLE 4-3   HOST I/O WRITE TIMING
+SYMBOL
+CHARACTERISTIC
+MIN.
+tASU2
+Address Setup Time
+50
+twp
+Write Pulse Time (I/0)
+100
+tDSU
+Data Setup Time
+50
+'DH2
+Data Hold Time
+0
+NOTE: All units in Table 4-3 are in nsec.
+4-3
+
+===== wd1002s-wx2_page_24.txt =====
+--- Page 1 ---
+DACK3
+EDDRQ2
+DRQ3
+WSU
+twp
+IOW
+tos
+OH4
+D7 - DO
+DATA WILL BE VALID
+FIGURE 4-4   DMA I/0 WRITE TIMING
+TABLE 4-4   DMA I/0 WRITE TIMING
+SYMBOL
+CHARACTERISTIC
+MIN.
+MAX.
+*DDRQ
+DRQ3 De-assert Delay
+20
+45
+twSu
+Write Setup Time
+7
+twp
+Write Pulse Width
+100
+tDs
+Data Setup Time
+50
+DH4
+Data Hold Time
+0
+NOTE: All units in Table 4-4 are in nsec.
+4-4
+
+===== wd1002s-wx2_page_25.txt =====
+--- Page 1 ---
+SECTION - V
+COMMAND DESCRIPTION
+5.1 GENERAL
+This section provides a detailed description of the        five are diagnostic. An explanation of how the
+Command Block format and function of the 19        commands perform their function is discussed in
+commands   supported   by the WD1002S-WX2.
+Section 6 Theory of Operation. Table 5-1 lists a
+Fourteen of the commands are operational and
+summary of the commands.
+TABLE 5-1. COMMAND SUMMARY
+PARAMETERS (Refer to Figure 5-1)
+COMMAND
+OP CODE     DRV.    HD    CYL     SEC     BLK/INT     R1     R2   STEP
+TEST DRIVE READY
+00
+V
+n
+n
+n
+n
+n        n
+n
+RECALIBRATE
+01
+V
+n
+n
+n
+n
+V        n
+n
+READ STATUS OF
+03
+V
+n
+n
+n
+n
+n        n
+n
+LAST OPERATION
+FORMAT DRIVE
+04
+V
+V
+V
+DR        V (INT)        V        n
+V
+VERIFY SECTORS
+05
+V
+V
+V
+V        V (BLK)       V        V
+V
+FORMAT TRACK
+06
+V
+V
+V        DR       V (INT)        V        n
+V
+FORMAT BAD TRACK
+07
+V
+V
+V        DR       V (INT)        V        n
+V
+READ SECTORS
+08
+V
+V
+V
+V        V (BLK)       V        V
+V
+WRITE SECTORS
+OA
+V
+V
+V
+V        V (BLK)       V        n
+V
+SEEK
+OB
+V
+V
+V
+DR
+n
+V        n
+V
+INITIALIZE DRIVE
+PARAMETERS
+OC
+V
+n
+n
+n
+n
+n        n
+n
+READ ECC BURST
+OD
+V
+n
+n
+n
+n
+n        n
+n
+ERROR LENGTH
+READ SECTOR BUFFER
+OE
+n
+n
+n
+n
+n
+n        n
+n
+WRITE SECTOR BUFFER
+OF
+n
+n
+n
+n
+n
+n        n
+n
+EXECUTE SECTOR
+BUFFER DIAGNOSTIC
+EO
+n
+n
+n
+n
+n
+n        n
+n
+EXECUTE DRIVE
+E3
+V
+n
+n
+n
+n
+V        n
+V
+DIAGNOSTIC
+EXECUTE CONTROLLER
+DIAGNOSTIC
+E4
+n
+n
+n
+n
+n
+n        n
+n
+READ LONG
+E5
+V
+V
+V
+V        V (BLK)       V        n
+V
+WRITE LONG
+E6
+V
+V
+V
+V
+V (BLK)       V        n
+V
+LEGEND:
+V
+Must be a valid parameter.
+DR
+Not used but must be within a valid parameter range.
+n
+Not used (should be 0 for future compatibility).
+INT
+Interleave
+BLK
+Block Count
+5-1
+
+===== wd1002s-wx2_page_26.txt =====
+--- Page 1 ---
+5.2 I/O PORT DESCRIPTION
+There are four contiguous I/O ports addressed
+ports are listed in Table 5-2. These ports are used
+320 hexidecimal through 323 hexidecimal. Each        for all communication between the Host and
+port is bi-directional. The functions of the I/O
+Controller.
+TABLE 5-2. I/O PORT DESCRIPTIONS
+ADDRESS
+READ PORT FUNCTION
+WRITE PORT FUNCTION
+320
+READ DATA
+WRITE DATA
+321
+READ WD1002S-WX2 HRDWR STATUS       WD1002S-WX2 RESET*
+322
+READ DRIVE CONFIGURATION INFO       WD1002S-WX2 SELECT
+323
+Not Used
+WRITE DMA AND INTERRUPT MASK
+REGISTER
+*NOTE
+DRQ
+DMA request bit. Assertion (set to 1)
+The WD1015-14 automatically executes self-tests
+signals the Host that the WD1002S-WX2
+after either a Reset command or upon power-up.
+is ready for a DMA transfer to take
+The    WD1015-24    DOES   NOT   automatically
+place. The direction of the transfer is
+execute self-test after either a Reset command or
+defined by the I/O bit.
+upon power-up. A WD BIOS performs an Execute
+BSY
+Busy bit. Assertion (set to 1) signals the
+Controller Diagnostic command as part of the
+Host that the WD1002S-WX2 is busy
+install sequence after power-up regardless of the
+executing a command and is unable to :
+version of WD1015 on-board. If the Host software
+accept another command.
+interrogates   WD1015-24   after   a   Reset;   the
+C/D
+Control/Data. Tells the Host which type
+WD1015-24 returns good status. The Host must
+of transfer the WD1002S-WX2 is expect-
+issue an Execute Controller Diagnostic command
+ing. 0 = a command or status byte, 1 =
+to perform the WD1015-24 self-test.
+data.
+I/O
+Input/Output. Identifies the direction
+5.2.1 PORT 320
+of transfers between the   Host and
+WD1002S-WX2. The terms input and
+This is a bi-directional path    over which data,
+output are relative to the Host. 1 = input,
+commands, parameters, and status are passed.
+0 = output.
+REQ
+Request bit. A handshake signal for
+5.2.2 PORT 321
+data transfers between the Host and
+The Host reads this port to interrogate the hard-
+WD1002S-WX2.    The   WD1002S-WX2
+asserts (sets to 1) this bit when it is
+ware status. This status byte can be read at any
+time, including command exeuction. The status
+ready for data to be transferred between
+it and the Host. REQ must be valid for
+bits are identified in Table 5-3.
+every byte transferred to the Host.
+The Host writes to this port to generate a MR
+TABLE 5-3. HARDWARE STATUS
+(Master   Reset) on the WD1002S-WX2. When
+writing to this port, the data byte is ignored.
+BIT
+Resetting a WD1002S-WX2 with a WD1015-14
+7        6        5        4        3        2
+1        0
+causes automatic execution of a self-test. Auto-
+d        d      IRQ DRQ BSY C/D   I/O   REQ
+matic execution of self-test does not occur with
+the WD1015-24. If the Host software interrogates
+WD1015-24 after a Reset; the WD1015-24 returns
+d
+Not used.
+good status. The Host must issue an execute
+IRQ
+Interrupt Request. Assertion (set to 1)
+Controller Diagnostic command to perform the
+signifies that an interrupt is pending.
+WD1015-24 self-test.
+5-2
+
+===== wd1002s-wx2_page_27.txt =====
+--- Page 1 ---
+5.2.3 PORT 322
+5.3 COMMAND BLOCK
+Reading Port 322 returns a 4-bit drive configuration        The Host first selects the WD1002S-WX2 by assert-
+code in bits 0 through 3. The two least significant
+ing I/OW while at the same time addressing port
+bits correspond to drive 1, the two most significant        322 with the AO through A19 address bus. The
+bits to drive 0. The configuration of these bits is        WD1002S-WX2 then asserts the BSY (BUSY) bit
+established with jumpers on the controller at SW1.        in the Status Register. The Host by asserting 1/OR
+Western Digital sets the configuration jumpers        and addressing port 321 reads the status, finding
+to one. Section 7 shows how to set them up for a
+REQ asserted transmits the first byte of the six
+specific drive.
+byte Command Block to the WD1015. REQ is
+The two bits associated with each drive is capable        de-asserted for the second byte of the Command
+of addressing one of four different configuration
+Block transfer. Assertion and de-assertion of REQ
+tables. Both drives can address the same or dif-        must occur for each byte transferred. Figure 5-1
+ferent tables. The table required by the drive is        defines the bytes within the Command Block,
+determined by its formatted capacity. Table 0 =        Table 5-1 is a summary of the commands, Section
+5MB, 1 = 24MB, 2 = 15MB, 3 = 10MB (default        6 Theory of Operation explains the hand shake
+table) with 62-000042-01 and 62-000042-11 WD
+between the Host and WD1002S-WX2 while load-
+BIOS. Table 0 = 20MB, Table 1 = 10MB, Table        ing the Command Block in the WD1015.
+2 = 20MB, Table 3 = 10MB (default table) with
+62-000042-12 WD BIOS.
+BITS
+The parameters established by these tables are:
+BYTE      7      6      5      4      3      2      1      0
+Number of Cylinders
+0
+OP CODE
+Number of Heads
+1
+0     0     D
+HEAD NUMBER
+The Starting Cylinder for RWC (Reduced Write
+Current).
+2
+CYLINDER       SECTOR NUMBER
+The Starting Cylinder for Write Precomp
+NUMBER MSB
+Maximum Correctable Error Burst Length
+3
+CYLINDER NUMBER LSB
+Retries Allowed, Stable or Immediate ECC
+4
+BLOCK COUNT OR INTERLEAVE
+Correction, Step Rate.
+5
+R1   R2    0      0      0    SP   SP   SP
+Writing to port 322 selects the WD1002S-WX2,
+sets the Busy bit in the Status Register and prepares
+FIGURE 5-1. COMMAND BLOCK DESCRIPTION
+it to receive a command. When writing to port
+322, the data byte is ignored.
+OP Code:
+Operation   Code identifies the
+type and function of the com-
+5.2.4 PORT 323
+mand. Bits 7, 6, and 5 designate
+Reading this port has no function.
+whether the command is oper-
+Writing to this port controls the enabling of the
+ational (0) or diagnostic (E). Bits
+interrupt and DMA request signals to the Host.
+4 through 0 select the function
+The bits in this port are defined as follows:
+of   the   command,   i.e.   Read,
+Write, etc.
+BIT
+NOTE
+7      6      5      4     3      2
+1
+0
+The WD1015-24 firmware ignores bit four of byte
+d      d      d      d     d      d     IRQEN   DROEN
+0 (op code).
+D
+Drive number, selects one of two
+IRQEN     Interrupt Request Enable. When asserted
+drives zero or one.
+(set to one), enables interrupts to the
+Host.
+Head Number      Designates the head to be used
+on the selected drive. 0 through
+DROEN   DMA Request Enable. When asserted
+15.   Selection of heads eight
+(set to one), enables DMA requests to
+through 15 requires WD1015-24.
+the Host.
+d
+Not used.
+5-3
+
+===== wd1002s-wx2_page_28.txt =====
+--- Page 1 ---
+Cylinder
+Designates the cylinder contain-
+TABLE 5-4. STEPPING RATE CODES
+Number
+ing the sector(s) to be used by
+MSB and LSB      the command. 0 through 1024.
+BITS
+STEPPING RATES
+Sector Number    Specifies the starting sector used
+2 1 0 WD1015-14
+WD1015-24
+by the command.
+0 0 0       3 msec. per step*       3 msec. per step*
+Block Count
+Block count specifies the number
+0 0 1       3 msec. per step       45usec. per step
+or Interleave
+of sectors to be used by a Read,
+0 1 0       3 msec. per step        60usec. per step
+Write, Read Long, or Write Long
+command. A block count of zero
+0 1 1       3 msec. per step       18usec. per step
+equals 256 sectors. Interleave is
+1 0 0 200usec. per step       210usec. per step
+used by the Format commands.
+1 0 1     70usec. per step
+75usec. per step
+The maximum interleave is equal
+to the sectors-per-track minus
+1 1 0       3 msec. per step        30usec. per step
+one. (See Section 5.7.2 for an
+1 1 1       3 msec. per step        18usec. per step
+explanation of interleaving.)
+*This is the preferred 3 msec. step code.
+R1
+General disk error retry disable
+bit. R1 controls the retry for all        5.4 TEST DRIVE READY
+errors except a Data ECC error.
+(CLASS 0, OP CODE 00)
+With R1 asserted the WD1002S-
+This command selects the drive specified by the
+WX2 makes no attempt to retry
+DRV bit in the Command Block and interrogates
+an error operation.   Instead it        the DRDY, WF, and SC signals returned by that
+aborts the command and sets the        drive. If WF and SC are de-asserted and DRDY
+appropriate status in the Status        asserted, the command returns an error code of 00
+Register. Because the disk is soft        No Error Detected.
+sectored an ID field error may
+cause the   WD1002S-WX2   to
+5.4.1 POSSIBLE ERROR CODES
+retry for two disk revolutions.
+With   R1 de-asserted, the WD        03 Write Fault
+04 Drive Not Ready
+1002S-WX2 retries the operation
+08 Drive Still Seeking
+for ten disk revolutions before
+aborting the command and set-        5.5   RECALIBRATE
+ting the status bit. In the case of
+(CLASS 0, OP CODE 01)
+an ID Not Found Error the        This command moves the Read/Write heads to
+WD1002S-WX2 does a restore to
+track 0. The SC signal from the drive controls the
+track zero and seeks back to the
+stepping rate of this command. Therefore, this
+desired track after the first ten        command is slower than commands that imple-
+disk revolutions and retries for ten
+ment the implied seek and make use of the step-
+disk revolutions before aborting
+ping rate designated by the SP bits in the Com-
+and setting the error status.
+mand Block.
+R2
+ECC Error retry bit. With R2 = 1
+NOTE
+an attempt is made to correct the        Timeout on each step during a Recalibrate com-
+error on the first syndrome. R2 =        mand is 1 second with a WD1015-14. Timeout on
+0 there must be two consecutive        each step during a Recalibrate is 3.5 seconds with
+like syndromes before an attempt        a WD1015-24. The 3.5 second timeout supports
+is made to correct the error.
+removable Winchesters.
+SP
+The Step Code is used to select
+the rate at which step pulses are        5.5.1 POSSIBLE ERROR CODES
+issued to the drive. Table 5-4
+03 Write Fault
+04 Drive Not Ready
+defines the rates corresponding
+06 Track Zero Not Found
+to each step pulse code.
+5-4
+
+===== wd1002s-wx2_page_29.txt =====
+--- Page 1 ---
+5.6 READ STATUS OF LAST OPERATION
+BITS
+(CLASS 0, OP CODE 03)
+BYTE      7     6      5      4      3      2      1      0
+Upon termination of a command. the WD1002S-
+WX2 develops a Command Completion Byte, de-
+0        AV    0
+ERROR CODE
+asserts the BSY bit, and if IROEN had been
+1
+0     0      D
+HEAD NUMBER
+enabled, asserts IRQ5. If IROEN had not been
+CYLINDER
+asserted, it is the responsibility of the Host to read
+2        NUMBER MSB     SECTOR NUMBER
+port 321 to determine that the WD1002S-WX2 is
+no longer busy. Once the Host determines that a
+3
+CYLINDER NUMBER LSB
+command has terminated, it must read the Com-
+mand Completion Byte to learn which drive has        AV Address valid bit.       Indicates that the Head,
+terminated and whether an error had occurred.
+Cylinder, and Sector fields
+To do this the Host reads port 320. The format of
+are valid.
+the Command Completion Byte is as follows:
+Error Codes are shown in Table 5-5.
+All other bits are the same as those defined in the
+BIT
+Command Block definitions.
+7        6        5        4        3        2
+1
+0
+FIGURE 5-2. FOUR STATUS BYTES
+0        0        D        0        0        0        E        0
+D = Number of the drive terminating. 0 = drive 0.
+When an error occurs during a multiple sector data
+1 = drive 1. E = 1 if an error occurred.
+transfer (read or write), this command returns the
+address of the failing sector. If the Read Status
+If the Command Completion Byte indicates the
+command is issued after any of the format com-
+occurrence of an error, issue a Read Status com-
+mands or the Verify Desired Sectors command,
+mand for the drive indicating the error. Perfor-
+the   address   returned by the WD1002S-WX2
+mance of a Read Status command before any        points one sector beyond the last track formatted
+other command execution prevents loss of the        or checked, if there was no error. If there was an
+error status. When a Read Status of the last opera-
+error, then the address returned points to the track
+tion is written to port 320 the WD1002S-WX2
+in error.
+responds with four bytes of status as shown in
+Figure 5-2.
+5-5
+
+===== wd1002s-wx2_page_30.txt =====
+--- Page 1 ---
+TABLE 5-5. CONTROLLER RETURNED ERROR CODES
+HEX
+CODE
+DEFINITION
+00        No error detected.
+02        No SC signal from the drive. The WD1002S-WX2 has not received a SC from the drive within
+one. second (3.5 seconds with WD1015-24) following the last step pulse of a non-buffered
+seek operation.
+03        Write Fault signal received from the drive. This error is reported when the WD1002S-WX2
+detects WF asserted by a drive either at the completion of a Sector Data Transfer or after
+initially selecting a drive and the drive indicates ready.
+04
+Drive Not Ready. The WD1002S-WX2 reports this error when DRDY is not received from the
+drive at the time selection is attempted, or is de-asserted after the drive has been selected.
+06        Track 0 Not Found. This error is reported during a Recalibrate command if TK000 is not
+received from the drive before stepping the Read/Write Heads 1024 steps.
+08
+Drive Still Seeking. This status is returned in response to a Test Drive Ready command when a
+drive performing a buffered seek has not yet asserted SC.
+11
+Uncorrectable Data Error. The ECC logic detected an error burst greater than its correction
+capabilities. The data in the Sector Buffer is not sent to the Host.
+12        Data Address Mark Not Found. The proper Sector ID was read by the drive but failed to detect
+the Data Address Mark.
+15        Seek Error. The desired Sector ID field could not be found on the selected track, or a CRC
+error occurred on the ID field.
+18
+Correctable Data Error. An error occurred in the data field that was within the tolerance of
+the ECC logic and was corrected. The data in the Sector Buffer is transmitted to the Host.
+This status is set as a warning to the Host that a marginal condition may exist.
+19
+Track Is Flagged Bad. A sector had been encountered that has the Bad Block Mark set in the
+ID Field. The Format Bad Track command records this bit in all sectors of the designated flag-
+ging them all as bad. No retries are attempted in response to this error.
+20
+Invalid Command. The WD1002S-WX2 has received a command with an invalid class or
+op code, Interleave Factor.
+21
+Illegal Sector Address. This error is asserted when a command attempts to address a sector
+beyond the capacity of the drive. This could be at the time the command is issued, or in the
+case of a multiple sector transfer, after the last available sector has been used.
+30        Sector Buffer Error. An error occurred while performing Sector Buffer Diagnostics (Command
+Code EO and E4). A disk drive is not involved in this test.
+31
+Controller ROM checksum Error. A ROM checksum error was detected during the Controller
+Diagnostic command (E4).
+32        ECC Polynomial Error. During the Controller Diagnostic command (E4), the hardware ECC
+generator (WD11C00-17) failed its test.
+5-6
+
+===== wd1002s-wx2_page_31.txt =====
+--- Page 1 ---
+5.7   FORMAT DRIVE STARTING AT DESIRED
+TRACK (CLASS 0, OP CODE 04)
+The WD1002S-WX2 first positions the Read/Write
+recorded in the Data Field is defaulted to whatever
+heads to track zero. Then using the parameters
+is in the Sector Buffer at the time. The logical
+specified in the Command Block, positions the        sector numbering is specified by the interleave
+heads to the desired track. Formatting always        value (INT) included in the Command Block. If a
+starts with the first sector of the track, regardless
+hard error occurs while formatting a track, the
+of the value of SEC. Even so, SEC must be within
+WD1002S-WX2 stops the format operation and
+the allowable limits. A sample of what is recorded
+returns an error code.
+in each sector is shown in Figure 5-3. The data
+REPEATEDI FORI EACH SECTOR-
+INDEX
+IDF FIELD-
+DATA FIELD
+S    C   C
+GAP4    GAP1    141 BYTES    A
+C
+3BYTES   12E BYTES.    A   F     USERI DATA     4ECC    3BYTES GAP3
+41E      4E
+'00'
+a
+'00'
+'00'        1    8
+'00'       4E
+D    #    1
+:
+I
+1ij
+I
+I
+I
+WRITE GATE
+DRUN
+I
+READ GATE
+2
+ID FIELD
+NOTES:
+A1    i    A1 hex with
+1. GAP 1 and 3 length equals 22 bytes.
+OA hex clock
+2. The decision to assert RG is made
+IDENT    I    Bits 1, 0 = Cylinder High
+2 bytes after the start of DRUN.
+FE = 0-255 Cylinders
+3. RG de-asserted:
+FF = 256-511 Cylinders
+o If DRUN does not last until A1
+FC = 512-767 Cylinders
+When any part of ID does not match the one
+FD = 768-1023 Cylinders
+expected.
+HEAD    =    Bits 0, 1, 2 = Head Number
+After CRC if correct ID has been read.
+Bits 3, 4 = 00
+4. Write splice recorded on disk by
+WG.
+Bits 5, 6 = Sector Size (10)
+asserting
+Bit 7 = Bad Block Mark
+5. RG is suppressed until after write splice.
+Sec #   =    Logical Sector Number
+6. Not a proper A1 or F8, set DAM error.
+DATA FIELD
+7. Sector size as stated in ID field, plus
+A1    =   A1 hex with OA hex clock
+four for ECC.
+F8   =    Data Address Mark; Normal Clock
+USER    =    Data Field 512 Bytes
+FIGURE 5-3. FORMAT
+5-7
+
+===== wd1002s-wx2_page_32.txt =====
+--- Page 1 ---
+5.7.1 POSSIBLE ERROR CODES
+INDEX
+02 No Seek Complete 03 Write Fault
+PULSE
+04 Disk Not Ready       06 Track Zero Not Found
+20 Invalid Command    21 Illegal Sector Address
+5.7.2 INTERLEAVING
+OB   00   06
+05
+When physically sequential sectors on the disk are
+OC
+to be read, each sector reaches the read/write head
+10
+before a read or write operation can be set up. The
+01
+disk must then make a complete rotation to pick
+OA
+up the next sector. When an attempt is made to
+04
+07
+read all 17 sectors on a particular track, 17 rota-
+tions or approximately one fourth of a second per
+OD
+8K bytes are required. This performance can be
+OF
+significantly improved by interleaving, a technique
+09
+02
+that allows the system to read or write more than
+03    OE 08
+one sector per rotation.
+For a system requiring less than two sector times
+to process the data it has read and to set up for the
+FIGURE 5-4.
+next read operation, the second logical sector is
+17 SECTORS WITH A 3:1 INTERLEAVE
+physically placed three sectors away from the first.
+The controller can now read the second sector with
+minimal delay. This three-to-one interleave factor        5.8 VERIFY SECTORS (CLASS 0, OP CODE 05)
+allows a potential reading of the entire track in
+This command reads from 1 to 256 sectors, as
+less than three rotations. In the example given, the        specified by BLK in the Command Block, begin-
+throughput is increased by a factor of 5.6.
+ning at the sector specified by HD CYL and SEC.
+The simplest way to determine the optimum inter-
+If an error occurs during a multiple sector read,
+leave for any particular system is through experi-        the heads remain positioned at the track containing
+mentation. If the system maintains its directories        the error. The Host then issues a Read Status of
+or virtual memory-swapping areas in a certain place
+Last Disk Operation command to determine the
+on the disk, it sometimes makes sense to have more        error code. To continue the operation, the Host
+than one interleave.
+calculates the difference between the number of
+To simplify driver software, the WD1002S-WX2
+sectors desired and the number of sectors com-
+automatically writes the logical sector number of
+pleted and issues another Seek command to access
+each sector. in its ID field. Figure 5-4 is an example        the remaining sectors.
+of an interleave table for a 17-sector track with 3:1
+interleave. The WD1002S-WX2 accepts any inter-
+5.8.1 POSSIBLE ERROR CODES
+leave value between zero and one less than the        02 No Seek Complete 03 Write Fault
+number of sectors per track. An interleave of zero        04 Drive Not Ready     06 Track Zero Not Found
+is automatically converted to one, and a value out
+12 Data Address Mark 15 Seek Error
+of range results in an error code 20, Invalid Com-
+Not Found
+21 Illegal Disk Address
+mand Error.
+19 Track Flagged Bad
+5-8
+
+===== wd1002s-wx2_page_33.txt =====
+--- Page 1 ---
+5.9   FORMAT TRACK (CLASS 0, OP CODE 06)
+not been read for 10 disk revolutions. This
+This command is identical to the Format Drive        causes the WD1002S-WX2 to recalibrate the heads
+command, except that only the track specified by        and seek back to the desired track. If track zero
+the command is formatted. This command can be        is not detected within 1024 steps, Error Code 06
+used to clear the Bad Track Flag, or reformat
+is set. If R1 is 1 the WD1002S-WX2 aborts the
+individual tracks.
+command on the first failure to read an ID Field,
+therefore no attempt to position the heads to track
+5.10   FORMAT BAD TRACK
+zero is made.
+(CLASS 0, OP CODE 07)
+5.12.1 POSSIBLE ERROR CODES
+This command is the same as the Format Track
+command, except that the Bad Track Flag is set       02 No Seek Complete 03 Write Fault
+in the ID field.
+04 Drive Not Ready     06 Track Zero Not Found
+12 Data Address Mark 15 Seek Error
+5.11   READ SECTORS (CLASS 0, OP CODE 08)
+Not Found
+21 Illegal Disk Address
+19 Track Flagged Bad
+This command reads from 1 to 256 sectors as
+specified by BLK in the Command Block, begin-
+ning at the sector defined by CYL SEC and Head.        5.13 SEEK (CLASS 0, OP CODE OB)
+An uncorrectable error during a multiple sector        This command selects the head and initiates a
+read causes the operation to terminate at the error        seek to the track specified by HD and CYL in the
+sector. The Host then issues a Read Status of Last
+Command Block. The SC signal line is not sampled
+Disk Operation command to determine the type of        to allow buffered seeks. The cylinder must be in
+error. To continue the operation, the Host cal-        range. The drive must be formatted. Drives em-
+culates the difference between the number of        ploying buffered steps can be issued step pulses at
+sectors desired and the number of sectors com-        a high speed freeing the WD1002S-WX2 for other
+pleted, then issues another Read command to        operations. The WD1002S-WX2 does not wait for
+access the remaining sectors. Error code 06 can        the drive to complete the seek to return a Com-
+only be asserted if the R1 bit = 0 and the ID Field
+mand Completion Status. If the return status
+has not been read for 10 disk revolutions. This        shows no error, the seek was issued correctly. If
+causes the WD1002S-WX2 to recalibrate the heads        there is an error, the seek was not issued. After
+and seek back to the desired track. If track zero        transferring the status, another command can be
+is not detected within 1024 steps, Error Code 06
+issued to either drive. If the WD1002S-WX2
+is set. If R1 = 1 the WD1002S-WX2 aborts the        receives a command other than Test Drive Ready
+command after a maximum of two disk revolutions,        for a drive that is still seeking, it asserts BSY and
+therefore no attempt is made to position the heads        waits for SC to be asserted before executing the
+to track zero.
+command. If the command is a Test Drive Ready,
+it executes and returns an 08 Drive Still Seeking
+5.11.1 POSSIBLE ERROR CODES
+Error. The time-out for non-buffered seeks. For
+02 No Seek Complete 03 Write Fault
+buffered seeks, the WD1015 checks SC before a
+04 Drive Not Ready     06 Track Zero Not Found
+Read or Write (next command).
+11 Uncorrectable ECC 12 Data Address Mark
+The rate at which the Step Pulses are issued to the
+Error
+Not Found
+drive is controlled by the SP bits in the Command
+15 Seek Error
+18 Correctable ECC Error
+Block. The drive buffers these pulses and steps at
+19 Track Flagged Bad 21 Illegal Sector Address
+its own rate. This allows the WD1002S-WX2 to
+continue about its own business, possibly starting
+5.12 WRITE SECTORS
+the other drive seeking to a new track, without
+(CLASS 0, OP CODE OA)
+having to wait for the SC from the first drive.
+This command writes from 1 to 256 sectors as
+Refer to Table 5.4 for the available stepping rates.
+specified by BLK in the Command Block. The
+multiple sector transfer scheme works the same as
+5.13.1 POSSIBLE ERROR CODES
+the Read command. Error code 06 can only be        03 Write Fault
+04 Drive Not Ready
+asserted if the R1 bit is 0 and the ID Field has        15 Seek Error
+5-9
+
+===== wd1002s-wx2_page_34.txt =====
+--- Page 1 ---
+5.14 INITIALIZE DRIVE PARAMETERS
+5.18 EXECUTE SECTOR BUFFER DIAGNOSTIC
+(CLASS 0, OP CODE OC)
+(CLASS E, OP CODE 00)
+The WD1002S-WX2 is capable of controlling two        This command executes a 9-pass test that uses a
+drives with different formatted capacity. The BIOS        9-byte pattern (0, 1, 2, 4, 8, 10, 20, 40, and 80
+contains four Winchester parameter tables. The        hex) that is written to the Sector Buffer, then read
+configuration jumpers address the proper Win-
+back. After each successful completion, the whole
+chester parameter table during the BIOS install
+pattern is shifted one byte position and repeated.
+cycle at power up. Refer to Section 7 for details on
+these jumper settings. When the Host reads port
+NOTE
+322 and discovers a change in drives, it issues this        The WD Format Drive Utility in the WD BIOS
+command, followed by the 8-byte block of drive        executes this command before physical formatting
+parameters listed below:
+of the drive. Thus, the data fields are formatted
+with this 0, 1, 2, 4, 8, 10, 20, 40, and 80 hex
+Maximum Number of Cylinders
+pattern.
+(2 bytes, 1024 max.)
+Maximum Number of Heads
+5.18.1 POSSIBLE ERROR CODES
+(1 byte, 8 or 16 heads)
+Starting Reduced Write Current Cylinder
+30 Data error.
+(2 bytes, 1024 max.)
+Starting Write Precompensation Cylinder
+5.19 EXECUTE DRIVE DIAGNOSTIC
+(2 bytes, 1024 max.)
+(CLASS E, OP CODE 03)
+Maximum ECC Data Burst Length
+This command tests both the drive and the drive-
+(1 byte, 11 max.)
+to-WD1002S-WX2 interface. The WD1002S-WX2
+A typical set of parameters for a 10MB drive is as
+sends Recalibrate and Seek commands to the
+follows:
+selected drive and reads sector zero of each track
+306 cylinders
+4 heads
+verifying both ID and data fields. The WD1002S
+RWC at cylinder
+Write Precomp at cylinder
+WX2 does not perform any write operations.
+153
+153
+11-bit burst error length (Western Digital Corp.
+5.19.1 POSSIBLE ERROR CODES
+recommends using a maximum ECC burst length
+02 No Seek Complete 03 Write Fault
+of five or less to ensure optimum integrity of        04 Drive Not Ready      06 Track Zero Not Found
+data recovered).
+12 Data Address Mark 15 Seek Error
+Not Found
+For the exact parameters it is necessary to refer to
+the specifications for the BIOS in use on the
+5.20   EXECUTE CONTROLLER DIAGNOSTICS
+specified board.
+(CLASS E, OP CODE 04)
+5.15 READ ECC BURST ERROR LENGTH
+Regardless of the version of the WD1015 on the
+(CLASS 0, OP CODE OD)
+WD1002S-WX2, the WD1002S-WX2 executes this
+command when the Host issues a command code
+This command is only valid following a correctable        of E4 hex to the CCB. The WD1015-14 auto-
+ECC error. It transfers one byte indicating the
+matically executes this command after system
+length of the error. The error length is determined
+Reset (RST on connector P1 B2 asserted), write to
+by counting the first through last bit in the error.
+port 321 hex, or power-up. The WD1015-24 only
+automatically executes this command when an
+5.16 READ SECTOR BUFFER
+on-board WD BIOS performs an install sequence
+(CLASS 0, OP CODE OE)
+after power-up.
+This command transfers the 512 bytes of data
+Once started, this command continues to run until
+currently residing in the Sector Buffer to the Host.
+an error occurs, or the Host selects the WD1002S-
+WX2 by writing to port 322. If an error occurs
+5.17 WRITE SECTOR BUFFER
+when this command has been started at power up,
+(CLASS 0, OP CODE OF)
+an error code is output at pins 27, 28, and 29 of
+This command writes 512 bytes of data from the        the WD1015. These are the Head Select 0, 1, and 2
+Host into the WD1002S-WX2 Sector Buffer.
+signals and can be monitored at the Drive Control
+5-10
+
+===== wd1002s-wx2_page_35.txt =====
+--- Page 1 ---
+Connector J1 pins 14, 18, and 4. The error codes        5.21   READ LONG (CLASS E, OP CODE 05)
+generated under this condition are not the same as        The Host first performs a normal Write command,
+those reported by a Read Status command.
+writing known data, that produces a predictable
+1 - WD1010A-05 Error
+ECC character, then performs a Readlong com-
+2 I WD11C00-17 ECC Error
+mand. This command reads the data from the disk
+3 I- Sector Buffer Error
+without generating any ECC bytes of its own.
+4 - WD1015 RAM Error
+Instead it reads the four ECC bytes from the disk,
+5 - WD1015 ROM Error
+as though reading data, resulting in 512 plus 4 for
+a total of 516 bytes of data. The Host, knowing
+5.20.1 WD1010A-05 TEST
+what the data and ECC bytes are supposed to be,
+A pattern is written to and read from the        can now determine whether any errors that have
+WD1010A-05's Sector Count and Sector Number        occurred, are a result of a data or ECC failure.
+Registers.
+5.21.1 POSSIBLE ERROR CODES
+5.20.2 WD11C00-17 ECC TEST
+02 No Seek Complete 03 Write Fault
+The WD11C00-17 is enabled during the read por-        04 Drive Not Ready     06 Track Zero Not Found
+tion of the Sector Buffer Test. After the contents        12 Data Address Mark 15 Seek Error
+of the Sector Buffer have been read, the ECC not 0
+Not Found
+21 Illegal Disk Address
+(pin 20) of the WD11C00-17 is monitored, it should        19 Track Flagged Bad
+be asserted indicating non-zero Check Bytes. The
+internal check pattern is then fed back into the        5.22 WRITE LONG (CLASS E, OP CODE 06)
+chip and pin 20 monitored again. This time it        After   performing   the Write   normal/Readlong
+should not be asserted, indicating a Check Byte        routine to determine that the WD1002S-WX2 is
+pattern of zero.
+able to write data and generate correct ECC bytes,
+the Host can execute a Writelong and Read normal
+5.20.3 SECTOR BUFFER TEST
+routine. This verifies the ability of the WD1002S
+The hex pattern 00, 01, 02, 04, 08, 10, 20, 40, 80        WX2 to read the data correctly and generate 4-zero
+is written throughout the entire Sector Buffer and
+ECC bytes or if an error was forced, correct it.
+then read to make sure it is correct. The entire        The Writelong command does not generate ECC
+contents of the Sector Buffer is then shifted one        bytes, instead the Host supplies them along with a
+byte position and read again. This procedure is        known data pattern. Then, performing a normal
+repeated nine times verifying that every bit in the
+Read command, the Host can determine whether
+Sector Buffer can be set and reset.
+non-zero ECC bytes are caused by a Read failure
+The WD11C00-17 is enabled during the read        or ECC generation failure. (This procedure could
+functions to verify the operability of that device.
+be performed prior to the Write normal/Readlong.
+5.20.4 WD1015 RAM TEST
+5.22.1 POSSIBLE ERROR CODES
+This tests the 100 bytes of internal RAM in the        02 No Seek Complete 03 Write Fault
+04 Drive Not Ready     06 Track Zero Not Found
+same manner as the Sector Buffer test.
+12 Data Address Mark 15 Seek Error
+Not Found
+21 Illegal Disk Address
+5.20.5 WD1015 ROM TEST
+19 Track Flagged Bad
+This test verifies the ability to address and read all
+2K bytes of internal ROM, using an add and rotate
+algorithm to generate a single byte result. This
+result is then compared with the Sumcheck located
+in the last page of memory.
+5.20.6 POSSIBLE ERROR CODES
+30 Sector Buffer Error 31 ROM Sumcheck Error
+32 ECC Error
+5-11
+
+===== wd1002s-wx2_page_36.txt =====
+--- Page 1 ---
+SECTION VI
+THEORY OF OPERATION
+6.1   GENERAL
+6.2.3 WD1002S-WX2 INTRABOARD COMMAND/
+The WD1002S-WX2 Winchester Controller inter-
+STATUS BUS BDO THROUGH BD7
+faces an IBM PC or IBM-compatible PC with a        This is a read only bus connecting the BIOS ROM
+maximum of two Seagate Technology   ST506-        to DO through D7, through a bus drivers controlled
+compatible disk drives. Western Digital bases the        by ROMEN. When the Host requests information
+WD1002S-WX2 architecture on the WD1010A-05        from the BIOS, the Host addresses the BIOS and
+Winchester Disk Controller, WD1015-14 (WD1015-
+enables the bus drivers. The information passes
+24) Buffer Manager Control Processor, WD11C00-
+from BDO - BD7 to DO - D7. The information
+17 Logic Array, WD10C20 Winchester Data Sep-        transfer between the BIOS and Host follows
+arator and Write Precompensation   Device, and        standard bus protocol.
+BIOS ROM. Therefore, this theory of operation
+focuses upon   these devices. Figure 6-1 is a        6.2.4 WD1002S-WX2 INTRABOARD COMMAND/
+functional block diagram of the WD1002S-WX2.
+STATUS BUS ADO THROUGH AD7
+This is a bi-directional bus linking the WD1015,
+6.2 BUSES
+WD1010A-05, WD11C00-17, and Sector Buffer.
+This section describes the five buses used by the
+Data, commands, control information and status
+WD1002S-WX2. Two of the buses are extensions        all pass through this bus. This bus is linked to the
+of the Host data and address buses. The other three
+DO through D7 bus by the WD11C00-17.
+buses are internal to the WD1002S-WX2. All buses
+transmit either addresses, commands, data or status        6.2.5 WD1002S-WX2 INTRABOARD ADDRESS
+information.
+BUS RAO THROUGH RA10
+This bus addresses the Sector Buffer and WD1010A-
+6.2.1 HOST INTERFACE ADDRESS BUS AO
+05 Task File, as well as signaling the WD1010A-
+THROUGH A19
+05 that the end of the data field has been reached
+The Host uses this bus during programmed I/O to
+and the ECC is starting. The Task File address is
+address the eight I/O ports 320 hexidecimal
+preset   into the WD11C00-17 Sector Address
+through 327 hexidecimal. The Host also addresses
+Counter which in turn places it on the RAO
+the BIOS ROM with address C8000-C8FFF on this
+through RA10 bus. The Task File address is eight
+bus.
+bits long.
+6.2.2 HOST INTERFACE DATA/COMMAND
+BUS DO THROUGH D7
+This is a bi-directional   data bus linking the
+WD1002S-WX2 to the Host. It is used for the
+transmittal of data between the Host and Sector
+Buffer, the Command Control Block (CCB) to the
+WD1015, and the drive configuration and status
+to the Host.
+6-1
+
+===== wd1002s-wx2_page_37.txt =====
+--- Page 1 ---
+P1-A
+DATA BUS
+WIN
+H C ADA19
+AO-A12
+BDO-BD7
+DRIVERS
+IKOOD,
+RIOS
+DO-D7
+WCLK
+HSELO-HSEL3*
+ROMEN*
+HR
+DSELO*
+*
+AZ-A7,A9,A13-A19     DEVICE
+4
+RD
+DSEL1
+ACCOSS
+C/D
+STEP
+MEMR
+DADD
+DADD
+1/0
+WD1015
+A
+CSECC      LURKCER
+DO-D7
+DU-D7
+IREQ      CONTROL
+V
+PROCESSOR
+AEN      T
+AEN a
+REQ
+BUSY 4
+P1-B
+ECC NOT 0
+MEHR
+CONFI FIGURATION OPO-OP3
+H C
+JUMPERS*
+OPO-OP3
+L/S/DIR/WPC
+S      DACK3
+DACK3
+ADO-AD7
+I      TOR
+TOR
+TOW
+TOW     WD1100-17
+RESET
+RESET,     ARRAC
+ADO-AD7
+* DRO3
+DRQ3
+IROS(TRO2)
+IRQ5(IRQ2)*
+J2,J3
+WMFM
+RAMCS
+D D    RMFM
+RAMMR -
+BEETOR
+TEARLY
+WCLK       -
+RAO-RA9
+TNOMINAL
+DELAY    TLATE
+WD10C20
+E a
+-
+WCLK
+ZOLYDR
+RG*
+J1
+ADO-AD7
+WD
+A
+DRUN
+DRDY
+-
+EARLY
+RCLK
+RA10
+SC
+A
+LATE
+RDATA
+CS1010
+INDEX
+WINT
+TKOOO
+RDATA
+B
+RCLK
+ERAE
+WF
+CONTROLLER DRUN
+RWC*
+MCLK
+WG
+EEo
+RA10
+RAS
+4 RA8
+MOLAPERNT RCEETURS AOARCTANLDOT INFORMATION ON
+FIGURE 6-2. WD1002S-WX2 DETAILED BLOCK DIAGRAM
+6.3 BUS PROTOCOL
+The Host and WD1002S-WX2 protocol consists of
+Depending upon the type of command being
+the following bus phases:
+executed, the Data phase does not always occur.
+Select
+Also, depending upon the type of errors detected
+Command
+by the WD1015 or WD1010A-05, an immediate
+Data
+skip to the Completion phase can occur. Execution
+Completion
+of the Completion phase always occurs regardless
+of the command or error.
+Normal execution occurs in the order listed above.
+6-2
+
+===== wd1002s-wx2_page_38.txt =====
+--- Page 1 ---
+6.3.1 SELECTION PHASE
+6.3.3.1 Programmed I/O Data Transfer
+The Host selects this phase to start execution of a        The Host usually transfers commands and data in
+command by the WD1002S-WX2. The WD11C00-        programmed I/O mode except disk data transfers.
+17 asserts BUSY to acknowledge selection of the        Disk data transfers can be either programmed I/O
+WD1002S-WX2. The Host can sample BUSY by        or DMA. To the WD1002S-WX2, both methods of
+reading port 321 hex. For power-up and at the end
+data transfer are identical except for the generation
+of every command, the WD1002S-WX2 asserts the        of the handshake signals by the WD11C00-17.
+hardware status bits required for proper handshake        The WD11C00-17 does not generate the DRQ3
+as follows:
+signal in programmed I/O mode. IOR and IOW
+BUSY
+transfer the data when the WD1015 asserts the
+C (C/D)
+hardware status bits.
+T(T/O)
+The WD1002S-WX2   I/O ports reside in Host
+REQ
+memory address locations 320 hex through 323
+When the Host reads the WD1002S-WX2 hardware
+hex. (The WD1002S-WX2 allows jumper selection
+status the WD11C00-17 complements BUSY and        of the I/O port addresses. Refer to Section 7 for
+C/D and drives these signals onto the Host data        further information.) All WD1002S-WX2 port
+bus. Sections 5.2.1 through 5.2.4 describe the I/O       accesses are made in programmed I/O mode.
+ports in detail.
+Address enable (AEN) indicates Host control over
+the buses and connects the I/O channel to the
+6.3.2 COMMAND PHASE
+WD1002S-WX2. AO through A9 address the Host
+memory locations. AO and A1 select one of the
+Following the Selection phase, the Host sends the        four ports. IOR and IOW select the port function.
+six byte Command Control Block (CCB). Transfer
+Depending upon the addressed port function, the
+of the require assertion of the hardware status bits,
+Host bus may not be used. Section 5.2 describes
+BUSY, C (C/D), T (T/O), and REQ. The WD11C00-        the I/O ports and their functions. Section 4
+17 sends the CCB to page 0 of the Sector Buffer.
+describes interface timing for programmed I/O
+The WD1015 retrieves the CCB from the Sector
+data transfers.
+Buffer to execute the command. Once this phase
+is entered, the only way the Host can abort com-
+6.3.3.2 DMA Data Transfer
+mand execution is by asserting RESET. The Host        The Host must configure the WD1002S-WX2 for
+can reissue commands when the WD1002S-WX2
+DMA mode before transfer data between the
+de-asserts BUSY. Section 5.3 describes the CCB
+Sector Buffer and Host. The Host writes to port
+format.
+323 hex to enable DMA mode prior to issuing a
+command. With DMA eanbled, no access of port
+6.3.3 DATA PHASE
+320 is required to transfer data. The Host can then
+After decoding a command and checking for any
+sense DRQ3 at the start of a byte transfer. Asser-
+illegal parameters, the WD1015 sets up the Host        tion of DACK3 by the Host causes the WD11C00-
+for the Data phase depending upon whether the
+17 to de-assert DRQ3. Data transfer between the
+WD1015 needs the data first to execute the com-
+Sector Buffer and Host is then controlled by the
+mand. Otherwise, the Data phase is entered, after
+Host using IOW and IOR signals as in programmed
+the command is executed by the WD1015, as in
+I/O mode. When DACK3 is de-asserted, DRQ3 is
+the case of a Read Command. Assertion of D (C/D)
+asserted by the WD11C00-17. This process repeats
+defines the Data phase. The state of the I/O signal
+until all the data is transferred. De-assertion of
+and the command determines the direction of the
+REQ signals the end of the DMA transfer. Section
+data transfer. Assertion of I (I/0) indicates data        4 describes interface timing for DMA data transfers.
+input to the Host. Assertion of O (1/0) indicates
+data output from the Host.
+6-3
+
+===== wd1002s-wx2_page_39.txt =====
+--- Page 1 ---
+6.3.4 COMPLETION PHASE
+operating system is designed to supply the BIOS
+The Host senses the Completion phase by sampling
+ROM   information,   then   the   WD1002S-WX2
+IRQ5 (IRQ2 is a jumper selectable option. Refer
+BIOS ROM is not required to operate the con-
+to Section 7.) or by polling the BUSY signal.
+troller.
+IRQ5 is available as a port 321 status bit. The Host
+totally controls IRQ5 by writing to port 323. The        6.6 CONFIGURATION JUMPERS
+WD11C00-17 generates IRQ5 when the Host issues
+These jumpers configure the WD1002S-WX2 for
+the write to port 323. The Host must disable inter-
+different disk drive capacities. Pull-up resistors
+rupts before reading the Command Completion
+internal to the WD11C00-17 normally tie the
+byte from the WD1002S-WX2. If the Host does
+OPTION 0 through 3 (OPO through OP3) signals
+not disable the WD1002S-WX2 interrupts, then
+to +5V. Installation of a jumper connects the
+the WD1002S-WX2 continuously interrupts the
+signal to ground. Section 7 describes the Con-
+Host. The completion code can be read by the
+figuration Jumper location and settings for disk
+Host when the WD11C00-17 asserts the following
+drive capacities.
+hardware status signals:
+BUSY
+6.7 WD11C00-17 LOGIC ARRAY
+C (C/D)
+The   WD11C00-17    Logic   Array   incorporates
+I (I/0)
+several functions in a single package. Implementa-
+REQ
+tion of these functions occurs by combining
+A completion code of zero indicates no error        random    logic   and   specialized   circuits.    The
+occured. A non-zero value indicates occurrence of        WD11C00-17 contains the following circuits:
+an error during command execution. The Host can
+Status ports
+obtain additional information about the error by
+Read and write ports
+executing a Read Status Command. In this case,
+Sector Buffer RAM addressing and control
+the Data phase is implemented at command com-
+ECC
+pletion by the WD1002S-WX2.
+Reset timing
+The WD1015 makes the command completion
+The WD11C00-17 connects directly to the multi-
+byte available to the Host at port 320 after com-        plexed address/data bus, ADO - AD7.
+mand completion. This byte contains the drive
+number of the drive that completion status is        6.7.1 STATUS, READ, AND WRITE PORTS
+valid and an error bit. Section 5.6 describes the        Section   5.2   describes   these   ports'   functions.
+format of the command completion byte.
+Section 6.3 describes the operation of these ports.
+6.4 DEVICE ADDRESS DECODER
+6.7.2 SECTOR BUFFER RAM ADDRESSING
+The   Device   Address Deocder generates   ROM
+AND CONTROL
+ENABLE   (ROMEN) and   DEVICE ADDRESS
+A counter in the WD11C00-17 generates RAM
+CODE (DADD). ROMEN allows the Host to address
+ADDRESS 0 through 9 (RAO through RA9).
+the BIOS ROM and enables the ROM Data Bus        The upper three address bits (RA7, RA8, and
+Drivers to place the BIOS ROM information on
+RA9) are resettable by the WD1015. This allows
+the Host Interface Data/Command Bus. ROMEN
+the WD1015 to address a range of 8 pages with
+is derived from a valid BIOS address and MEMR.
+256 bytes in each page. The address of any byte
+DADD is asserted when address 320 or 324 is        within a page can be set by the WD1015 by gener-
+present on the address bus.
+ating dummy RAM accesses to increment the
+address counters to the proper address.
+6.5 BIOS ROM
+In addition to addressing the Sector Buffer, the
+The BIOS ROM contains firmware driver routines
+upper three counter bits (RA8, RA9, and RA10)
+for Winchester disk control. These routines, when
+are used to address the WD1010A-05 Task File
+installed, reside in Host memory space C8000 hex
+when the Sector Buffer is not being used. A Sector
+through C8FFF hex. The BIOS routines are only
+Buffer access ends when the Sector Buffer is empty
+entered via software   interrupts. If your Host
+or full. Therefore, the WD11C00-17 asserts RA10.
+6-4
+
+===== wd1002s-wx2_page_40.txt =====
+--- Page 1 ---
+Assertion of RA10 causes de-assertion of DRQ3.
+cantly reduce error detection for multiple error
+This informs the Host that the Sector Buffer is        bursts. A five bit correction span is adequate for
+either empty or full, signals the end of the data
+most applications.
+field, and indicates the start of the ECC field to
+the WD11C00-17 ECC logic.
+6.7.4 RESET TIMING CIRCUITRY
+Assertion of RA3 when the Command bus phase
+For a reset, the WD1002S-WX2 executes a power-
+ends indicates to the WD1015 placement of the
+up sequence to setup internal parameters and
+CCB in the Sector Buffer.
+initializes the on-board circuitry properly. The
+WD1002S-WX2 design requires a minimum warm
+6.7.3 ECC CIRCUITRY
+reset pulse width of 15usec. The Reset Timing
+During a write operation, the WD1010A-05 receives
+circuitry provides a warm reset pulse of 1.35 msec.
+the data from the Sector Buffer. The WD11C00-17
+For a cold start, the minimum reset required pulse
+generates and appends the four byte ECC to the        width is 10 msec. The Reset Timing circuitry pro-
+data stream. Proper placement of the ECC requires
+vides a cold reset pulse of 128 msec.
+determination of the end of the data stream.        To detect any power up diagnostic failures, the
+Assertion of RA10 by the WD11C00-17 address
+Host should issue an Execute Controller Diagnostic
+counter indicates RAM overflow and the end of
+command if the WD1002S-WX2 DOES NOT use
+the data stream. After writing the ECC to the disk,        either a WD1015-14 or a WD BIOS. The WD1015-
+the WD11C00-17 ECC circuitry supplies all zero        14 automatically performs an Execute Controller
+bytes to the ADO through AD7 bus as long as ECC
+Diagnostic command after power-up or a software
+function is selected.
+reset. A WD BIOS issues an Execute Controller
+During a read operation, the ECC circuitry re-
+Diagnostic command as part of the install sequence
+computes the ECC. Comparison of the previously
+regardless of the version of the WD1015 on-board.
+written ECC and computed ECC occurs at the end
+of the data stream. (Assertion of RA10 indicates
+6.8 WD1015 BUFFER MANAGER CONTROL
+end of the data stream.) The ECC circuitry records
+PROCESSOR
+the result of the comparison. Any additional
+The WD1015 is a self contained CPU designed to
+writes to the Sector Buffer are ignored. If the result        receive commands from the Host. Firmware in
+of the comparison is non-zero, then the WD11C00-
+the WD1015 translates the Host command format
+17 asserts ECC NOT 0 signal. Assertion of ECC
+into the WD1010A-05   format. The WD1015
+NOT 0 enables the WD1015 to attempt error        controls any programmable retries and data error
+correction.
+correction.
+For diagnostic purposes, during Writelong and
+There are two versions of the WD1015 for the
+Readlong commands the ECC generation and
+WD1002S-WX2. The WD1015-14 supports up to
+checking is disabled. A Writelong command causes        eight heads. The WD1015-14 uses the REDUCED
+the WD11C00-17 to accept any four bytes from
+WRITE CURRENT (RWC) signal. The WD1015-24
+the Host, and stores the bytes internally. These
+supports up to 16 heads. The WD1015-24 uses the
+bytes are written to the disk unaltered. A Readlong
+RWC pin on J1 as HEAD SELECT 3 (HSEL3).
+command causes the WD11C00-17 to accept the
+The acronym WD1015 refers to both. versions.
+four bytes written on the disk. These bytes are
+When a specific reference is made to a specific
+passed to the Host unaltered. This allows the Host
+version, the appropriate acronym is used.
+to induce errors anywhere in the data stream and
+check for predictable results. Sections 5.21 and
+The WD1015 controls the transfer of information
+5.22 describe these commands.
+within the WD1002S-WX2 and maintains the
+necessary copies of the WD1010A-05 Task Files.
+During sector reads and writes, CRC error detec-
+The WD1015 accesses the CCB in the Sector
+tion capability is used for the I.D. fields. The data
+Buffer. Prior to the command being issued to the
+field on a hard disk uses error correction for a        WD1010A-05 by the WD1015, the drive and head
+single burst up to 11 bits in error. The bit cor-
+select information is set in a port latch for the
+rection span is user programmable. Use the 11 bit        drive   interface   (DSELO, DSEL1, and HSELO
+correction span sparingly or only for diagnostic
+through HSEL3). The heads are stepped, if re-
+purposes. Eleven bit error correction spans signifi-
+quired, by the STEP signal and positioned over the
+6-5
+
+===== wd1002s-wx2_page_41.txt =====
+--- Page 1 ---
+desired cylinder. The CCB is translated and issued
+The WD1015 controls the   operation of the
+to the WD1010A-05, after observing the required
+WD11C00-17 ECC circuitry. During the transfer
+protocol. At the end of command execution, the        of data from the Sector Buffer to the disk, the
+WD1010A-05 asserts WINT. The WD1015 polls
+WD11C00-17 computes a four byte ECC that is
+WINT.
+appended to the end of the data transferred to
+the WD1010A-05 and recorded on the disk.
+The WD1015 controls multiple sector transfers        During data transfers from the WD1010A-05 to
+without the Host reissuing the command. The        the Sector Buffer, the WD11C00-17 uses the ECC
+WD1015 breaks all multiple sector transfers into
+circuitry to validate the data. If data is corrputed,
+a series of single sector commands to the        the WD1015 performs retries and correction. A
+WD1010A-05. The WD1015 provides head changes
+maximum of eight retries are attempted if two
+and steps as required between WD1010A-05 com-        consecutive syndromes do not match. Correction
+mands until the block count is satisfied. There can
+is attempted only when two consecutive syn-
+be many WD1010A-05 interrupts (WINT) for one        dromes match. If the error is uncorrectable, the
+Host command. However, the WD1015 enables the
+operation is terminated.
+WD11C00-17 to send only one interrupt to the
+Host at the end of the transfer.
+All exception handling results in a loss of at least
+one disk revolution.
+6.8.1 EXCEPTION HANDLING
+6.9 SECTOR BUFFER
+No commands can be executed by the WD1010A-
+05 with DRDY de-asserted, SC de-asserted, or WF
+The Sector Buffer consists of a 2KB by 8 bit RAM
+asserted. In these cases, the WD1015 aborts the
+that is used to hold data or the CCB. Only the
+issued command. No attempts are made to recover
+lower 1KB of the RAM is actually used. Therefore,
+from these conditions.
+the terms upper and lower in the succeeding para-
+graph are relative to the lower 1KB of the RAM.
+Before any data transfer can take place, the
+WD1010A-05 attempts to read the I.D. field of the        The lower half of the RAM is used mainly for the
+logical   block address specified.   If any errors
+CCB, status and error information, and storage for
+are detected in this process, the WD1010A-05
+the ECC bytes. The eight bytes of drive character-
+attempts to read the I.D. field until two index
+istics from the Host during an Initialize Drive
+pulses are detected. If the I.D. field can not be
+Parameters command are also stored in page zero
+read, the WD1015 reissues the command once each
+of the RAM. The sector data is stored in the
+disk revolution for ten disk revolutions to recover        upper half of the RAM. The Sector Buffer also
+from the error. If this is unsuccessful, the WD1015
+holds the information to be recorded on the disk
+performs an Autorestore. The Autorestore re-
+during a Format command in exactly the same way
+calibrates the selected logical unit and performs a
+as a sector of data written to the disk.
+re-seek to the logical block address specified. The
+WD1010A-05 attempts to read the I.D. field once
+6.10 WD1010A-05 WINCHESTER DISK
+each disk revolution for ten disk revolutions. If the
+CONTROLLER
+error is unrecoverable, the operation is terminated.
+The WD1010A-05 is a single chip device designed
+The error reported is the last error encountered,
+for use with Seagate Technology ST506 and other
+assuming that the same error is responsible for any
+compatible disk drives. All disk commands are
+attempted retries.
+started by the WD1015 after the CCB has been
+A similar operation is performed on all missing
+read and properly translated. The primary purpose
+Data Address Marks during a read operation. If        of the WD1010A-05 is to control data (this in-
+the I.D. field can be read correctly, data transfer
+cludes data separation for Read Data) transfer
+between the Host and WD1010A-05 can take
+between the disk and the Sector Buffer after the
+place. For a write operation, the location of the
+WD1015 has positioned the selected head over the
+desired I.D. field is all that is required to write
+desired track. The WD1010A-05 can position the
+data to the disk from the Sector Buffer. Multiple
+disk heads, but this capability is not used in the
+sector transfers are broken into single sector
+design because the desired step rates are not
+transfers as described in Section 6.8. For a read
+supported by the WD1010A-05. Refer to the
+data
+WD1010-05 data sheet in the Western Digital
+operation, the
+field is corrected, if possible,
+before being transferred to the Host.
+Storage   Management   Products Handbook for
+further details on the WD1010A-05.
+6-6
+
+===== wd1002s-wx2_page_42.txt =====
+--- Page 1 ---
+6.11 WD10C20
+edge of the data or clock bit to be written EARLY,
+The WD10C20 interfaces the disk drive to the
+LATE, or on time (NOMINAL).
+other   circuitry   on   the   WD1002S-WX2.   The
+The WD1015 enables or disables the generation of
+WD10C20 contains two major circuits. These two
+these write precompensation signals by controlling
+circuits are the Write Precompensation circuitry
+the LS signal. Assertion of LS enables write pre-
+and data synchronization.
+compensation. De-assertion of LS disables write
+precompensation and the NOMINAL output is
+6.11.1    CLOCK GENERATOR
+asserted.
+A 10 MHz fundamental   frequency crystal is
+The WD10C20 internal logic performs the write
+required by the WD10C20. The crystal frequency
+precompensation.   The MFM write pulses are
+is used as a reference clock and then divided by        applied to internal   logic. The WMFM output
+two for a WRITE CLOCK (WCLK) which is used
+depends upon the state of the three write pre-
+to produce MFM write data for the disk. These        compensation signals. From here, the data is con-
+clock sources are provided by the WD10C20.
+verted to a differential form and then transmitted
+The WD1015 uses the 5 MHz WCLK, provided by        to the disk drive.
+the WD10C20, giving an instruction cycle time of
+3.0usec. Most instructions execute in two cycles        6.11.3 DATA SEPARATOR
+or 6.0usec.
+Data is recorded on the disks using MFM tech-
+niques. This technique requires clock bits to be
+6.11.2   WRITE PRECOMPENSATION CIRCUIT
+recorded only when two successive data bits are
+The generation of MFM Write Data takes place in
+missing in the serial data stream. In other words,
+the WD1010A-05. The WD1010A-05 accepts a
+if two successive data bits are zeroes, then a clock
+byte of data and a WCLK to internally produce
+pulse is generated. A logical one data bit is re-
+MFM data. The MFM data is now totally com-
+corded as a pulse and a logical zero is recorded as
+patible with the required format for transmission
+not pulse. The fact that clock bits are not recorded
+to the disk via line drivers with one exception.
+with every data bit cell requires circuitry that can
+Due to decreasing radius on the physical surface of        remain in synchronization with data during the
+the disk, the inside tracks have less circumference
+absence of clock bits. Synchronous decoding of
+and therefore exhibit an increase in recording flux
+MFM data streams requires the decoder circuitry to
+density over the outside tracks. This increase in
+synthesize clock bit timing when clocks are missing
+flux density aggravates a problem   known as        and synchronize to clock bits when they are
+dynamic bit shift.
+present. This is accomplished by using a phase
+Dynamic bit shift comes about as a result of one        locked oscillator employing an error amplifier and
+bit on the disk (a flux reversal) influencing an
+filter to synchronize with and hold a specific phase
+adjacent bit. The result is to shift the leading edge
+relationship to the data and clock bits in the data
+of both bits closer together or further apart than
+stream. The phase lock occurs at the crystal
+originally recorded. The net result is that enough
+frequency, which in turn is used to synthesize a
+jitter is added to the data recorded on the inside
+clock called RCLK with a frequency one half of
+tracks to make them harder to recover without        the crystal frequency. This synthesized clock is
+used to separate data bits from clock bits      the
+error.
+by
+external logic for deserialization into bytes.
+Write precompensation is used to reduce the effect
+of dynamic bit shift on the recorded data. It is a
+Refer to the WD10C20 Data Sheet for further
+method of predicting which direction a particular
+details.
+bit is shifted and intentionally writing that bit out
+of position in the opposite direction from the
+expected shift. This is performed by examining
+two data bits: the last one written and the present
+one to be written to the disk. A comparison of
+these bits produces one of three signals: EARLY,
+NOMINAL, or LATE. These signals are used with a
+delay line (intervals of 12nsec) to cause the leading
+6-7
+
+===== wd1002s-wx2_page_43.txt =====
+--- Page 1 ---
+SECTION VII
+INSTALLATION
+7.1   HARDWARE AND SOFTWARE
+"0103", ENTER which defines relative drive
+INSTALLATION
+number and interleave factor (01 = relative
+This section briefly describes installation of the
+drive number; 03 = interleave factor). Type
+WD1002S-WX2 in an IBM PC or BM-compatible
+"G=C800:5", ENTER, and type "y" to begin
+computer.
+formatting drive 1 (logical drive D).
+9. Run   standard   DOS utilities,   FDISK and
+1. Ensure system power is off.
+FORMAT.
+2. Insert WD1002S-WX2 in computer chassis and
+connect drive cables. (J1 = control cable,
+7.2 JUMPER INSTALLATION AND
+J2 = drive 0 cable, J3 = drive 1 cable.)
+3.   Power up the system.
+LOCATIONS
+4.   Insert IBM PCDOS 2.0 or IBM PCDOS 2.1
+The WD1002S-WX2 is configured for the standard
+diskette.
+IBM PCXT with jumper plugs installed at W3, W4,
+and W6. No jumpers are required at W5 and W7.
+CAUTION
+To change the configuration, a jumper plug can be
+Performing steps 5 through 9 destroys any data
+installed in the appropriate block. Installation of
+presently on the disk.
+jumpers on W5 and W7 requires carefully cutting
+5.   Load DEBUG utility by typing "debug" and
+an etch and placing a jumper plug onto the
+ENTER after the DOS prompt.
+Jumpered position. To restore the standard setting,
+6.   Initiate the WX2FMT (format) program by        move the jumper plug to the Standard position.
+typing the following command line: -g-c800:5
+Table 7-1 describes these jumpers and options.
+Table 7-2 describes the drive configuration
+7. Press "y" to begin formatting drive 0 (logical
+jumpers
+drive C).
+and an INTERRUPT REQUEST (IRQ) jumper in
+8. To format drive 1 or second drive in a daisy
+SW1. Figure 7-1 illustrates the locations of W1
+chain, reload DEBUG utility. Type "RAX" and
+through W7 and SW1.
+ENTER. Prompt returns "AX 0000". Type
+TABLE 7-1. JUMPER SELECTABLE OPTIONS (W1 THROUGH W5)
+JUMPER    FUNCTION    PIN
+DESCRIPTION
+W1, W2
+For Western Digital Manufacturing use only.
+W3
+Standard:        1-2    Closed by etch or jumper. Enables BIOS ROM.
+Jumpered:       1-2    Open. Disables BIOS ROM.
+W4
+Standard:        2-3    Selects primary port 320 hex.
+Jumpered:       1-2    Selects secondary port 324 hex. Requires custom BIOS.
+NOTE
+The WD1002S-WX2 provides two sets of I/O ports. The primary port
+addresses are 320 through 323 hex. The secondary port addresses are
+324 through 327 hex. However, secondary ports on the WD1002S-WX2
+are NOT supported by any version DOS.
+W5
+Standard:        1-2    Selects 2732 or 2764 BIOS ROM size.
+Jumpered:       2-3    Selects 2716 BIOS ROM size. W5 pin 1-2 etch must be cut.
+W6
+Standard;        2-3    8 head configuration, RWC used.
+Jumpered:       1-2    16 head configuration, RWC not used, requires custom BIOS ROM and
+WD1015-24.
+W7
+Standard:        1-2    Selects IRQ5.
+Jumpered:       2-3    Selects IRQ2. SW1 position 8 must also be jumpered (closed) and W7
+pin 1-2 etch must be cut.
+7-1
+
+===== wd1002s-wx2_page_44.txt =====
+--- Page 1 ---
+TABLE 7-2. SW1 JUMPER BLOCK DESCRIPTION
+WD BIOS 62-000042-01 (ROM) or 62-000042-11 (EPROM)
+POSITION
+BIOS      FORMATTED        1 2
+3 4
+DRIVE
+NUMBER OF    PRE-COMP
+TABLE       CAPACITY     DRIVE 1   DRIVE 0
+TYPE
+HEADS CYLINDERS
+RWC
+3
+10MB
+1 1
+1 1
+ST412
+4
+306
+0
+Seagate
+None
+2
+15MB
+0 1
+0 1
+ST419
+6
+306
+256
+Seagate
+RWC = 128
+1
+26MB
+1 0
+1 0        5820
+8
+375
+0
+Evotek
+None
+0
+5MB
+00
+00        ST506
+2
+306
+0
+Seagate
+None
+WD BIOS 62-000042-12 (EPROM)
+3
+10MB
+1 1
+1 1
+ST412
+4
+306
+0
+Seagate
+None
+2
+20MB
+0 1
+0 1
+ST225
+4
+612
+128
+Seagate
+None
+1
+10MB
+1 0
+1 - 0        3012
+2
+612
+128
+MiniScribe
+RWC = 128
+0
+20MB
+00
+0 0
+HH725
+4
+612
+None
+Microscience
+None
+Factory sets jumpers for BIOS Table 3. Position
+5 of SW1 select IRQ5 (factory setting) or IRQ2.
+1 = IRQ5. 0 = IRQ2. Positions 6, 7, and 8 of SW1
+are reserved.
+LEGEND: 1 = no jumper installed, ties input to
++5vdc. 0 = jumper installed, ties input
+to ground.
+7-2
+
+===== wd1002s-wx2_page_45.txt =====
+--- Page 1 ---
+J3
+J2
+J1
+SW1
+U5
+U4
+n
+2
+M
+U9
+U10          U11
+N     U14
+1
+E
+N
+m
+2
+-
+1 2 3
+W1
+W2
+W3
+P1
+W4
+W5        W7
+W6
+FIGURE 7-1. JUMPER LOCATIONS
+7.3 BIOS ROM INSTALLATION
+1. Cut the etch between pads 1 and 2 on W5
+The   WD1002S-WX2   firmware driver routines,
+2. Jumper pad 3 to pad 2
+supplied by Western Digital Corporation, reside in
+3. Wire pins 20 and 26 as shown.
+a 4KB X 8 bit EPROM. This BIOS ROM is avail-
+4. Plug BIOS in the socket. Pin 1 of the 2716
+able in three sizes as follows:
+BIOS should be in position 3 of the socket.
+2716   2KB X 8 bit
+2732   4KB X 8 bit (standard from the factory)
+1
+28
+Vcc
+2764   8KB x 8 bit
+2
+27
+3
+26
+E2
+4
+(A11)
+The WD1002S-WX2 provides a 28 pin DIP socket
+5
+25
+for the BIOS ROM. This socket accomodates a
+6
+23 24
+2732 or 2764 JEDEC EPROM. Figure 7-2 illus-
+7
+22
+E4
+8
+21
+trates the standard connections for the 2732 or
+20
+Vss O E3 (Vcc)
+2764.   These connections can be modified to
+support a 2716. Perform the following steps to
+FIGURE 7-2.
+modify the standard connections:
+BIOS ROM SOCKET CONNECTIONS
+7-3
+
+===== wd1002s-wx2_page_46.txt =====
+--- Page 1 ---
+WESTERN    DIGITAL
+C    0     R     P     0     R     A      /
+U      N
+2445 McCabe Way
+Irvine. California 92714
+(714) 863-0102   TWX 910-595-1139
+

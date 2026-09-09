@@ -1,0 +1,168 @@
+--- Page 1 ---
+trol signals are as follows:
+restore, the step pulse period is de-
+RWC
+When the Reduce Write Current
+termined by the seek complete time
+(RWC) line is activated with write
+from the drive.
+gate, a lower write current is used to
+DS1-DS3
+These   three   Drive Select   lines
+compensate for greater bit-packing
+(DS1-DS3) are used to select one of
+density on the inner cylinders. The
+three possible drives.
+RWC line is activated when the cyl-
+DIRIN
+Direction In determines the direction
+inder number is greater than or equal
+of motion of the RW head when the
+to four times the contents of the
+step line is pulsed. A
+on this
+write precomp register This output is
+high
+line
+valid only during write and format
+defines the direction as out, and a
+commands.
+low defines direction as in.
+WG
+The Write Gate signal enables the
+2.5   5.25" WINCHESTER 34-PIN DRIVE
+disk write data circuitry.
+CONTROL CONNECTOR
+SC
+Seek Complete line informs the
+This drive control connector (J7) is a 34-pin vertical
+WD1002-05 that the head of the se-
+header on 0.10-inch centers. Cabling should be flat
+lected drive has reached the desired
+ribbon or twisted-pair cable less than 10 feet long.
+cylinder and has stabilized. Since
+The cable pinouts are given in Table 2.2.
+Seek Complete is not checked after a
+seek command, overlapped seeks
+Table 2-2.   Winchester Drive Control Connector
+are allowed.
+Pin Description
+TROOO
+TRack 000 indicates that the RW
+heads are positioned on the outer-
+Signal      Signal
+most cylinder This line is sampled
+Ground        Pin
+IIO
+Signal Name
+before each step pulse is issued.
+1
+1
+2
+O
+RWC
+WF
+Write Fault informs the WD1002-05
+3
+4
+O
+Head Select 2
+that some fault has occurred on the
+5
+6
+O
+Write Gate
+selected drive. The WD1002-05 will
+7
+8
+I
+Seek Complete
+not execute commands when this
+9
+10
+I
+TROOO
+signal is true.
+11
+12
+I
+Write Fault
+HS2-HSO
+Head Select lines (HS2-HSO) are used
+13
+14
+O
+Head Selecto
+by the WD1002-05 to select a specific
+15
+16
+NC
+RW head on the selected Winches-
+17
+18
+O
+Head Select 1
+ter drive.
+19.
+20
+I
+Index
+IND
+Index is used to indicate the index
+21
+22
+I
+Ready
+point for synchronization during for-
+23
+24
+O
+Step
+matting and as a timeout mechanism
+25
+26
+O
+Drive Select 1
+for retries. This signal should pulse
+27
+28
+O
+Drive Select 2
+once every rotation of the disc.
+29
+30
+O
+Drive Select 3
+31
+32
+NC
+RDY
+Ready informs the WD1002-05 that
+33
+34
+O
+Direction In
+the desired drive is selected and that
+its motor is up to speed. The
+WD1002-05 will not execute com-
+2.6   WINCHESTER DRIVE DATA CONNECTOR
+mands unless this line is true.
+Three data connectors (J1-J3) allow data to pass
+STEP
+Step is pulsed once for every cylinder
+between the WD1002-05 and each Winchester disk
+to be stepped. The direction of the
+drive. All lines associated with the transfer of data
+step will be determined by the direc-
+between a drive and the WD1002-05 system are differ-
+tion line. The Step pulse period is
+ential in nature and may not be multiplexed. The
+determined by the internal Win-
+three Winchester drive data connectors are 20-pin
+chester stepping rate register during
+vertical headers on 0.10-inch centers. Cabling should
+implied seek operations, or explicitly
+be either flat ribbon or twisted-pair cable, less than 10
+during seek commands. During auto
+feet long. Cable pinouts are given in Table 2-3.
+2-2

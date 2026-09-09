@@ -1,0 +1,38 @@
+--- Page 1 ---
+active, the controller waits for ACK- to go inactive, then
+sets REQ- active between 25 and 50 nanoseconds later.
+There is no time limit for the controller waiting for ACK-
+to go inactive. Refer to Figure 4.3 for timing detail.
+4.3.3.2
+Data Transfer From Host
+Each data byte transferred from host to the controller
+starts with the REQ- going active. For REQ- to go active,
+the host must ensure that ACK- is inactive at the
+beginning of each byte transfer sequence.    After REQ-
+goes active, the host sets ACK- active while placing a
+byte of data on the bus. There is no time limit from the
+time REQ- goes active to ACK- going active.   However,
+there is a time limit of 250 nanoseconds maximum for the
+host to place the data byte on the bus referenced from
+the ACK- edge.   When ACK- goes active, the controller
+sets REQ- inactive within 1000 nanoseconds maximum.
+The host must not change data on the bus until REQ- goes
+inactive.    There is no hold time for the data when REQ-
+goes inactive.   There is no time limit for the host to set
+ACK- inactive.   The controller will not set REQ- active
+again, for the next byte to transfer, until ACK- goes
+inactive. If ACK- goes inactive in response to REQ-going
+inactive, the controller will set REQ- active within 500
+nanoseconds, ready to receive the next byte.     If the
+controller is ready to set REQ- active, but ACK- is
+active, the controller waits for ACK- to go inactive, then
+sets REQ- between 25 and 50 nanoseconds later.
+Status Bytes
+Two bytes of status are passed to the host at the end of all
+commands.    The first byte informs the host if any errors occurred
+during the execution of the command.   The second is a zero byte. It
+signals to the host that the command is complete. Figure 4-3 shows
+the data bus, REQ- and ACK- timing. See Table 4-2 for I-/O, C-/D
+and MSG- definition.    Figure 4-5a shows the format of these two
+bytes.
+Page -33-

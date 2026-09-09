@@ -1,0 +1,145 @@
+--- Page 1 ---
+APPENDIX D
+PROGRAMMER'S QUICK REFERENCE
+D.1   TASK FILE
+BSY        CSO
+A2
+A1
+AO
+RE
+WE
+1
+X
+X
+X
+X
+Deselected
+Deselected
+0
+0
+0
+0
+0
+Data Register
+Data Register
+0
+0
+0
+0
+1
+Error Register
+Write Precomp*
+0
+0
+0
+1
+0
+Sector Count
+Sector Count
+0
+0
+0
+1
+1
+Sector Number
+Sector Number
+0
+0
+1
+0
+0
+Cylinder Low
+Cylinder Low
+0
+0
+1
+0
+1
+Cylinder High**
+Cylinder High**
+0
+0
+1
+1
+0
+Size/Drive/Head
+Size/Drive/Head
+0
+0
+1
+1
+1
+Status Register
+Command Register
+* Not used on floppies
+LSB of cylinder high, if set to 1, permits a 48 t.p.i. floppy disk to be read on a96 t.p.i. floppy disk system.
+D.2   VALID COMMANDS
+BITS
+TYPE   COMMAND
+7 6 5 4 3 2 1 0
+I
+Test
+1 0 0   1   0 0 0 0
+I
+Restore
+0 0 0 1 13 r2 r1 ro
+I
+Seek
+0 1 1 1 r3 r2 r1 ro
+II
+Read Sector
+0 0 1 0 D M L 0
+III
+Write Sector
+0 0 1 1 0 M L 0
+III
+Format Track        0 1 0   1   0 0 0 0
+D.3   SDH REGISTER FORMAT
+Bit
+7        6        5        4
+3        2
+1
+0
+Function
+CRCI
+Sec
+Drive
+Head/Drive
+ECC
+Size
+Select
+Select
+Bit        Bit
+Sector Size
+Bit        Bit
+Drive Selected
+6
+5
+4
+3
+(decoded & latched)
+0
+0
+256 Bytes
+0
+0
+Drive Sel 1
+0
+1
+512 Bytes
+0
+1
+Drive Sel 2
+1
+0
+1024 Bytes
+1
+0
+Drive Sel 3
+1
+1
+128 Bytes
+1
+1
+Floppy Dr Sel
+D-1

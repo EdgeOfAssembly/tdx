@@ -1,0 +1,86 @@
+--- Page 1 ---
+;Transfer sector from WD1002-05 to system memory
+(Transfer address in HL)
+MVI
+B,O
+;Init byte counter to 256 bytes
+READLP:      IN
+DATA
+;Get a byte of data from WD1002-05
+MOV
+M,A
+;Move it to memory
+INX
+H
+Increment memory pointer
+DCR
+B
+;Decrement byte counter and continue
+JNZ
+READLP
+if we haven't transferred 256 yet
+IN
+STATUS
+;Re-read status for errors
+JMP
+DONE
+;Now check the completion status
+A.2.3   WRITE SECTOR
+WRITE
+;This is the write routine for the driver
+WRITIT:
+CALL        UPTASK
+;Update WD1002-05 task file
+MVI
+A,WRITE
+;Get WRITE command
+OUT
+COMND
+;Output command to WD1002-05
+;Transfer sector from system memory to WD1002-05
+(Transfer address in HL)
+MVI
+B,O
+Init byte counter to 256 bytes
+WRITLP:       MOV
+A,M
+;Get a byte of data from memory
+OUT
+DATA
+;Move it to WD1002-05
+INX
+H
+;Increment memory pointer
+DCR
+B
+;Decrement byte counter and continue
+JNZ
+WRITLP
+if we haven't transferred 256 yet
+;Wait for WD1002-05 to write the sector
+WWAIT:
+IN
+STATUS
+;Check Busy bit
+ANA
+A
+;by updating sign flag in 8085
+JM
+WWAIT
+;and wait 'till bit 7 goes low
+DONE
+;Both READ and WRITE commands finish here to check for errors
+DONE:
+RAR
+;Rotate Error bit to carry
+RNC
+;and return to OS if no error
+IN
+ERROR
+;Get WD1002-05 error code
+<<Place error reporting routine here>>>
+STC
+;Set carry to flag an error
+RET
+;and return to OS with error
+A-3

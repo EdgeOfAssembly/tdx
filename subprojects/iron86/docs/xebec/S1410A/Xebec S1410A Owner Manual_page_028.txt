@@ -1,0 +1,24 @@
+--- Page 1 ---
+2 SUMMARY OF HOST BUS STATUS SIGNALS
+DEFINITION
+The controller receives command bytes from the host
+adapter (All Commands).
+The controller receives data bytes from the host adapter.
+Write Data
+Drive initialize Data
+Write Buffer Data
+Format Alternate Track Data
+Write Long Data
+The controller sends data bytes to the host adapter.
+Read Data
+Request Sense Data
+Read ECC Burst Error Data
+Read Sector Buffer Data
+Read Long Data
+Retry Statistics Data
+The controller sends error status byte to the host adapter
+(All Commands).
+The controller sends message byte to host which informs
+the host adapter   that it has completed the current
+command (All Commands).
+Page -20-

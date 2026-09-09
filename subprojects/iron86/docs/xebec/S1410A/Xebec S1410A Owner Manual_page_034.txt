@@ -1,0 +1,28 @@
+--- Page 1 ---
+4.1.4.5    Direction In
+This signal defines the direction of motion of the read/write head
+when the Step line is pulsed. An open circuit or logical false defines
+the direction as "out".    If a pulse is applied to the Step line, the
+read/write heads move away from the center of the disk. If this line
+is logical true, the direction is defined as "in", and the read/write
+heads move in toward the center of the disk. The direction line is set
+a minimum of 5 nsec before step pulse are issued.
+Seek Complete is verified to be true prior to changing directions and
+the application of additional step pulses.
+4.1.4.6    Drive Select 0, Drive Select 1
+These control signals enable the selected drive's input receivers and
+output drivers.    When logically false, the output drivers are open
+circuits or logically false and the input receivers do not acknowledge
+signals presented to them.
+Drive addresses are assigned on the drive. Refer to Drive Manual for
+drive selection.
+NOTE:
+Only one drive may be selected at a time.
+5 Drive Output Signals
+The output control signals are driven with an open collector output stage
+capable of sinking a maximum of 40 milliamperes in a logical true state with a
+maximum voltage of 0.4 volt measured at the driver. When the line driver is
+in the logical false state, the driver transistor is off, and the collector cutoff
+is a maximum of 250 microamperes.
+All output lines are enabled by the respective Drive Select lines.
+Page -26-

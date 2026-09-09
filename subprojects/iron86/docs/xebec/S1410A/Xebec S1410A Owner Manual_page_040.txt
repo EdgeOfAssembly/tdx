@@ -1,0 +1,36 @@
+--- Page 1 ---
+Command Mode
+The controller receives commands from the host adapter using a
+handshaking sequence. The controller places a low level on the C-/D
+(command-/data) line to indicate that it wants a command from the
+host adapter and places a high level on the I-/O line to indicate that
+the movement of information is from the host adapter out to the
+controller. The MSG- line is high.
+The controller activates the REQ- line within 20 microseconds after
+signals I-/O, C-/D and MSG- have been placed at high, low and high
+levels, respectively.    The host adapter responds by activating the
+ACK- signal when a command byte is ready for the controller.   The
+command byte placed on the data bus by the host must be stable
+within 250 nanoseconds after the ACK- signal is activated.     The
+command byte must be held stable until REQ- is deactivated.   The
+host deactivates ACK- after REQ- goes high.    This completes the
+handshake for the first command byte. There are 6 command bytes,
+and each succeeding command byte from the host adapter requires
+the same complete handshake sequence.   See Figure 4-4 and Section
+4.3.3.2 for data bus, REQ, and ACK- timing. See Table 4-2 for I-/O,
+C-/D and MSG- definition.
+Data Transfer
+4.3.3.1
+Data Transfer to Host
+On the transfer of data from the controller to the host,
+the data is   stable on   the bus   a   minimum   of    125
+nanoseconds before REQ- becomes active.    There is no
+time limit from REQ- active to ACK- active.   After the
+Controller receives ACK-, REQ- will become inactive
+within 25 to 75 nanoseconds.   If the controller has more
+data to send, it will set REQ- active within 1.2 to 1.7
+microseconds from REQ- going inactive, if ACK- was set
+inactive within 1.2 microseconds of REQ- going inactive.
+The controller can not set REQ- active if ACK- is active.
+If the controller is ready to set REQ- active, but ACK- is
+Page -32-

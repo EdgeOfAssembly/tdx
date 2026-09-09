@@ -1,0 +1,79 @@
+--- Page 1 ---
+MBBA      R3,R4
+LOCK
+;Move most of the data
+MOVB      @ R3,@R4
+;Disable ints. 'till last byte xferred
+;Wait for
+;Write last byte of data to WD1002-05
+WD1002-05 to write the sector
+SLEEP     IOWAIT
+;Wait in I/O wait state
+DONE
+;Both READ and WRITE commands finish here to check for errors
+DONE:
+MOVB      @#STATUS,RO
+;Get status byte from
+RORB      RO
+WD1002-05
+BCC
+DONEOK
+;Rotate Error bit to carry
+MOVB      @#ERROR,RO
+;and return to OS if no error
+<<Place
+;Get WD1002-05 error code
+error reporting routine here>>>
+DONEOK:     LCC RTN
+CARRY
+;Set carry to flag an error
+;and return to OS with error
+A.3.4   TASK FILE UPDATING
+i*
+UPTASK SUBROUTINE
+;This subroutine sets up the task file registers
+;Sector number
+UPTASK:       MOV
+R2,RO
+;Get record
+AND
+#31.,RO
+number
+MOV
+#SECNO,R4
+;Mask off lower 5 bits (bits 0-4)
+MOVB      RO,(R4) +
+;Index WD1002-05 sector number register
+;and send to sector number register
+;and increment R4 to point to WD1002-05
+Size/Drive/Head
+;Cylinder Low register
+(The following instruction does a right arithmetic shift 5 times)
+SSRA        R2,5
+MOV
+R2,RO
+;Discard SECNO bits from record number
+AND
+#3.,RO
+;Get remaining record number bits
+;(The following instruction does a left arithmetic shift ;Mask 3   off bits 5-6 to make head number
+times)
+SSLA        R1,3
+;Shift drive number
+OR
+R1,RO
+into position
+OR
+#80,RO
+;OR drive number and head together
+MOVB      RO,@#SDH
+;OR ECC flag and sector size field
+;send it to Size/Drive/Head
+;Cylinder Low
+register
+MOVB SSRA       R2,2
+;Discard HEAD bits from record
+R2,(R4) +
+;Send Cylinder Low to WD1002-05 number and
+;increment R4 to point to Cylinder High
+A-7

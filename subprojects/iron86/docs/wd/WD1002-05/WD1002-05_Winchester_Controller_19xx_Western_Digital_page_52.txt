@@ -1,0 +1,83 @@
+--- Page 1 ---
+)
+A.2.4   TASK FILE UPDATING
+UPTASK SUBROUTINE
+;This subroutine sets up the task file registers
+;Sector number
+UPTASK:       MOV
+A,E
+;Get lower 8 bits of record number
+ANI
+31.
+;Mask off lower 5 bits (bits 0-4)
+OUT
+SECNO
+;and send to sector number register
+Size/Drive/Head
+MOV
+A,E
+;Get lower 8 bits again
+RLC
+;Rotate remaining 3 bits
+RLC
+;to get an effective right shift of 5
+RLC
+;Mask off next two bits (5-6)
+ANI
+3.
+;to make head number
+MOV
+B,A
+;and store it away momentarily
+MOV
+A,C
+;Get drive number
+ADD
+A
+jand left shift it by 3
+ADD
+A
+ADD
+A
+ORA
+B
+;OR in head number and
+ORI
+80
+;OR in ECC flag and size field
+OUT
+SDH
+;send it to Size/Drive/Head register
+;Cylinder low
+MOV
+A,E
+;Get last bit of lower record number
+RAL
+;and put it in carry
+MOV
+A,D
+;Get upper half of record number
+RAL
+;Left shift it and merge in carry
+OUT
+CYLLO
+;Send it to lower cylinder register
+;Cylinder high
+MVI
+A,O
+;Clear all bits except for the
+RAL
+;the least significant and send
+OUT
+CYLHI
+;to the upper cylinder register
+RET
+END
+A.3   INTERRUPT DRIVEN DRIVER
+WD1002-05 Hard Disk Controller Driver
+Example for the Western Digital
+WD16 Microprocessor
+using interrupts and programmed I/O
+;This example driver demonstrates the type of driver that would be
+;used in a multitasking environment. Like the 8085 driver, it uses pro-
+A-4

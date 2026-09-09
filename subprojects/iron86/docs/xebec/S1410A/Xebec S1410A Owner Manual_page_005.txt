@@ -1,0 +1,54 @@
+--- Page 1 ---
+CONTENTS (CONTINUED)
+THEORY OF OPERATION (CONTINUED)
+4.1.5.5    Ready
+4.1.5.6     Select Status
+4.1.6
+Drive Data Transfer Signals
+4.1.6.1     MFM Write Data
+4.1.6.2     MFM Read Data
+BASIC OPERATING CONFIGURATION
+DETAILED DESCRIPTION
+4.3.1
+Controller Selection
+4.3.2        Command Mode
+4.3.3
+Data Transfer
+4.3.3.1     Data Transfer to Host
+4.3.3.2     Data Transfer From Host
+4.3.4
+Status Bytes
+PROGRAMMING INFORMATION
+COMMANDS
+4.5.1
+Control Byte
+4.5.2
+Logical Address (High, Middle, and Low)
+4.5.3
+Command Set
+4.5.3.1     Test Drive Ready (Class 0, Opcode 00)
+4.5.3.2    Recalibrate (Class 0, Opcode 01)
+4.5.3.3     Reserved (Class 0, Opcode 02)
+4.5.3.4     Request Sense Status (Class 0, Opcode 03)
+4.5.3.5     Format Drive (Class 0, Opcode 04)
+4.5.3.6    Check Track Format (Class 0, Opcode 05)
+4.5.3.7     Format Track (Class 0, Opcode 06)
+4.5.3.8     Format Bad Track (Class 0, Opcode 07)
+4.5.3.9     Read (Class 0, Opcode 08)
+4.5.3.10 Read Verify (Class 0, Opcode 09)
+4.5.3.11 Write (Class 0, Opcode OA)
+4.5.3.12 Seek (Class 0, Opcode OB)
+4.5.3.13 Initialize Drive Characteristics (Class 0, Opcode OC)
+4.5.3.14 Read ECC Burst Error Length (Class 0, Opcode OD)
+4.5.3.15 Format Alternate Track (Class 0, Opcode OE)
+4.5.3.16 Write Sector Buffer (Class 0, Opcode OF)
+4.5.3.17 Read Sector Buffer (Class 0, Opcode 10)
+4.5.3.18 RAM Diagnostic (Class 7, Opcode 00)
+4.5.3.19 Reserved (Class 7, Opcode 01)
+4.5.3.20 Reserved (Class 7, Opcode 02)
+4.5.3.21 Drive Diagnostic (Class 7, Opcode 03)
+4.5.3.22 Controller Internal Diagnostic (Class 7, Opcode 04)
+4.5.3.23 Read Long (Class 7, Opcode 05)
+4.5.3.24 Write Long (Class 7, Opcode 06)
+4.5.3.25 Retry Statistics (Class 7, Opcode 07)
+-iii-

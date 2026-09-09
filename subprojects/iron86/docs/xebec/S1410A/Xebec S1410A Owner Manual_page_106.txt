@@ -1,0 +1,61 @@
+--- Page 1 ---
+reformatting the drive. Issue the Initialize Format Command, followed by the
+Format Tracks Command with track count set to zero to permanently update
+the disk drive parameters.
+d = drive, 0 or 1
+r = retries
+b = use data already in the buffer
+Bit
+7
+6
+5
+4
+3
+2
+1
+0
+Byte 0
+0
+0
+0
+0
+0
+1
+l
+0
+1
+0
+0        d
+HIGH ADDRESS
+2
+MIDDLE ADDRESS
+3
+LOW ADDRESS
+4
+BLOCK COUNT
+5
+r
+0
+b
+0
+0
+0
+0
+0
+The two byte track count is transferred with the most significant byte first.
+.2 Initialize Format (Class 0, Opcode 11)
+This command allows the user to set up the Controller for various disk drives
+of different configuration.   The host specifies all the necessary parameters to
+enable the Controller to control the drive. This command must be issued prior
+to the drive format command.    After the hard disk drive is formatted, the
+Controller will store these parameters on the maintenance cylinder (cylinder
+0) of the drive.    Following subsequent Controller resets, the Controller will
+fetch initialization data from the maintenance cylinder of the drive.    This
+means that the host software does not issue this command during normal use
+of the system, but only under a special format utility program.
+The Controller does not have any default initialization parameters at reset
+time.    If the Controller cannot read the initialization parameters from the
+drive, this command must be issued before any command that accesses the
+drive. Failure to adhere to this rule will result in a "Controller not initializer"
+error (Error Code OA Hex).
+Page -98-

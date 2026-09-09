@@ -1,0 +1,32 @@
+--- Page 1 ---
+changed to a Format Tracks command.     Other commands have been added as
+described below.
+The drive options specified in the control byte of the DCB have been moved to the
+Initialize Format command.   This includes the drive step option and the imbedded
+servo bit used in the format commands.   These fields in the control byte should be
+set to zero when using the enhanced firmware to allow for future compatibility.   In
+addition, the sector size is set using the Initialize Format command. The sector size
+jumper on the S1410A controller board is not used.
+The 512 byte per sector format is the same format used in the Performance Option
+above. This format allows the controller to operate at an interleave of three, but is
+not format compatible with the S1410A standard firmware or the S1410.   The 256
+byte per sector format is the same format as the S1410A standard firmware.   This
+format is not compatible with the S1410 256 byte per sector format.
+B.2.1 Format Tracks (Class 0, Opcode 06)
+This command formats the number of tracks specified in the two data bytes
+passed following the DCB.   The format operation starts the first sector of the
+track   specified by the disk address bytes in the DCB.      The controller
+recalibrates the drive, seeks to the starting track, and begins the format
+operation.     Formatting continues on a track by track basis until the track
+count is exhausted or the end of the disk is reached.     If the track count
+exceeds the disk capacity, the controller returns an illegal address error after
+formatting the last track on the drive. The data field is filled with the default
+data pattern 6C Hex on the hard disk. If bit 5 of byte 5 is set to one, the data
+field will be taken as is from the buffer for the hard disk.   If the T bit in the
+initialize format command is set to one, the hard disk format will leave a 300
+microsecond gap before index to allow for the imbedded servo area if the disk
+requires it. If the T bit is zero, the entire track is used.
+If the two track count data bytes contain zero, the initialization data will be
+written on the reserved cylinder (Cylinder 0). No tracks are formatted.   This
+allows    changing   the    initialization    parameters   for    the    drive    without
+Page -97-

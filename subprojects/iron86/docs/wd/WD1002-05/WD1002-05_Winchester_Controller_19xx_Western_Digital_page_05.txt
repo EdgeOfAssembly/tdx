@@ -1,0 +1,77 @@
+--- Page 1 ---
+SECTION 8      THEORY OF OPERATION
+8.1   General
+8-1
+8.2   WD1002-05 Architecture and Functional Description
+8-1
+8.2.1 Host Interface Logic (HIL)
+8-1
+8.2.2 Control Processor (CP)
+8-3
+8.2.2.1 Clock Generator
+8-3
+8.2.2.2 Task/Syndrome File (TSF)
+8-3
+8.2.3 Error Detection and Support Logic (EDS)
+8-3
+8.2.3.1 Error Detection
+8-3
+8.2.3.2 Support Logic
+8-4
+8.2.4 Sector Buffer (SB) -
+8-4
+8.2.5 Winchester Drive and Buffer Interface (WDBI)
+8-4
+8.2.5.1 Write Precompensation (WPC)
+8-4
+8.2.5.2 Data Separator
+8-5
+8.2.6 Floppy Drive and Buffer Interface (FDBI)
+8-5
+SECTION 9       MAINTENANCE
+9.1   General
+9-1
+9.2   Oscillator Frequency
+9-1
+9.3   WD2797 Adjustment Procedure
+9-1
+9.4   Test/Operation Jumper Variations
+9-1
+APPENDIX A    DISK DRIVE EXAMPLES
+A.1   Introduction
+A-1
+A.2 Polled Status Driver
+A-1
+A.2.1 Initialization
+A-2
+A.2.2 Read Sector.
+A-2
+A.2.3 Write Sector
+A-3
+A.2.4 Task File Updating
+A-4
+A.3 Interrupt Driven Driver .
+A-4
+A.3.1 Initialization
+A-5
+A.3.2 Read Sector
+A-6
+A.3.3 Write Sector
+A-6
+A.3.4 Task File Updating
+A-7
+A.3.5 Interrupt Service Routine
+A-8
+APPENDIX B    INTERLEAVE CALCULATING
+APPENDIX C   CALCULATING SECTORS PER TRACK
+APPENDIX D   PROGRAMMERS QUICK REFERENCE
+D.1 Task File
+D-1
+D.2 Valid Commands
+D-1
+D.3 SDH Register Format
+D-1
+D.4 Status and Error Register Bits
+D-2
+APPENDIX E    LSI DATA SHEETS (to be supplied)
+V

@@ -1,0 +1,42 @@
+--- Page 1 ---
+LIST OF ILLUSTRATIONS
+FIGURE
+TITLE
+PAGE
+1-1
+WD1002S-WX2 Functional Block Diagram
+1-2
+4-1
+Host I/O or BIOS Read Timing
+4-1
+4-2
+DMA I/O Read Timing
+4-2
+4-3
+Host I/O Write Timing.
+4-3
+4-4
+DMA I/O Write Timing
+4-4
+5-1
+Command Block Description.
+5-3
+5-2
+Four Status Bytes
+5-5
+5-3
+Format
+5-7
+5-4
+17 Sectors with a 3:1 Interleave
+5-8
+6-2
+WD1002S-WX2 Detailed Block Diagram
+6-2
+7-1
+Jumper Locations -
+7-3
+7-2
+Bios Rom Socket Connections .
+7-3
+vii

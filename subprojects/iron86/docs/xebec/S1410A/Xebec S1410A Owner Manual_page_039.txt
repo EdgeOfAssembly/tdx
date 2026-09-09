@@ -1,0 +1,17 @@
+--- Page 1 ---
+loo n sEc
+100 nsEC
+Ioonsec
+MIN
+MIN
+MIN
+I
+I
+DB @
+SEL-
+Busy-
+50
+nSEc
+TYP
+FIGURE 4-2 CONTROLLER SELECT TIMING
+Page -31-

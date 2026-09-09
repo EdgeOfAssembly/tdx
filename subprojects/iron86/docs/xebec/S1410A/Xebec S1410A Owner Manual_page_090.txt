@@ -1,0 +1,28 @@
+--- Page 1 ---
+ALTERNATE TRACK ASSIGNMENT AND HANDLING
+The assignment of alternate tracks or lockout of defective tracks must be done by
+the host computer.   One procedure for initializing a disk and assigning alternate
+tracks is as follows.
+1)       The entire disk drive is formatted by issuing a Format Disk command
+(Command Code 04) starting at logical address zero.
+If an error occurs during formatting, a Request Sense command is issued to
+retrieve the error code and disk address.    The defective track address is
+determined from the last three request sense data bytes.    Another Format
+Disk command is issued starting at the track following the defective track. If
+other errors occur, the process is repeated until the disk is formatted.   The
+host must maintain the list of defective tracks. All defective tracks should be
+formatted using the format bad track command to make verifying easier.
+2)        Now, the entire disk is read to check for uncorrectable data errors. Any track
+that contains an uncorrectable error is added to the defective track list by the
+host. If all defective tracks have been formatted bad, the read command will
+terminate with an "Access to Defective Track" Error (code 19) when a read is
+attempted from that track.   Software then knows to advance the disk address
+to the next track and continue verifying. It is a good idea to reduce the ECC
+correction length during verify.    This ensures that a correctable data error
+does not become uncorrectable later because the number of defective bits
+increased.
+3)       Steps 1 and 2 should be repeated using different data patterns for each pass.
+This is done easily by issuing a Write Buffer command with the data pattern
+followed by a Format command with bit 5 of the control byte (byte 5) of the
+DCB set. Three to five passes should be sufficient.
+Page -82-

@@ -1,0 +1,88 @@
+--- Page 1 ---
+TABLE 3-2. DRIVE CONTROL CONNECTOR (J1) PIN DESCRIPTION
+SIG.     SIG.
+SIGNAL
+GND.    PIN      MNEMONIC
+NAME
+I/O
+DESCRIPTION
+1
+2      RWC/HS3
+REDUCE
+O       The WD1015-14 allows this pin to be used
+WRITE
+as the RWC pin. The WD1015-24 uses this
+CURRENT/HEAD
+pin as HS3. Refer to Section 7 for further
+SELECT3
+details. RWC is used by the drive to reduce
+the write current on the inner cylinders.
+This lessens the bit shift caused by the
+greater bit density on these cylinders. RWC
+is asserted when the specified cylinder is
+reached. HS3 is one of four Head Select
+signals decoded by the drive to select one
+of 16 R/W heads.
+3
+4      HS2
+HEAD
+HS2 is one of three (or four) Head Select
+SELECT 2
+signals decoded by the drive to select one
+of eight (or 16) R/W heads.
+5
+6     WG
+WRITE GATE
+WG is asserted when valid data is to be
+written. It is used by the drive to enable
+the write current to the head. WD1002S-
+WX2 de-asserts this signal when a WF is
+detected. Circuitry is included to ensure
+the output does not glitch during power
+on, power down or power failure.
+7
+8      SC
+SEEK
+SC informs the WD1002S-WX2 that the
+COMPLETE
+selected   head has reached the desired
+cylinder and has stabilized. Since SC is not
+checked after a Seek Command, overlapped
+seeks are allowed.
+9        10     TKO0O
+TRACK 000
+The drive asserts this signal when the heads
+are positioned over the outermost cylinder,
+cylinder 0.
+11
+12     WF
+WRITE FAULT
+WF is asserted by the drive when a write
+error occurs. The command in progress
+aborts and no other command can be
+executed while this signal is asserted.
+13        14      HSO
+HEAD
+O        HSO is one of three (or four) Head Select
+SELECTO
+signals decoded by the drive to select one
+of eight (or 16) R/W heads.
+15
+GND
+GROUND
+16
+Not Connected
+17        18      HS1
+HEAD
+HS1 is one of three (or four) Head Select
+SELECT1
+signals decoded by the drive to select one
+of eight (or 16) R/W heads.
+19        20      INDEX
+INDEX PULSE
+This signal indicates the start of a track.
+It is used as a synchronization point during
+formatting and as a time out mechanism
+for retries. This signal pulses once for each
+revolution of the disk.
+3-3

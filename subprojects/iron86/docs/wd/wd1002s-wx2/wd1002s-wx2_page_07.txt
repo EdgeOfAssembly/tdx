@@ -1,0 +1,51 @@
+--- Page 1 ---
+LIST OF TABLES
+TABLE
+TITLE
+PAGE
+1-1.
+WD1015 Description.
+1-4
+3-1
+Host Interface Connector (P1) Pin Description
+3-1
+3-2
+Drive Control Connector (J1) Pin Description.
+3-3
+3-3
+Drive Data Connectors - J2, J3
+3-5
+4-1
+Host I/O or BIOS Read Timing
+4-1
+4-2
+DMA I/O Read Timing
+4-2
+4-3
+Host I/O Write Timing.
+4-3
+4-4
+DMA I/O Write Timing
+4-4
+5-1
+Command Summary
+5-1
+5-2
+I/O Port Descriptions
+5-2
+5-3
+Hardware Status
+5-2
+5-4
+Stepping Rate Codes.
+5-4
+5-5
+Controller Returned Error Codes -
+5-6
+7-1
+Jumper Selectable Options (W1 through W5)
+7-1
+7-2
+SW1 Jumper Block Description.
+7-2
+vi

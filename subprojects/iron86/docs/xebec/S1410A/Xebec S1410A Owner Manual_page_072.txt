@@ -1,0 +1,38 @@
+--- Page 1 ---
+4.5.3.14       Read ECC Burst Error Length (Class 0, Opcode OD)
+This command is only valid following a Correctable Data
+Error (Error Code 18 Hex).   It will transfer one byte to
+the host indicating the length of the error corrected. The
+error length is determined by counting the number of bits
+between the first and the last bit in error, including the
+first and the last bits. For example:
+Assume the drive is formatted with the default drive data
+pattern 6C Hex. The first 2 bytes expanded to the binary
+level has the pattern -- 0110 1100 0110 1100. This is the
+2 byte pattern stored on the disk.   Now, if the data read
+back from the disk has an error, then:
+ERROR BURST
+LENGTH
+CORRECT PATTERN:
+0110 1100 0110 1100
+0
+READ BACK PATTERN:       0111 1100 0110 1100
+1
+READ BACK PATTERN:       0111 1100 1110 1100
+6
+READ BACK PATTERN:       0111 1100 0110 1110
+12
+From the 3 patterns read above, the first and second
+patterns are correctable because the error bit span is less
+than   or   equal   to   11   bits.        The   third   pattern    is
+uncorrectable since it exceeds the Controller's Correction
+capability, which is 11 bits.
+7
+6
+5        4
+3
+2
+1
+0
+0
+Page -64-

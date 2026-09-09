@@ -1,0 +1,47 @@
+--- Page 1 ---
+Possible causes are:
+Incorrect Drive Size Initialization (too few
+cylinders)
+Bad Drive
+Control Cable (J1)
+Bad Controller
+08
+Disk Drive Still Seeking. This status is returned in
+response to a test drive ready command if a
+buffered step seek was issued to a drive and the
+drive has not returned the seek complete signal.
+Software must time the seek to insure no system
+hang occurs if the drive fails to return the seek
+complete signal. Treat a seek incomplete condi-
+tion the same as error code 02.
+10
+ID Field Read Error. During a data transfer or
+format command, address marks were detected,
+but the target sector was not found and an ECC
+error occurred on one or more ID fields.
+Possible causes are:
+Media Defect on Drive
+Bad Drive (If errors are excessive or
+continuous)
+Bad Controller (If errors are excessive or
+continuous)
+Media defects may be overcome by deleting the
+defective sectors from system use or assigning an
+alternate track.
+11
+Uncorrectable Data Error in the Data Field. The
+controller detected a data error that could not be
+corrected using ECC. The error span is greater
+than 11 bits.
+Possible causes are:
+Media Defect on Drive
+Bad Drive (If errors are excessive or
+continuous)
+Bad Controller (If errors are excessive or
+continuous)
+Media defects may be overcome by deleting the
+defective sectors from system use or assigning an
+alternate track.
+12
+Sector Address Mark Not Found. The controller
+did not detect an address mark (AM) from the

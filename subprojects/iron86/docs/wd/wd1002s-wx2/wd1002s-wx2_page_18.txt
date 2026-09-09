@@ -1,0 +1,56 @@
+--- Page 1 ---
+TABLE 3-2. DRIVE CONTROL CONNECTOR (J1) PIN DESCRIPTION (CONT'D.)
+SIG.     SIG.
+SIGNAL
+GND.    PIN      MNEMONIC
+NAME
+I/O
+DESCRIPTION
+21
+22      DRDY
+DRIVE READY
+I        The drive asserts this signal when the motor
+is up to speed. No Read or Write com-
+mands can be performed if this signal is
+not asserted.
+23        24     STEP
+STEP PULSE
+O       STEP, along with DIRIN, positions the
+heads to the desired cylinder. STEP pulses
+the stepping motor at the rate specified by
+the SP bits in the Command Block and is
+controlled by the WD1015. DIRIN spec-
+ifies the direction.
+25        26      DSELO
+DRIVE
+DSEL 0 is the decoded output of the SDH
+SELECTO
+Register within the WD1010A-05, latched
+and sent to the drive by the WD1015 to
+select drive 0.
+27        28      DSEL1
+DRIVE
+DSEL 1 is the decoded output of the SDH
+SELECT 1
+Register within the WD1010A-05, latched
+and sent to the drive by the WD1015 to
+select drive 1.
+29
+thru
+Not Connected
+32
+33        34      DIRIN
+DIRECTION IN
+O       DIRIN determines the direction the R/W
+heads take when stepped. Asserted = in,
+de-asserted = out.
+3.4 DRIVE DATA CONNECTOR
+The data is differential in nature and must be
+connected to each drive with its own cable, drive 0
+to J2 and drive 1 to J3. It should be a flat ribbon
+cable, or twisted pair, less than 3 meters (10 feet)
+in length. The connector is a 20 pin vertical header
+on 0.25 centimeter (0.1 inch) center. Table 3-3
+describes the drive data connectors (J2 and J3)
+pin assignments and functions.
+3-4

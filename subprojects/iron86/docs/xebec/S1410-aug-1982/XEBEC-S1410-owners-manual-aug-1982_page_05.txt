@@ -1,0 +1,62 @@
+--- Page 1 ---
+The step options are encoded in control byte! 5 of the command descriptor. The
+encoding is done with bits 0 thru 3 as follows:
+DESCRIPTION
+BITS
+3      2      1      0
+Default 3 msec step rate
+0      0      0     0
+Seagate ST506 (MLC2)
+0      0      0      1
+Tandon fast step
+0      0      1      0
+Texas Instrument fast step
+0      0      1      1
+200 usec buffered step
+0      1      0      0
+70 usec buffered step
+0      1      0      1
+30 usec buffered step
+0      1      1      0
+15 usec buffered step
+0      1       1       1
+Olivetti 2msec/step (561)
+1      0      0      0
+Olivetti (562) fast step (1.1 msec typical)
+1      0      0      1
+Spare (for future use)
+1      0      1      1    thru
+1      1      1      1
+Refer to the drive manufacturer manual in configuring the drive for fast, or buffer
+step options. In cases where the drive is hardware configured for fast step, all
+commands which require seek option selection must use the fast step option
+for that drive.
+E.    DESCRIPTION OF OVERLAP SEEKS WITH BUFFERED
+STEP DRIVES
+For drives employing buffered seeks, seek commands can be overlapped.
+After the controller issues a seek to the drive, it returns with a completion status,
+not waiting for the drive to complete the seek. If the return status shows no
+error, then the seek was issued correctly. Ifthere is an error, thent the seek was
+not issued. After transferring the status, another command can be issued to
+either drive. If a new command is received for a drive with an outstanding seek,
+then the controller will wait, with Busy active, for the seek to complete before
+executing the new command (Except Test Drive Ready Command). There is
+no timeout condition in the controller, waiting for the buffered step seeks to
+complete.
+The Test Drive Ready command can be used with overlapped seeks to
+determine when a drive has completed seeking before issuing the next
+command. Ifthe drive is still seeking, the status byte at the end of the command
+will indicate an error, and the sense status will indicate "drive still seeking"
+(type 0 error, code 8). A sequence of Test Drive Ready commands canthus be
+used to determine when the drive is ready for the next command.
+F.   NEW ERROR CODES
+NOTE: The address Valid Bit (bit 7) may or may not be set, and is not included
+here for clarity.
+Error Code (Hex)
+Description
+IC
+Illegal (direct) access to an alternate track.
+ID
+Onaformat alternate track command, the requested
+alternate track has already been assigned as an
+alternate, or is flagged as a bad track.

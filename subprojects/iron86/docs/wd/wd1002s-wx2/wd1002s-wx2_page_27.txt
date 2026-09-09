@@ -1,0 +1,94 @@
+--- Page 1 ---
+5.2.3 PORT 322
+5.3 COMMAND BLOCK
+Reading Port 322 returns a 4-bit drive configuration        The Host first selects the WD1002S-WX2 by assert-
+code in bits 0 through 3. The two least significant
+ing I/OW while at the same time addressing port
+bits correspond to drive 1, the two most significant        322 with the AO through A19 address bus. The
+bits to drive 0. The configuration of these bits is        WD1002S-WX2 then asserts the BSY (BUSY) bit
+established with jumpers on the controller at SW1.        in the Status Register. The Host by asserting 1/OR
+Western Digital sets the configuration jumpers        and addressing port 321 reads the status, finding
+to one. Section 7 shows how to set them up for a
+REQ asserted transmits the first byte of the six
+specific drive.
+byte Command Block to the WD1015. REQ is
+The two bits associated with each drive is capable        de-asserted for the second byte of the Command
+of addressing one of four different configuration
+Block transfer. Assertion and de-assertion of REQ
+tables. Both drives can address the same or dif-        must occur for each byte transferred. Figure 5-1
+ferent tables. The table required by the drive is        defines the bytes within the Command Block,
+determined by its formatted capacity. Table 0 =        Table 5-1 is a summary of the commands, Section
+5MB, 1 = 24MB, 2 = 15MB, 3 = 10MB (default        6 Theory of Operation explains the hand shake
+table) with 62-000042-01 and 62-000042-11 WD
+between the Host and WD1002S-WX2 while load-
+BIOS. Table 0 = 20MB, Table 1 = 10MB, Table        ing the Command Block in the WD1015.
+2 = 20MB, Table 3 = 10MB (default table) with
+62-000042-12 WD BIOS.
+BITS
+The parameters established by these tables are:
+BYTE      7      6      5      4      3      2      1      0
+Number of Cylinders
+0
+OP CODE
+Number of Heads
+1
+0     0     D
+HEAD NUMBER
+The Starting Cylinder for RWC (Reduced Write
+Current).
+2
+CYLINDER       SECTOR NUMBER
+The Starting Cylinder for Write Precomp
+NUMBER MSB
+Maximum Correctable Error Burst Length
+3
+CYLINDER NUMBER LSB
+Retries Allowed, Stable or Immediate ECC
+4
+BLOCK COUNT OR INTERLEAVE
+Correction, Step Rate.
+5
+R1   R2    0      0      0    SP   SP   SP
+Writing to port 322 selects the WD1002S-WX2,
+sets the Busy bit in the Status Register and prepares
+FIGURE 5-1. COMMAND BLOCK DESCRIPTION
+it to receive a command. When writing to port
+322, the data byte is ignored.
+OP Code:
+Operation   Code identifies the
+type and function of the com-
+5.2.4 PORT 323
+mand. Bits 7, 6, and 5 designate
+Reading this port has no function.
+whether the command is oper-
+Writing to this port controls the enabling of the
+ational (0) or diagnostic (E). Bits
+interrupt and DMA request signals to the Host.
+4 through 0 select the function
+The bits in this port are defined as follows:
+of   the   command,   i.e.   Read,
+Write, etc.
+BIT
+NOTE
+7      6      5      4     3      2
+1
+0
+The WD1015-24 firmware ignores bit four of byte
+d      d      d      d     d      d     IRQEN   DROEN
+0 (op code).
+D
+Drive number, selects one of two
+IRQEN     Interrupt Request Enable. When asserted
+drives zero or one.
+(set to one), enables interrupts to the
+Host.
+Head Number      Designates the head to be used
+on the selected drive. 0 through
+DROEN   DMA Request Enable. When asserted
+15.   Selection of heads eight
+(set to one), enables DMA requests to
+through 15 requires WD1015-24.
+the Host.
+d
+Not used.
+5-3

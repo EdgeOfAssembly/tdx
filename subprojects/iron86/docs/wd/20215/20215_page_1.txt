@@ -1,0 +1,46 @@
+--- Page 1 ---
+The Micro House Encyclopedia of Hard Drives - VOLUME 3
+WESTERN DIGITAL CORPORATION
+WD1002-WAH
+Data bus:
+16-bit, PCIAT
+Size:
+Full-length, full-height card
+Hard drives supported:
+Two MFM ST506/412 drives
+Floppy drives supported:
+None
+HHHHH
+EHHHH      (-######### CO215
+I
+N
+W1-
+HOUSE
+CONNECTIONS
+Function
+Location
+34-pin control cable connector-hard drive
+J1
+20-pin data cable connector-drive 0
+J2
+20-pin data cable connector-drive 1
+J3
+USER CONFIGURABLE SETTINGS
+Function
+Location
+Setting
+i Hard drive port address is 1F0-1F7h;
+Floppy drive port address is 3F6-3F7h
+W1
+pins 1 & 2 closed
+Hard drive port address is 170-177h;
+Floppy drive port address is 376-377h
+W1
+pins 2 &3 3 closed
+i Auto deselect disabled
+W2
+pins 2 & 3 closed
+Auto deselect enabled
+W2
+pins 1& 2 closed
+Copyright O 1991, 1992, 1993 by Microl House Int'l (800) 926-8299. Research Dept. (303) 443-389.

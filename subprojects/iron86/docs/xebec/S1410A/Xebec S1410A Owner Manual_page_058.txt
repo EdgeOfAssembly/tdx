@@ -1,0 +1,77 @@
+--- Page 1 ---
+The following is a summary of the error codes returned as the result of the Request Sense
+Status command.
+NOTE: The address valid bit (bit 7) may or may not be set and is not included here for clarity.
+Error Code (hex)
+Meaning.
+00
+No error detected (command completed ok).
+01
+No index detected from disk drive.
+02
+No seek complete from disk drive.
+03
+Write fault from disk drive.
+04
+Drive not ready after it was selected.
+05
+Not used.
+06
+Track 00 not found.
+07
+Not used.
+08
+Disk drive still seeking.
+09-OF
+Not used.
+10
+ID field read error.
+11
+Uncorrectable data error.
+12
+Address mark not found.
+13
+Not used.
+14
+Target sector not found.
+15
+Seek error.
+16
+Not used.
+17
+Not used.
+18
+Correctable data error.
+19
+Bad track flag detected.
+IA
+Format error.
+IB
+Not used.
+IC
+: Illegal (direct) access to an alternate track.
+ID
+- Alternate track already assigned.
+IE
+Assigned track pointed by the bad track is not formatted
+as alternate.
+IF
+On format alternate track command, alternate and
+defective track addresses point to the same track.
+20
+Invalid command.
+21
+Illegal disk address.
+22
+Invalid Parameter.
+23-2F
+Not used.
+30
+Ram diagnostic failure.
+31
+Program memory checksum error.
+32
+ECC diagnostic failure.
+33-3F
+Not used.
+Page -50-

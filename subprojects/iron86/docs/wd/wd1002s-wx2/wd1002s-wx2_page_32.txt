@@ -1,0 +1,72 @@
+--- Page 1 ---
+5.7.1 POSSIBLE ERROR CODES
+INDEX
+02 No Seek Complete 03 Write Fault
+PULSE
+04 Disk Not Ready       06 Track Zero Not Found
+20 Invalid Command    21 Illegal Sector Address
+5.7.2 INTERLEAVING
+OB   00   06
+05
+When physically sequential sectors on the disk are
+OC
+to be read, each sector reaches the read/write head
+10
+before a read or write operation can be set up. The
+01
+disk must then make a complete rotation to pick
+OA
+up the next sector. When an attempt is made to
+04
+07
+read all 17 sectors on a particular track, 17 rota-
+tions or approximately one fourth of a second per
+OD
+8K bytes are required. This performance can be
+OF
+significantly improved by interleaving, a technique
+09
+02
+that allows the system to read or write more than
+03    OE 08
+one sector per rotation.
+For a system requiring less than two sector times
+to process the data it has read and to set up for the
+FIGURE 5-4.
+next read operation, the second logical sector is
+17 SECTORS WITH A 3:1 INTERLEAVE
+physically placed three sectors away from the first.
+The controller can now read the second sector with
+minimal delay. This three-to-one interleave factor        5.8 VERIFY SECTORS (CLASS 0, OP CODE 05)
+allows a potential reading of the entire track in
+This command reads from 1 to 256 sectors, as
+less than three rotations. In the example given, the        specified by BLK in the Command Block, begin-
+throughput is increased by a factor of 5.6.
+ning at the sector specified by HD CYL and SEC.
+The simplest way to determine the optimum inter-
+If an error occurs during a multiple sector read,
+leave for any particular system is through experi-        the heads remain positioned at the track containing
+mentation. If the system maintains its directories        the error. The Host then issues a Read Status of
+or virtual memory-swapping areas in a certain place
+Last Disk Operation command to determine the
+on the disk, it sometimes makes sense to have more        error code. To continue the operation, the Host
+than one interleave.
+calculates the difference between the number of
+To simplify driver software, the WD1002S-WX2
+sectors desired and the number of sectors com-
+automatically writes the logical sector number of
+pleted and issues another Seek command to access
+each sector. in its ID field. Figure 5-4 is an example        the remaining sectors.
+of an interleave table for a 17-sector track with 3:1
+interleave. The WD1002S-WX2 accepts any inter-
+5.8.1 POSSIBLE ERROR CODES
+leave value between zero and one less than the        02 No Seek Complete 03 Write Fault
+number of sectors per track. An interleave of zero        04 Drive Not Ready     06 Track Zero Not Found
+is automatically converted to one, and a value out
+12 Data Address Mark 15 Seek Error
+of range results in an error code 20, Invalid Com-
+Not Found
+21 Illegal Disk Address
+mand Error.
+19 Track Flagged Bad
+5-8

@@ -1,0 +1,70 @@
+--- Page 1 ---
+d = drive, 0 or 1
+r = retries
+a = inhibit retry option on data ECC error if 1
+S = seek option
+7
+6
+5
+4        3
+2
+1
+0
+0
+0
+0
+0
+1
+0
+0
+1
+0
+0        d
+High Address
+Middle Address
+Low Address
+Block Count
+r
+a        0
+0        S
+S
+S
+S
+.5.3.11        Write (Class 0, Opcode OA)
+This command will write   from   1 to 256 sectors as
+specified by the byte 4 of the DCB, starting at the
+address specified by the bytes 1, 2 and 3 of the DCB. The
+multiple sector transfer scheme works the same as the
+READ command.    There is no read verify of data on a
+write command, (therefore, no ECC errors).
+d = drive, 0 or 1
+r = retries
+S = seek option
+7
+6        5
+4
+3        2
+1
+0
+0
+0
+0
+0
+1
+0
+1
+0
+0        d
+d
+High Address
+Middle Address
+Low Address
+Block Count
+r
+0        0
+0
+S
+S
+S
+S
+Page -59-

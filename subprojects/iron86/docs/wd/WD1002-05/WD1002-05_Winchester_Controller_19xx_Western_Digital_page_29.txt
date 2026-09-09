@@ -1,0 +1,185 @@
+--- Page 1 ---
+Table 5-3.   SDH Register
+Table 5-7.   SDH Bits 2, 1 & 0 Floppy Disk
+Bit        Bit        Bit
+Floppy Drive &
+Bit
+7      6      5      4      3      2      1      0
+2
+1
+0
+Head Select
+Function CRCI     Sec
+Drive        Headl
+0
+0
+0
+FD1 I HSO
+ECC     Size
+Select        Drive
+0
+0
+1
+FD1 I HS1
+Select
+0
+1
+0
+FD2 - HSO
+0
+1
+1
+FD2 - HS1
+Table 5-4.   SDH Bits 6 & 5
+1
+0
+0
+FD3 I HSO
+1
+0
+1
+FD3 I HS1
+Bit        Bit
+Sector Size
+1
+1
+0
+FD4 1 HSO
+6
+5
+1
+1
+1
+FD4 I HS1
+0
+0
+256 Bytes
+5.10   STATUS REGISTER
+0
+1
+512 Bytes
+After execution of a command, the status register is
+1
+0
+1024 Bytes
+loaded with status information pertaining to the com-
+1
+1
+128 Bytes
+mand executed. The host must read this register to
+ascertain successful execution of the command. The
+Table 5-5.   SDH Bits 4 & 3
+status register is a read-only register; it cannot be
+written to by the host. If the BUSY bit is set, no other
+Bit        Bit
+Drive Selected
+bits in this register are valid. Accessing this register
+4
+3
+(decoded & latched)
+will cause the INTRQ line to be reset.
+0
+0
+Drive Sel 1
+Status register bits are shown in Table 5-8.
+0
+1
+Drive Sel 2
+Table 5-8.   Status Register Bits
+1
+0
+Drive Sel 3
+1
+1
+Floppy Dr Sel
+Bit
+Status Register
+7
+Busy
+Table 5-6.   SDH Bits 2, 1 & 0 Hard Disk
+6
+Drive Ready
+5
+Write Fault
+Bit        Bit        Bit
+Head Selected
+4
+Seek Complete
+2
+1
+0
+Hard Disk
+3
+Data Request
+2
+Corrected Data
+0
+0
+0
+Head 0
+1
+Not used
+0
+0
+1
+Head 1
+0
+Error
+0
+1
+0
+Head 2
+indicates
+0
+1
+1
+Head 3
+ERROR
+When set,
+that one or
+1
+0
+0
+Head 4
+more bits are set in the error
+1
+0
+1
+Head 5
+register It provides an efficient
+1
+1
+0
+Head 6
+means of checking for an error
+1
+1
+1
+Head 7
+condition by the host. This bit is
+reset on receipt of a new
+command.
+The SDH register is used to select either the Win-
+CORRECTED DATA This bit indicates that an error
+chester or the floppy disk drives as implied by bits 3
+correction has been success-
+and 4 shown in Table 5-5. If either bit is set to zero,
+fully completed on the data
+then one of the hard disks is selected, and Table 5-6
+field just read from the Win-
+is used to select one of eight heads.
+chester disk. For multiple mode
+When bits 3 and 4 are both set to 1, then a floppy disk
+operations, this bit indicates
+will be selected. Table 5-7 is used to select one of
+one or more data fields have
+four drives with side select 0 or 1 as shown.
+been successfully corrected. If
+an uncorrectable error occurs,
+Whenever different drives are to be accessed, the
+the command is terminated
+SDH register must be updated by the host prior to a
+with the appropriate bit being
+command being issued.
+set in the error register
+5-3

@@ -1,0 +1,29 @@
+--- Page 1 ---
+CHAPTER 4
+THEORY OF OPERATION
+GENERAL
+This chapter discusses the theory of operation of the S1410A Controller and lays
+down the guidelines that will enable the user to use the controller successfully.
+4.1.1
+SASI Conventions
+Signals or lines can be active in either a high or low state. The terms
+signal, signal lines, and lines mean the same thing.   A low state is
+equivalent to a voltage level of 0.8 volts or less, and a high state is
+equivalent to a voltage level of 2.4 volts or more. Some texts use the
+term 'asserted' to mean active. In this manual, only the term active
+is used; if the term 'asserted' appears, it is only for reference.
+4.1.2        SASI Names and Abbreviations
+A dash (-), or the lack of one, indicates the active state of a signal.
+The active state of a signal is that state which is required for a given
+operation.    When a dash is appended to end of a signal name, the
+signal is active when it is low. When no dash appears at the end of a
+signal name, the signal is active when it is high.   Some signal lines
+have two so-called active (or significant) states.   When the level on
+the line is high, a particular operation takes place. When the level on
+the line is low, a different operation takes place.    The following
+examples show the use of these conventions.
+BUSY-    The signal BUSY- is active when it is at a low level because it has
+the dash appended.
+BUSY      The signal BUSY is active at a high level because it does not have the
+dash appended.
+Page -17-

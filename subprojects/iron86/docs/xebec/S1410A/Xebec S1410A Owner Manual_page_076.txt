@@ -1,0 +1,33 @@
+--- Page 1 ---
+4.5.3.17       Read Sector Buffer (Class 0, Opcode 10)
+This command is used in 2 ways:
+A)      Read the contents of the data buffer after writing it
+using WRITE SECTOR BUFFER command to test
+the RAM.
+B)      If an uncorrectable data error occurs, the Controller
+will not send data to the host, but reports the error
+immediately.    If the host wants the corrupt data,
+the host issues this command to retrieve it.
+Bit
+7
+6
+5        4
+3
+2
+1
+0
+Byte 0
+0
+0
+0
+1
+0
+0
+0
+0
+1
+2
+3
+4
+5
+Page -68-

@@ -1,0 +1,46 @@
+--- Page 1 ---
+d = drive, 0 or 1
+r = retries
+a = retry option on data ECC error
+S = seek option
+7
+6
+5
+4
+3
+2
+1
+0
+0
+0
+0
+0
+1
+0        0
+0
+0
+0
+d
+High Address
+Middle Address
+Low Address
+Block Count
+r
+a        0
+0
+S
+S
+S
+S
+.5.3.10       Read Verify (Class 0, Opcode 09)
+This command functions the same as a READ command,
+except that no data is passed to the host. This command
+may be used to insure data integrity following a write or
+format command. If the ECC retry bit (a) is set active (0)
+then one retry is attempted on data errors.   If no error
+occurs on the retry, an error is not reported. If the error
+occurs on the retry, then an ECC error is reported to the
+host to flag as a media defect.   If the retry bit (a) is set
+inactive (1), then all ECC errors are reported and no
+retrys are attempted.
+Page -58-

@@ -1,0 +1,35 @@
+--- Page 1 ---
+Initialize Drive Characteristics (Class 0, Opcode OC)
+This   command   enables   the   user   to    configure    the
+Controller to   work with   drives   that have different
+capacities      and      characteristics.
+However,      the
+characteristics of both drives are intialized at the same
+time.   If drives of different characteristics are used, the
+command must be issued when switching between drives.
+After   the   host   sends   the   command   (DCB)   to   the
+controller, it then sends an eight-byte block of data that
+contains the drive parameters.   Some of the parameters
+occupy     two     bytes;    all    two-byte     parameters    are
+transferred with the most significant byte (MSB) first.
+The eight bytes are listed below.
+C=     Maximum number of cylinders (2 bytes)
+H=     Maximum number of heads (1 byte)
+W=     Reduce write current cylinder (2 bytes)
+P=      Increase write precompensation cylinder (2 bytes)
+E=      Maximum ECC data burst length (1 byte)
+When the controller is powered up or reset, the default
+values listed below are set.
+Maximum number of cylinders = 153
+Maximum number of heads = 4
+Starting reduced write current cylinder = 128
+Starting write precompensation cylinder = 64
+Maximum ECC data burst length = 11 bits
+The drive size parameters passed are relative to one. For
+example, if the drive has 306 cylinders and 6 heads, then
+the value of C is 306 and the value of H is 6. For the W
+and P parameters, the value specifies the cylinder number
+at which the event occurs. For example, if the value of W
+is set to 200, write current will be reduced starting at
+cylinder 200 and higher.
+Page -61-

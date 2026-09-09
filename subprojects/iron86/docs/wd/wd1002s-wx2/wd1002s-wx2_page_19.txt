@@ -1,0 +1,53 @@
+--- Page 1 ---
+TABLE 3-3. DRIVE DATA CONNECTORS 1 J2, J3
+SIG.
+SIG.
+GND.
+PIN
+I/O
+SIGNAL NAME
+1
+NC
+2
+GND
+3
+NC
+4
+GND
+5
+NC
+6
+GND
+7
+NC
+8
+GND
+9
+NC
+10
+NC
+11
+GND
+12
+GND
+13
+O
++ MFM Write Data
+14
+O
+- MFM Write Data
+15
+GND
+16
+GND
+17
+I
++ MFM Read Data
+18
+I
+MFM Read Data
+19
+GND
+20
+GND
+3-5

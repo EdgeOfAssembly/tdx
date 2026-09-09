@@ -1,0 +1,106 @@
+--- Page 1 ---
+8.2.2   CONTROL PROCESSOR (CP)
+The CP uses a 10 MHz clock (2XDR), giving an
+The main control center of the WD1002-05 is the CP
+instruction cycle time of 1.5 us. Most instructions
+execute in 3.0 us, or two cycles.
+(WD1015), used in conjunction with the EDS
+(WD1014) device, the clock generator, and the task
+8.2.2.2   Task/Syndrome File (TSF)
+files (TSF). The EDS device is the right hand of the CP
+and of sufficient complexity to be treated as a
+The TSF provides on-chip storage of the required
+separate functional entity.
+task files for the WD1010NWD2797 controllers, and
+the 4 bytes of syndrome used for ECC. The check/
+The CP controls the transfer of information within the
+syndrome bytes are physically stored in the ECC gen-
+WD1002-05 and maintains the necessary copies of
+erator/checker The WD1014 (EDS) maintains its own
+the TSF found on both drives. Host access to the
+command register which serves also as an error reg-
+WD1002-05 causes the CP to access task file infor-
+ister upon command completion. All other registers
+mation in the TSF after a command is issued. The
+comprising the TSF are physically part of the
+TSF are physically located in the controller chips and
+WD1010 and WD2797 controllers. The CP controls all
+on-board external logic is used to reflect any
+access to the TSF. Refer to separate sections on task
+changes such as error and status information re-
+files for their use.
+quired to integrate the floppy format to that of the
+Winchester controller. Depending upon the com-
+8.2.3   ERROR DETECTION AND SUPPORT
+mand, the CP will make the buffer accessible to the
+LOGIC (EDS)
+host, the WD1010, or the WD2797 controllers.
+The WD1014 EDS chip provides the WD1002-05 with
+The CP also controls the operation of the Error Cor-
+Error Correction Capabilities (ECC) and support
+recting logic. During the transfer of data from the
+logic. The EDS chip is a single chip device
+host to the WD1010, the EDS monitors the data bus,
+specifically designed to add ECC to the 5.25"
+(ifso enabled), to compute a 4-byte ECC which is ap-
+Winchester disc drives. The EDS also contains three
+pended to the end of the data transferred to the
+8-bit registers, three counters, and several latches
+WD1010 and recorded on the disc. During data trans-
+that enhance the CP capabilities for control func-
+fers from the WD1010 to the host, the CP uses the
+tions in a real time operation. This 40 pin chip
+ECC to validate the data. If the data is corrupted, the
+TTL
+CP envokes recovery techniques such as retries and
+replaces approximately 35
+packages consisting
+correction. A maximum of eight retries are attempted
+of shift registers, flip-flops, and combinatorial logic
+if two consecutive syndromes do not match. Correc-
+gates.
+tion is attempted only if two consecutive syndromes
+8.2.3.1   Error Detection
+match. If the error is uncorrectable, the operation is
+terminated.
+The EDS processes all data transfers in either direc-
+tion between the SB and the WD1010, if SDH bit 7 is
+The CP is also used to handle data transfers to and
+set. This bit should only be set for hard disc opera-
+from the SF for the floppy disc controller, which only
+tion. The EDS generates the ECCISYNDROME bytes
+uses CRC check byte for its data fields.
+by using a polynomial division process which can
+During status reads by the host, the CP consolidates
+provide unique code words for long streams of data.
+the normal completion status from the WD1010, the
+The polynomial selected is a computer generated
+WD2797, and the current EDS status into a form con-
+code optimized for sector sizes of 128, 256, 512, and
+sistant with established WD1010 error reporting for-
+1024 byte data fields. During Normal/Write operation,
+mat. This consolidated status is then presented to
+this division process produces a 32-bit remainder
+the host.
+which is used as the four ECC bytes. In Normal/Read
+operation, the ECC bytes are recomputed and
+8.2.2.1    Clock Generator
+compared to the recorded ECC bytes to generate the
+The 20 MHz oscillator drives the Clock Generator
+Four SYNDROME bytes. If the syndrome is zero,
+which provides all timing clocks for the WD1002-05.
+there were no errors detected. Otherwise, the non-
+zero syndrome is used by the CP to compute the dis-
+The crystal frequency divided by 2 is used as a refer-
+placement of the error vector within the bad sector
+ence clock (2XDR) and then divided again by 2 for a
+This information is then used to correct the data if a
+1X clock (WCLK) which is used to clock the WD1010.
+single burst of no more than 5 bits in error occurred.
+The Floppy Disc Controller (WD2797) operates with a
+During a WRITELONG operation, the EDS is inhibited
+1 MHz clock for 5.25" drives. 2XDR divided by 10 is
+from computing the 32 bit ECC word. The EDS then
+used to produce the required 1 MHz clock.
+accepts a 32-bit appendage from the host and passes
+8-3

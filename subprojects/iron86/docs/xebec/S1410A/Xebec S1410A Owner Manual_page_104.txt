@@ -1,0 +1,33 @@
+--- Page 1 ---
+APPENDIX B
+FIRMWARE OPTIONS
+The standard firmware set (P/N 104788) was previously described in this manual.    In
+addition, two other firmware sets have been developed.   In the descriptions below, only
+the differences between the standard set and the firmware being described are discussed.
+All the information in the main manual applies to these firmware sets except as noted
+below.
+B.I     PERFORMANCE OPTION
+The performance option firmware (P/N 104792) is desinged for higher performance
+systems that allow the controller to operate at a sector interleave of three.    To
+achieve this performance, the sector format on the disk was altered.   This means
+that the S1410A with the standard firmware and the S1410 controllers cannot read a
+disk that has been formatted with this firmware, nor can this firmware read a disk
+formtted with the S1410 or S1410A standard firmware.   The number of sectors per
+track has been reduced from 32 to 30 when using the 256 byte sector size.   The
+number of sectors per track remains at 17 when using the 512 byte sector size.
+B.2    ENHANCED OPTION
+The enhanced firmware option (P/N 104793) gives the user a simpler and more
+flexable disk drive configuration, including support of some cartridge drives.
+Cylinder zero of the disk drive is reserved for disk drive configuration parameter
+storage and enhanced diagnostic capability.     The controller bumps the cylinder
+address by one after the linear disk address passed in the control DCB is converted
+to the physical disk address.     This address change causes the user to skip over
+cylinder zero, reserving it for the controller's internal use.     This change is
+transparent to the user, except that the disk drive appears one cylinder smaller than
+the number of cylinders specified in the initialization data.
+The command set has been altered to make the controller easier to use.     The
+Initialize Drive Characteristics command (command code OC hex) has been disabled.
+The controller will still accept the command and the eight bytes of configuration
+data, but the configuration data is ignored.    This command has been replaced in
+function by the Initialize Format command.   The Format Track command has been
+Page -96-

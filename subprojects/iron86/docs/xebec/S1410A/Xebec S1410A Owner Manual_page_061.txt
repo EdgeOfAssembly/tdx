@@ -1,0 +1,27 @@
+--- Page 1 ---
+Control Byte:
+Bit 5 = 0
+Format data pattern is defaulted to 6C.
+Bit 5 = 1
+Use format pattern previously written to the controller using
+the write buffer command (Opcode OFH).
+Bit 4 = 0
+Normal disk drive.
+Bit 4 = 1
+"Imbedded Servo" drive.
+Bit 3 - 0
+Step rate.
+4.5.3.6
+Check Track Format (Class 0, Opcode 05)
+This command will generate an interleave table from the
+byte 4 of the DCB, seek to the target track (without
+recalibrating), and read each sector from sector 0 to the
+last sector.     While reading each sector, the Controller
+checks for a bad ID field and compares the current sector
+in the ID field with the value generated in the interleave
+table. If a discrepancy occurs between the sector number
+read and the value in the interleave table, the controller
+will report the error code 1A hex, format error.    The
+Controller   does   not read   the   DATA   fields   in   this
+command.
+Page -53-

@@ -1,0 +1,80 @@
+--- Page 1 ---
+5.9   FORMAT TRACK (CLASS 0, OP CODE 06)
+not been read for 10 disk revolutions. This
+This command is identical to the Format Drive        causes the WD1002S-WX2 to recalibrate the heads
+command, except that only the track specified by        and seek back to the desired track. If track zero
+the command is formatted. This command can be        is not detected within 1024 steps, Error Code 06
+used to clear the Bad Track Flag, or reformat
+is set. If R1 is 1 the WD1002S-WX2 aborts the
+individual tracks.
+command on the first failure to read an ID Field,
+therefore no attempt to position the heads to track
+5.10   FORMAT BAD TRACK
+zero is made.
+(CLASS 0, OP CODE 07)
+5.12.1 POSSIBLE ERROR CODES
+This command is the same as the Format Track
+command, except that the Bad Track Flag is set       02 No Seek Complete 03 Write Fault
+in the ID field.
+04 Drive Not Ready     06 Track Zero Not Found
+12 Data Address Mark 15 Seek Error
+5.11   READ SECTORS (CLASS 0, OP CODE 08)
+Not Found
+21 Illegal Disk Address
+19 Track Flagged Bad
+This command reads from 1 to 256 sectors as
+specified by BLK in the Command Block, begin-
+ning at the sector defined by CYL SEC and Head.        5.13 SEEK (CLASS 0, OP CODE OB)
+An uncorrectable error during a multiple sector        This command selects the head and initiates a
+read causes the operation to terminate at the error        seek to the track specified by HD and CYL in the
+sector. The Host then issues a Read Status of Last
+Command Block. The SC signal line is not sampled
+Disk Operation command to determine the type of        to allow buffered seeks. The cylinder must be in
+error. To continue the operation, the Host cal-        range. The drive must be formatted. Drives em-
+culates the difference between the number of        ploying buffered steps can be issued step pulses at
+sectors desired and the number of sectors com-        a high speed freeing the WD1002S-WX2 for other
+pleted, then issues another Read command to        operations. The WD1002S-WX2 does not wait for
+access the remaining sectors. Error code 06 can        the drive to complete the seek to return a Com-
+only be asserted if the R1 bit = 0 and the ID Field
+mand Completion Status. If the return status
+has not been read for 10 disk revolutions. This        shows no error, the seek was issued correctly. If
+causes the WD1002S-WX2 to recalibrate the heads        there is an error, the seek was not issued. After
+and seek back to the desired track. If track zero        transferring the status, another command can be
+is not detected within 1024 steps, Error Code 06
+issued to either drive. If the WD1002S-WX2
+is set. If R1 = 1 the WD1002S-WX2 aborts the        receives a command other than Test Drive Ready
+command after a maximum of two disk revolutions,        for a drive that is still seeking, it asserts BSY and
+therefore no attempt is made to position the heads        waits for SC to be asserted before executing the
+to track zero.
+command. If the command is a Test Drive Ready,
+it executes and returns an 08 Drive Still Seeking
+5.11.1 POSSIBLE ERROR CODES
+Error. The time-out for non-buffered seeks. For
+02 No Seek Complete 03 Write Fault
+buffered seeks, the WD1015 checks SC before a
+04 Drive Not Ready     06 Track Zero Not Found
+Read or Write (next command).
+11 Uncorrectable ECC 12 Data Address Mark
+The rate at which the Step Pulses are issued to the
+Error
+Not Found
+drive is controlled by the SP bits in the Command
+15 Seek Error
+18 Correctable ECC Error
+Block. The drive buffers these pulses and steps at
+19 Track Flagged Bad 21 Illegal Sector Address
+its own rate. This allows the WD1002S-WX2 to
+continue about its own business, possibly starting
+5.12 WRITE SECTORS
+the other drive seeking to a new track, without
+(CLASS 0, OP CODE OA)
+having to wait for the SC from the first drive.
+This command writes from 1 to 256 sectors as
+Refer to Table 5.4 for the available stepping rates.
+specified by BLK in the Command Block. The
+multiple sector transfer scheme works the same as
+5.13.1 POSSIBLE ERROR CODES
+the Read command. Error code 06 can only be        03 Write Fault
+04 Drive Not Ready
+asserted if the R1 bit is 0 and the ID Field has        15 Seek Error
+5-9

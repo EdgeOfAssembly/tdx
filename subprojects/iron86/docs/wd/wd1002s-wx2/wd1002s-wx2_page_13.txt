@@ -1,0 +1,78 @@
+--- Page 1 ---
+SECTION II
+SPECIFICATIONS
+2.1 GENERAL
+This section contains the overall specifications
+for the WD1002S-WX2 Winchester Disk Controller.
+2.2 ELECTRICAL
+2.2.1   HOST INTERFACE
+Type
+IBM PC
+Max Cable Length
+Connects directly to Host motherboard with a
+62 pin card edge connector
+2.2.2 DRIVE INTERFACE
+Encoding Method
+MFM
+Cylinders per Drive
+Up to 1024
+Sectors per Track
+17
+Bytes per Sector
+512
+Heads
+8 with WD1015-14
+16 with WD1015-24
+Drive Selects
+2
+Stepping Rates
+70usec, 200usec, 3msec (WD1015-14)
+18 usec, 30 usec, 45usec, 60usec, 75usec,
+210usec, 3msec (WD1015-24)
+Data Transfer Rate
+5Mbits/sec (ST506)
+Write Precomp Time
+12nsec
+Sectoring
+Soft
+CRC Polynomial
+X16 + X12 + X5 + 1
+ECC Polynomial
+X32 + X28 + X26 + X19 +
+X17 + X10 + X6 + X2 + 1
+Reciprocal ECC Polynomial
+X32 + X30 + X26 + X22 +
+X15 + X13 + X6 + X4 + 1
+Miscorrection Prob.
+5 bit correction = <1.6 E-5
+Non-detection Prob.
+< 2.3 E-10
+Correction Span
+Up to 11-bit burst
+Max Cable Length:
+Control (Total Daisy Chain)
+3 meters (10 ft.)
+Data (Radial-each)
+3 meters (10 ft.)
+2.2.3 WD10C20
+Acquisition Time
+< or = 12.8us
+Capture Range
+t 2.2% to 1ns after 12.8us acquisition
+Bit Jitter Tolerance
+t -34ns (min. of 40 db after acquisition)
+Asymmetry Tolerance
+34ns (write precompensation turned off; as
+measured over constant RCLK pattern)
+2.2.4 POWER
+Voltage
+5V +5%
+Current
+0.8 amps max.
+Ripple
+0.1 volts max., 25 mV typical
+Voltage
++12V +10%
+Current
+10 mA. max.
+2-1

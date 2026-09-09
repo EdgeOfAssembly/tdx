@@ -1,0 +1,64 @@
+--- Page 1 ---
+7
+6
+5
+4
+3
+2
+1
+0
+Byte 0
+0
+0
+0
+1
+1
+1
+1
+Byte 1
+Byte 2
+Byte 3
+Byte 4
+/
+Byte 5
+/
+/
+This command accepts 256 or 512 bytes (depending on sector size jumper)
+of data, and stores it in the sector buffer.
+3. Read Sector Buffer (OPCODE '10' Hex)
+This command sends 256 or 512 bytes of data (depending on sector size
+jumper) to the host from the sector buffer.
+7
+6
+5
+4
+3
+2
+1
+0
+Byte 0
+0
+0
+0
+1
+U
+0
+Byte 1
+Byte 2
+Byte 3
+Byte 4
+Byte 5
+B.   CHANGES TO FORMAT DRIVE COMMAND
+If Bit 5 of control byte 5 of the command block is set on the format command
+(OPCODE 04). the sector buffer will be used as the data pattern written on the
+disk data fields.
+The Write Sector Buffer command can be issued before the format command
+to initialize the sector buffer.
+C.   CHANGE TO FORMAT TRACK COMMAND
+The Format Track Command will reformat the track, eliminating all references
+to bad and alternate tracks. Also if Bit 5 of control byte 5 of the command block
+is set, then the sector buffer will be used as the data pattern in the data field.
+D.   EXPANDED FAST STEP OPTIONS
+The fast seek steps supported have been increased to include many of the
+popular drives. The new step option selection is downward compatible with
+previous step options supported.

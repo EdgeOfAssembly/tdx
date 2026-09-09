@@ -1,0 +1,113 @@
+--- Page 1 ---
+This is another way to poll the BUSY bit using PDP-11
+7.4 TYPE II COMMAND PROGRAMMING
+code:
+The only Type II command is the read sector com-
+WAIT:     MOVB @#STATUS,RO Input status,
+mand. This command is characterized by the transfer
+update sign flag
+of a block of data from the WD1002-05 buffer to the
+BMI      WAIT
+;Wait if BUSY (N) bit
+host. The command features implied seek with an
+set
+implicit stepping rate. To execute a Type II single-
+sector command in programmed I/O mode, the sys-
+7.3.2   USE OF INTERRUPTS
+tem software must perform the following functions
+Another, more efficient way of notifying the CPU that
+in the order shown:
+the WD1002-05 has completed a command is through
+1. Set up task file and issue command with DMA bit
+interrupts. The INTRQ line on the WD1002-05 makes
+reset (WD1002-05 will attempt to read sector)
+a low to high transition whenever the disk controller
+2. Wait for interrupt or for BUSY bit in status register
+requires CPU intervention. This allows the host CPU
+to be reset
+to run other tasks while the WD1002-05 is reading or
+writing data to the disk.
+3. Perform a block move from WD1002-05 buffer to
+system memory
+7.3.3   USE OF THE ERROR BIT
+4. Check error bit in status register for proper
+As the WD1002-05 simulates normal completions
+completion
+when errors have been encountered, the only way to
+Note: Steps 3 and 4 above can be reversed.
+determine error status is to check the error bit in the
+To execute a Type II
+or multiple sector
+status register The WD1002-05 error bit is So located
+mand in DMA mode with single interrupts, the
+com- soft-
+that it can be easily tested by rotating it into the carry
+ware does the following:
+system
+bit of many processors. The contents of the error reg-
+ister are not valid unless the error bit is set.
+1. Set up task file and issue command with DMA bit
+One way to check the Error bit using 8080 code is as
+set
+I
+follows:
+2. Set up DMA controller (WD1002-05 will attempt to
+IN
+STATUS
+;Get status (if not
+read single or multiple sectors) (DMA controller
+already in A)
+will move data from WD1002-05 to memory)
+RAR
+;Rotate error bit
+3. Wait for interrupt from WD1002-05
+into C
+4. Check error bit in status register for proper
+JC        ERROR
+;Jump if error found
+completion
+In certain hardware configurations, the following can
+Note: The above sequence is preferred, but steps 1
+check the error bit using PDP-11 code:
+and 2 above can be reversed.
+BIT       @ #STATUS,#1 ;Bit test the error bit
+BNE     ERROR
+;Branch if error
+7.4.1    DMA MODE
+found
+The DMA mode bit (D) in the foregoing read sector ex-
+amples is a special bit in the command byte used to
+7.3.4   USE OF THE CORRECTED BIT
+optimize the WD1002-05   interrupts during pro-
+Correctable errors are usually quite benign and can
+grammed I/O and DMA operations. If the DMA bit is
+almost always be ignored. Some systems designers,
+reset (D: =0), the interrupt will come before the buffer
+however may wish to log their occurrence. The cor-
+is transferred. This allows a programmed IIO host to
+rected bit has been placed in the status register to
+intervene and transfer the buffer of data. If the DMA
+facilitate error logging. Correctable and fatal errors
+bit is set (D=1 1), then the interrupt will occur only
+can be detected with the following 8080 code:
+after the data has been transferred. This allows the
+IN
+STATUS
+;Get WD1002-05
+host to go uninterrupted until the entire buffer has
+been transferred.
+status
+ANI      5
+;Mask off Error and
+Correct bits
+7.4.2   BLOCK MOVES
+JNZ     SOMERR
+Jump if we have
+The WD1002-05 performs all transfers between itself
+either a
+and the disk drive through an on-board full sector buf-        1
+;correctable or fatal
+fer Once the disk has been read, the data is available
+error
+to the host at any rate from DC to as high as a byte
+7-2

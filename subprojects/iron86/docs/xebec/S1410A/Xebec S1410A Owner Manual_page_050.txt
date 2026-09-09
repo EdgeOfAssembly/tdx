@@ -1,0 +1,45 @@
+--- Page 1 ---
+returns the logical address of the failing sector in bytes 1,
+2 and 3. If the Request Sense Status command is issued
+after any of the Format commands or the Check Track
+Format command, then the logical address returned by
+the controller points to one sector beyond the last track
+formatted or checked if there was no error. If there was
+an error, then the logical address returned points to the
+track in error.
+d = drive, 0 or 1
+7
+6
+5        4
+3
+2
+1
+0
+0
+0
+0
+0
+0
+0
+1
+0
+d
+SENSE BYTES
+7
+6
+5
+4
+3
+2
+1
+0
+SEE BELOW
+Bits 0-3
+Error Code
+Bits 4-5
+Error Type
+Bits 6
+Spare, set to zero
+Bits 7
+Address valid, when set
+Page -42-

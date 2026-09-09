@@ -1,0 +1,140 @@
+--- Page 1 ---
+Table 2-3. Winchester Drive Data Connector
+DS3-DSO
+These   four   Drive   Select   lines
+Pin Description
+(DS3-DSO) are used to select one of
+Signal      Signal
+four possible drives.
+Ground        Pin
+IIO
+Signal Name
+MO
+The Motor On line is used to directly
+control the dc spindle motor of the
+2
+1
+NC
+floppy drive. If Motor On Mode
+4
+3
+NC
+(MOM) = 0 (user selectable jumper
+6
+5
+NC
+option) then a 40 nsec delay occurs,
+8
+7
+NC
+otherwise a one-second delay occurs
+9
+NC
+after Motor On and before any read-
+10
+NC
+ing or writing is attempted. If the flop-
+11
+GND
+py drive is not accessed for ~3
+12
+GND
+seconds, the motor is turned off by
+13
+O
+MFM Write Data
+the WD1015. Also the drives sup-
+14
+O
+MFM Write Data
+ported must be configured SO that
+15
+GND
+the RW heads are loaded when the
+16
+GND
+motor is turned on. This is usually
+17
+I
+MFM READ Data
+available as an option on most drives.
+18
+I
+MFM READ Data
+DIRIN
+The Direction In line determines the
+19
+GND
+direction of motion of the RWW head
+20
+GND
+when the step line is pulsed. A high
+on this line defines the direction as
+2.7   POWER CONNECTOR
+out, and a low defines the direction
+A 4-pin amp connector (J6) is provided for power and
+as in.
+ground inputs to the board. The pinouts are given in
+STEP
+The Step line is pulsed once for each
+Table 2-4.
+cylinder to be stepped. The direction
+of the step will be determined by the
+Table 2-4.   Power Connector Pin Description
+direction line. The step pulse period
+is determined by the internal floppy
+Pin
+Signal Name
+stepping rate register during implied
+seek operations, auto restore, or ex-
+1
+NC
+plicitly during seek and restore com-
+2
+GROUND
+mands. During any restore operation,
+3
+GROUND
+the stepping-rate period is limited to
+4
++ 5V regulated @ 3 amps (max)
+8 ms minimum.
+WD
+The Write Data interface line pro-
+2.8   FLOPPY DRIVE SIGNALS
+vides data to be written on the disk.
+The Floppy Drive Control connector (J8) is a relatively
+This line is enabled by write gate
+low-speed bus, daisy-chained to each of the floppy
+being active.
+drives in the system. To properly terminate each TTL-
+WG
+The Write Gate output signal enables
+level output signal from the WD1002-05, the last drive
+disk write data circuitry.
+in the daisy chain should have line terminations as
+TROOO
+TROOO
+specified by the drive manufacturer. The other drives
+indicates that the RWW heads
+should not have any terminations. Drive control sig-
+are positioned on the outermost cyl-
+nals for the floppy discs are functionally similar to
+inder. This line is sampled before
+those for the hard discs, except that all data is
+each step is issued.
+transferred via one connector instead of the separate
+WP
+The Write Protect interface signal
+connectors used for the Winchester drives. Floppy
+provided by the drive indicates to the
+drive signals are as follows:
+WD1002-05 that a write-protected
+disk is installed. When write protect
+IND
+The Index line contains a reference
+is active, no data can be written to
+index pulse once every disk rotation
+the disk by the WD1002-05.
+to indicate the beginning of a track.
+2-3

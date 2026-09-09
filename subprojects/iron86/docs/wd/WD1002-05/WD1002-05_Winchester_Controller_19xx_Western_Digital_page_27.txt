@@ -1,0 +1,143 @@
+--- Page 1 ---
+SECTION 5
+TASK FILE
+5.1   TASK FILE BASICS
+The WD1002-05 performs all disk functions through a
+Individual registers are selected via A0-A2 for both
+set of registers called the task files. The task files are
+types of drives. The registers shown in Table 5-1 are
+loaded with parameters such as sector number,
+available.
+cylinder number, etc., prior to issuing a command.
+Table 5-1.   Task File Register Array
+CS
+A2
+A1
+AO
+RE
+WE
+1
+X
+X
+X
+Deselected
+Deselected
+0
+0
+0
+0
+Data Register
+Data Register
+0
+0
+0
+1
+Error Register
+Write Precomp*
+0
+0
+1
+0
+Sector Count
+Sector Count
+0
+0
+1
+1
+Sector Number
+Sector Number
+0
+1
+0
+0
+Cylinder Low
+Cylinder Low
+0
+1
+0
+1
+Cylinder High**
+Cylinder High**
+0
+1
+1
+0
+Size/Drive/Head
+Size/Drive/Head
+0
+1
+1
+1
+Status Register
+Command Register
+*Not used on floppies
+**LSB of cylinder high, if set to 1, permits a 48 t.p.i. floppy disk to be read on a 96 t.p.i. floppy disk system.
+5.2   DATA REGISTER
+DAM NOT FOUND   Will be set during a read sector
+This register is the user's window to the on-board full
+command if, after successfully
+sector buffer. It contains the next byte of data to be
+identifying the ID field, the data
+written to or read from the internal sector buffer.
+address mark was not detected
+When the DRQ (Data Request) line is asserted, the
+within 16 bytes of ID field.
+sector buffer contains data to be read during a Type II
+TROOO ERROR
+Will be set during a restore
+command, or is awaiting data to be written during a
+command if the track 000 line
+Type III command. If the WD1002-05 is interfaced
+was not asserted by the drive
+using programmed I/O, data transfers to this register
+after all stepping pulses have
+can be implemented using programmed block
+been issued. The Winchesters
+moves. This register may not be read from or written
+are issued a maximum of 1023
+to except in the context of a valid command.
+stepping pulses and the flop-
+5.3   WD1002-05 ERROR REGISTER
+pies,   a   maximum   of   256
+stepping pulses.
+This Register contains specific fault information per-        ABORTED
+Indicates that   valid command
+taining to the last command executed. This register        COMMAND
+has been received a      that cannot
+is only valid if the error bit in the status register is set.
+The error register is read only. Table 5-2 shows the
+be executed based on status
+error register bits.
+information from the drive, i.e.
+drive not ready, seek complete
+Table 5-2.   Error Register Bits
+not asserted, or write fault.
+Interrogation   of   the   status
+Bit
+Error Register
+register by the host may be per-
+formed to determine the cause
+7
+Bad Block Detect
+of this failure.
+6
+Uncorrectable Error
+ID NOT FOUND
+When set, this bit indicates that
+5
+CRC Error ID Field
+4
+ID Not Found
+an ID field containing a speci-
+3
+fied   cylinder,   head,   sector
+2
+Aborted Command
+number, or sector size was not
+1
+TROOO Error
+found after all the retries have
+0
+DAM not found
+been executed.
+5-1

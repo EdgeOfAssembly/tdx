@@ -1,0 +1,50 @@
+--- Page 1 ---
+ADDENDUM B
+A.    CONTROLLER RETRY ALGORITHMS
+When any error is encountered, except an ECCerrori in the data field, the
+S1410 Controller examines Bit 7 of the Control Byte (Byte 5) to determine
+the retry method to use.
+If Bit 7 is set, the Controller will not retry the operation, but reports the
+errorimmediately. If Bit 7 is reset, the Controller will retry the operation 3
+times, then recalibrate the drive, seek back to the currenttrack, and retry
+once more. For example, if an ADRESS MARK (AM) NOT FOUND error
+occurs, the Controller attempts to reread the same sector 3 times. If the
+error persists, the Controller recalibrates the drive to track 0, seeks to the
+target track and rereads for the last time. If the error still persists, the
+Controller aborts the command and reports the error to the host.
+If Bit 6is sèt, the Controller will not retry a read of a sector that contains a
+data error before attempting error correction. If Bit 6is reset, the Control-
+ler will reread the sector before attempting error correction. It is faster
+and more reliable to read the data again than apply error correction
+immediately. If the data error is transient in nature, such as noise or elec-
+trical interference in the disk heads or read amplifier, noise in cable, or a
+power supply transient, then another read ofthe sector will be succesful.
+If the error occurs twice in succession, the error is caused by a media
+defect, so ECC correction is used to recover the data.
+B.    FORMAT SECTOR INTERLEAVE
+The S1410 controller will accept any interleave value between zero and
+the number of sectors per track minus one. The interleave value tells the
+Controller where the next logical sector is located in relation to the
+current sector. For example, an interleave value of one specifies that the
+nextlogical sectoris physically the next sector on the track. Aninterleave
+of two specifies that the next logical sector is two sectors ahead of the
+current sector, so there is one sector between each logical sector. An
+interleave of three specifies that the next logical sector is three sectors
+ahead, so there are two sectors between each logical sector. Thus, the
+number of physical sectors between any two adjacent logical sectors is
+the interleave value minus one. An interleave of zero will be converted to
+interleave of 1 automatically. Any out of range interleave value will result
+in an Invalid Command Error.
+The interleave value can be set to improve system throughput based on
+overhead time of the host software, overhead time in the disk driver, and
+overhead time for the S1410 controller to process a command. If the host
+system is capable of multisector transfers, system throughput can be
+optimized by setting the interleave value such that the nextlogical sector
+comes under the the heads just as the S1410 completes the data transfer
+of the previous sector. If the host is capable of passing a sector of data at
+DMA speed (one millisecond for a 256 byte sector), then the interleave
+value should be set to four to optimize multisector transfers. This is the
+minimum value for continuous sector transfers. If a sector data transfer
+takes between one and two milliseconds, set the interleave value to five.
+The best method is to experimentally determine the best interleave value
+for your system using a representative benchmark.

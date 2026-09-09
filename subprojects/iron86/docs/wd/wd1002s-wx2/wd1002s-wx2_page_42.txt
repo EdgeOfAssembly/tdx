@@ -1,0 +1,86 @@
+--- Page 1 ---
+6.11 WD10C20
+edge of the data or clock bit to be written EARLY,
+The WD10C20 interfaces the disk drive to the
+LATE, or on time (NOMINAL).
+other   circuitry   on   the   WD1002S-WX2.   The
+The WD1015 enables or disables the generation of
+WD10C20 contains two major circuits. These two
+these write precompensation signals by controlling
+circuits are the Write Precompensation circuitry
+the LS signal. Assertion of LS enables write pre-
+and data synchronization.
+compensation. De-assertion of LS disables write
+precompensation and the NOMINAL output is
+6.11.1    CLOCK GENERATOR
+asserted.
+A 10 MHz fundamental   frequency crystal is
+The WD10C20 internal logic performs the write
+required by the WD10C20. The crystal frequency
+precompensation.   The MFM write pulses are
+is used as a reference clock and then divided by        applied to internal   logic. The WMFM output
+two for a WRITE CLOCK (WCLK) which is used
+depends upon the state of the three write pre-
+to produce MFM write data for the disk. These        compensation signals. From here, the data is con-
+clock sources are provided by the WD10C20.
+verted to a differential form and then transmitted
+The WD1015 uses the 5 MHz WCLK, provided by        to the disk drive.
+the WD10C20, giving an instruction cycle time of
+3.0usec. Most instructions execute in two cycles        6.11.3 DATA SEPARATOR
+or 6.0usec.
+Data is recorded on the disks using MFM tech-
+niques. This technique requires clock bits to be
+6.11.2   WRITE PRECOMPENSATION CIRCUIT
+recorded only when two successive data bits are
+The generation of MFM Write Data takes place in
+missing in the serial data stream. In other words,
+the WD1010A-05. The WD1010A-05 accepts a
+if two successive data bits are zeroes, then a clock
+byte of data and a WCLK to internally produce
+pulse is generated. A logical one data bit is re-
+MFM data. The MFM data is now totally com-
+corded as a pulse and a logical zero is recorded as
+patible with the required format for transmission
+not pulse. The fact that clock bits are not recorded
+to the disk via line drivers with one exception.
+with every data bit cell requires circuitry that can
+Due to decreasing radius on the physical surface of        remain in synchronization with data during the
+the disk, the inside tracks have less circumference
+absence of clock bits. Synchronous decoding of
+and therefore exhibit an increase in recording flux
+MFM data streams requires the decoder circuitry to
+density over the outside tracks. This increase in
+synthesize clock bit timing when clocks are missing
+flux density aggravates a problem   known as        and synchronize to clock bits when they are
+dynamic bit shift.
+present. This is accomplished by using a phase
+Dynamic bit shift comes about as a result of one        locked oscillator employing an error amplifier and
+bit on the disk (a flux reversal) influencing an
+filter to synchronize with and hold a specific phase
+adjacent bit. The result is to shift the leading edge
+relationship to the data and clock bits in the data
+of both bits closer together or further apart than
+stream. The phase lock occurs at the crystal
+originally recorded. The net result is that enough
+frequency, which in turn is used to synthesize a
+jitter is added to the data recorded on the inside
+clock called RCLK with a frequency one half of
+tracks to make them harder to recover without        the crystal frequency. This synthesized clock is
+used to separate data bits from clock bits      the
+error.
+by
+external logic for deserialization into bytes.
+Write precompensation is used to reduce the effect
+of dynamic bit shift on the recorded data. It is a
+Refer to the WD10C20 Data Sheet for further
+method of predicting which direction a particular
+details.
+bit is shifted and intentionally writing that bit out
+of position in the opposite direction from the
+expected shift. This is performed by examining
+two data bits: the last one written and the present
+one to be written to the disk. A comparison of
+these bits produces one of three signals: EARLY,
+NOMINAL, or LATE. These signals are used with a
+delay line (intervals of 12nsec) to cause the leading
+6-7

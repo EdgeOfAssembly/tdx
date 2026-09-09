@@ -1,0 +1,58 @@
+--- Page 1 ---
+4.5.3.15       Format Alternate Track (Class 0, Opcode OE)
+Format Alternate Track will format the header and data
+fields of the "Bad Track" with   the alternate track
+information (assigned by the host). The alternate track is
+formatted to identify it as an alternate.   The command
+bytes for Format Alternate Track are:
+d = drive, 0 or 1
+r = retries
+S = step option
+V = drive type
+P = data field pattern option
+Bit
+7        6
+5
+4
+3
+2
+i
+0
+Byte 0
+0        0
+0        0
+1 1
+1
+1
+0
+1
+0        d
+d
+High Address
+2
+Middle Address
+3
+Low Address
+4
+0        0
+0
+Interleave
+5
+r
+0
+P        V        S
+S
+S
+S
+The logical address in the command bytes point to the "Bad Track".    Sector
+address is ignored, defaulting to sector 0.
+The interleave byte (4) is programmed the same as in the format command,
+and is used on the alternate track.
+If Bit 4 of the Control Byte (5) is set, the format is set for an "Imbedded
+Servo" drive.
+If Bit 5 of Control Byte (5) is set, the data in the existing sector buffer is used
+to fill the data field; if not set, the data field is written with hex 6C.
+After issuing the command the Controller will ask for 3 data bytes. These
+bytes point to the host assigned alternate logical address.     Again sector
+address is ignored.
+Page -65-

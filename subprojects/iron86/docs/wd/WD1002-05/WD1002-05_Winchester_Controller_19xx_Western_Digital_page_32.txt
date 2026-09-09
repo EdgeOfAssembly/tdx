@@ -1,0 +1,102 @@
+--- Page 1 ---
+6.3   TYPE I COMMANDS
+6.3.3   SEEK
+Type I commands do not effect transfer of data be-
+Bit code:0
+tween the host and the WD1002-05 but merely posi-
+1   1   1   R3   R2   R1   RO
+tion the RW heads of the selected drive or run
+The seek command positions the RWW head at a cer-
+diagnostics. The restore and seek commands have
+tain cylinder It is primarily used to start two or more
+explicit stepping rate fields. The lower four bits of
+concurrent seeks on drives that support buffered
+these commands form the stepping rate for the
+stepping. Note that the seek complete line is not
+drives.
+sampled after the seek command SO that multiple
+seek operations may be started using drives with
+6.3.1   TEST COMMAND
+buffered seek capability.
+Bit code : 1   0 0   1   0 0 0 0
+6.4   TYPE II COMMANDS
+The test command is used to run internal diagnostics
+Type II
+for checking WD1002-05 board function. It is mainly
+of data commands from the    characteristically transfer blocks
+employed to isolate faults in the board logic. This
+type of command WD1002-05 buffer to the host. This
+command is always executed on a MR strobe. Any
+by the last restore has an implicit stepping rate as set
+faults are reported as error codes. (See Section 5.4 for
+or seek command.
+a description of the error codes.)
+6.4.1    READ SECTOR
+6.3.2   RESTORE
+Bit code :0 0 1 0   D   M   0 0
+Bit code:0 0 0   1   R3   R2   R1   RO
+The read sector command is used to enable the host
+The restore command is used to calibrate the posi-
+computer to read a sector of data from the disk. If
+tion of the RWW head on each drive by stepping the
+ECC is enabled, ECC bytes are recomputed by the
+head outward until the TROOO line goes true. Upon re-
+WD1002-05. After the buffer is full, the recorded ECC
+ceipt of the restore command, the BUSY bit in the
+bytes are compared to the recomputed check bytes
+status register is set. Cylinder high and cylinder low
+to generate the syndrome bytes. If the syndrome is       1
+registers are cleared. For Winchester operation, the
+non-zero, errors have occurred. Error correction is
+actual stepping rate is determined by the Seek Com-
+dromes invoked by the WD1015 if two consecutive syn-
+plete period. For Floppy operation, a minimum step-
+match, otherwise a maximum of 8 retries is
+ping pulse of 8 msec. is used. However, the stepping
+attempted the
+by the WD1015. If the data is correctable,
+rate field specified by the host is saved internally for
+data WD1015 in the    makes the correction and passes the
+use in all future implied seeks. The state of seek
+buffer to the host. If, after eight retries, the
+complete, ready and write fault are sampled, and if an
+syndromes do not match, the WD1002-05 sends an
+error condition exists, the aborted command bit in
+error status to the host along with the status from the
+the error register is set, the error bit in the status reg-
+fied WD1010. to     Multiple sector read commands are modi-
+ister is set, an interrupt is generated, and the BUSY
+single sector commands and are issued a mul-
+bit is cleared.
+tiple number of times. The status and error registers
+are updated for every block of data
+Regardless of errors encountered, the internal head
+transferred.
+position register for the selected drive is cleared. The
+During a Floppy read sector operation only CRC is
+TROOO line is sampled. If TROOO is true, an interrupt is
+used with the data fields. If a CRC error occurs in the
+generated and the BUSY bit is reset. If TROOO is not
+data field, the WD1015 buffer manager attempts a
+true, stepping pulses at a rate determined by the
+maximum of 8 retries and reports the error only if it
+stepping rate field are issued until the TROOO line is
+persists. Regardless of the drive accessed (Winches-
+activated. When TROOO is activated, the busy bit is
+ter or Floppy), CRC is used on all ID fields.
+reset and interrupt is issued. If the TROOO line is not        6.4.1.1
+activated within 1024 stepping pulses, the TROOO
+READLONG Command
+error bit in the error register and the error bit in the
+Bit code:0 0   1   0   D   M   1   0
+status register are set, the BUSY bit is reset, and an
+This command is similar to the read
+interrupt is issued.
+except that the ECC operation      sector command
+producing the syn-
+drome is inhibited in the WD1002-05. Instead, the
+WD1002-05 copies the four recorded check bytes
+from the disk and passes them unaltered to the host.
+This command is useful in debugging and verifying       )
+the ECC hardware and software. To do this, first write
+6-2

@@ -1,0 +1,98 @@
+--- Page 1 ---
+5.5.    Recalibrate (Class 0, OP Code 01).
+5-4
+5.5.1    Possible Error Codes -
+5-4
+5.6     Read Status of Last Operation (Class 0, OP Code 03).
+5-5
+5.7     Format Drive Starting at Desired Track (Class 0, OP Code 04)
+5-7
+5.7.1    Possible Error Codes
+5-8
+5.7.2    Interleaving.
+5-8
+5.8     Verify Sectors (Class 0, OP Code 05)
+5-8
+5.8.1    Possible Error Codes -
+5-8
+5.9     Format Track (Class 0, OP Code 06).
+5-9
+5.10   Format Bad Track (Class 0, OP Code 07)
+5-9
+5.11   Read Sectors (Class 0, OP Code 08)
+5-9
+5.11.1 Possible Error Codes
+5-9
+5.12 Write Sectors (Class 0, OP Code OA)
+5-9
+5.12.1 Possible Error Codes .
+5-9
+5.13 Seek (Class 0, OP Code OB).
+5-9
+5.13.1 Possible Error Codes -
+5-9
+5.14 Initialize Drive Parameters (Class 0, OP Code OC) -
+5-10
+5.15 Read ECC Burst Error Length (Class 0, OP Code OD).
+5-10
+5.16   Read Sector Buffer (Class 0, OP Code OE)
+5-10
+5.17 Write Sector Buffer (Class 0, OP Code OF)
+5-10
+5.18 Execute Sector Buffer Diagnostic (Class E, OP Code 00)
+5-10
+5.18.1 Possible Error Codes -
+5-10
+5.19 Execute Drive Diagnostic (Class E, OP Code 03).
+5-10
+5.19.1 Possible Error Codes -
+5-10
+5.20 Controller Diagnostics (Class E, OP Code 04)
+5-10
+5.20.1 WD1010A-05 Test.
+5-11
+5.20.2 WD11C00-17 ECC Test.
+5-11
+5.20.3 Sector Buffer Test.
+5-11
+5.20.4 WD1015 RAM Test.
+5-11
+5.20.5 WD1015 ROM Test.
+5-11
+5.20.6 Possible Error Codes -
+5-11
+5.21   Read Long (Class E, OP Code 05)
+5-11
+5.21.1 Possible Error Codes
+5-11
+5.22 Write Long (Class E, OP Code 06).
+5-11
+5.22.1 Possible Error Codes -
+5-11
+SECTION 6     THEORY OF OPERATION
+6.1     General
+6-1
+6.2     Buses..
+6-1
+6.2.1    Host Interface Address Bus AO through A19.
+6-1
+6.2.2    Host Interface Data/Command Bus DO through D7
+6-1
+6.2.3   WD1002S-WX2 Intraboard Command/Status Bus BDO through BD7 .
+6-1
+6.2.4   WD1002S-WX2 Intraboard Command/Data Bus ADO through AD7.
+6-1
+6.2.5   WD1002S-WX2 Intraboard Address Bus RAO through RA10
+6-1
+6.3     Bus Protocol
+6.3.1    Selection Phase
+6-3
+6.3.2    Command Phase
+6-3
+6.3.3    Data Phase.
+6-3
+6.3.3.1   Programmed I/O Data Transfer
+6-3
+6.3.3.2   DMA Data Transfer.
+6-3
+iv

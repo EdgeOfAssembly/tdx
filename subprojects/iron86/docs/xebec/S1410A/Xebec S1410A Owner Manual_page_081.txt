@@ -1,0 +1,46 @@
+--- Page 1 ---
+4.5.3.24       Write Long (Class 7, Opcode 06)
+When this command is used, the host supplies the 4 bytes
+of ECC information following the data bytes.
+This
+command is used to test the Controller's ECC circuitry
+only. For detailed description of the test, see the READ
+LONG command above.
+d = drive, 0 or 1
+r = retries
+S = step option
+7
+6
+5
+4        3
+2
+1
+0
+1
+0
+0
+1
+1
+0
+0
+0
+d
+HIGH ADDRESS
+MIDDLE ADDRESS
+LOW ADDRESS
+BLOCK COUNT
+r
+0        0
+0        S
+S
+S
+S
+4.5.3.25       Retry Statistics (Class 7, Opcode 07)
+This command allows the user to gather retry and error
+statistics on a disk drive over a period of time. This data
+can be used to indicate the overall reliability of the drive
+and may provide an early warning of trouble before a
+catastrophic failure occurs. After the command is issued,
+the controller returns eight bytes of data, followed by
+status.
+Page -73-

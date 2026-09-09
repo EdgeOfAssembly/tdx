@@ -1,0 +1,37 @@
+--- Page 1 ---
+TABLE 4-4 HOST BUS CONTROL SIGNALS
+DRV/RCVR
+DEFINITION
+Rcvr, 220/330
+Reset:       The host adapter sends this
+active low signal to the controller to
+force the controller to the idle state.
+After   RST- has   become   active,   any
+controller status is cleared.    RST- also
+causes the deactivation of all signals to
+the drives.    Select should not be issued
+for 20 microseconds after a reset pulse.
+The time   requirements for the RST-
+signal are as follows:
+Minimum
+Maximum
+100 nsec.
+None
+Rcvr, 220/330
+Select:       The host adapter sends this
+active low signal to the controller to
+initiate a command transaction.   BUSY-
+must be in the inactive state at the
+beginning of the select process.    Along
+with SEL-, the host adapter must also
+send   an   address   bit   to    select   the
+controller (DBO- for controller 0).    The
+data bus must be stable 100 nsec before
+SEL- is active, and remain stable for 100
+nsec      after      SEL-      is     deactivated.
+Minimum select pulse width is 100 nsec,
+there is no maximum, as long as the data
+bus remains stable during select.    SEL-
+should not be issued for 25 microseconds
+after a reset.
+Page -22-

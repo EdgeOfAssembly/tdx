@@ -1,0 +1,90 @@
+--- Page 1 ---
+d = drive, 0 or 1
+Bit
+7        6
+5
+4
+3
+2
+A
+0
+Byte 0
+0
+0
+0
+1
+0
+0
+0
+1
+1
+0
+0
+d
+/
+/
+2
+/
+3
+4
+5
+/
+/
+After sending the command (DCB) to the Controller, the host must follow wi
+a ten byte data block. This block provides all the initialization parameters
+the Controller. The hard disk configuration block is:
+Bit
+7
+6        5
+4
+3
+2
+I
+0
+Byte 0
+C        C
+C
+C
+1
+C        C        C        C        C        C        C        C
+2
+0
+0
+0
+0
+H        H        H        H
+3
+S        S
+S
+S
+R        R        R        T
+4
+0
+0
+0
+0
+0        0
+D        D
+5
+W       W        W        W        W       W        W       W
+6
+W        W        W        W        W        W       W       W
+7
+P
+P        P        P        P
+P        P        P
+8
+P
+P        P        P
+P
+P
+P        P
+9
+0
+0
+0
+0
+E
+E
+E        E
+Page -99-

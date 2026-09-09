@@ -1,0 +1,16 @@
+--- Page 1 ---
+HANDSHAKE ACKNOWLEDGE FLIP FLOP.
+This flip flop is used for all data, command or status handshakes between the host
+and the controller under programmed I/O control.   As long as the controller is not
+selected, this flip flop is kept directly cleared by the inactive REQ- line which in
+turn keeps the acknowledge line (ACK-) inactive to the controller.
+After the controller is selected and ready to accept a command from the host, it
+asserts the REQ- line signaling the host to write a command byte into the
+transparent latch. When the host writes into the latch, the handshake acknowledge
+flip flop is set signaling the controller that the data is available.      When the
+controller has read the command byte from the SASI bus, it deactivated the REQ-
+line clearing the handshake acknowledge flip flop, which in turn deactivated the
+acknowledge line ( ACK-).
+When the ACK- signal is deasserted, the REQ- signal is again activated by the
+controller starting the handshake sequence for the next byte.
+Page -89-

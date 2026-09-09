@@ -1,0 +1,48 @@
+--- Page 1 ---
+drive within its timing window. An address mark is
+a special recording pattern preceeding the ID field
+of a sector. The AM is only written at format time.
+The AM tells the controller where new sector
+starts. The error may occur during any data
+transfer or format commands. The error may
+mean that no address marks were detected on the
+track, or the target sector address mark was not
+detected.
+Possible causes are:
+Media Defect on Drive
+Drive has not been formatted
+Bad Drive
+Bad Unit Cable (J2, J3)
+Bad Controller
+Media defects may be overcome by deleting the
+defective sectors from system use or assigning an
+alternate track.
+14
+Target Sector Not Found. The target sector was
+not located within two revolutions of the disk. This
+error usually occurs when there is a media defect
+in the address mark field of the target sector.
+Possible causes are:
+Media Defect on Drive
+Invalid Format (Changing sector strap
+from 512 to 256 bytes and not reformat-
+ting the drive).
+Bad Drive
+- Bad Controller
+15
+Seek Error. After a seek, the target disk address
+did not match the ID address read from the disk.
+Either the cylinder or head bytes did not match.
+Possible causes are:
+Incorrect Seek Option Specified in the
+Command.
+Bad Drive
+Bad Control Cable (J1)
+Bad Controller
+18
+Correctable Data Error. The controller detected a
+media error while reading that was corrected by
+ECC. This error code informs the host software
+that error correction has taken place. This is the
+only error where the data is passed to the host
+before returning the error status.

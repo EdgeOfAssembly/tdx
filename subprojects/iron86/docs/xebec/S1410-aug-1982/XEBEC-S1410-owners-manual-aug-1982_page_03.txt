@@ -1,0 +1,40 @@
+--- Page 1 ---
+After receiving the command and the assigned alternate, the controller
+does the following:
+a) Seeks to Alternate Assigned Track" and verifies it is not already an
+assigned alternate track, or flagged bad track.
+If the track has already been assigned as an alternate or is flagged
+"BAD".then error code ID Hex is given. and the command is aborted.
+This usually implies that the host is attempting to assign two (2) bad
+tracks to the same alternate track.
+b) Formats the track as an assigned alternate track.
+c) Seeks to the "Bad Track" and formats the header as a spare track
+pointing to the assigned alternate.
+NOTE: Data fields on both the bad track and alternate track are
+destroyed.
+Using the Format Alternate Track Command
+a) The controller must be initialized to include the alternate tracks cylinder
+and head ranges.
+b) With alternate tracks, the entire disk is not available to the system.
+Generally the disk space is fixed in the system software, which leaves
+spare tracks at the inner cylinder of the disk, which can be assigned as
+alternates when needed.
+The number of spare tracks is dependent on drive size and number of
+defects allowed by the drive manufacturer. Generally this is 1 spare
+track for each 50 to 100 tracks.
+c) Procedure for use is:
+1) Format entire disk, including spare tracks.
+2) Verify disk.
+3) For each media defect, assign an alternate track.
+4) Alternate tracks should also be assigned for drive manufacturer list of
+defects.
+d) In system operation, the alternate tracks are invisible to the host. The
+controller will automatically seek to the assigned alternate track when an
+access is made to a flagged defective track. "Consecutive" accesses to
+a flag track does not result in reseeking to the alternate track. The
+controller will maintain position on the alternate track.
+e) Direct access (seeking to, or attempted data transfer) to an alternate
+track results in an error code 'IC' Hex, and no data transfer takes place.
+2. Write Sector Buffer (OPCODE 'OF Hex)
+Usedto fill the sector buffer with a host given data pattern. No transfer of data
+takes place between the drive and the controller.

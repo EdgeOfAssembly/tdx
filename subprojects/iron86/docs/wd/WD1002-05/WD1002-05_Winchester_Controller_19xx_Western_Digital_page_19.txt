@@ -1,0 +1,90 @@
+--- Page 1 ---
+SECTION 3
+INTERFACE TIMING
+3.1   HOST INTERFACE TIMING
+3.1.1 HOST TASK FILE READ TIMING
+The task files read by the host are physically located
+in the WD1010 Winchester Disk Controller. The error
+register is located in the WD1014 EDS device, and the
+status register is implemented using TTL gates.
+Table 3-1.   Host Task File Read Timing
+SYMBOL
+CHARACTERISTIC
+MIN.
+MAX.       UNITS
+TSET
+Addr, Card select setup to RE
+200
+ns
+tHLD
+Addr, Card select hold from RE
+0
+ns
+tRE
+Read enable pulsewidth
+0.4
+10
+us
+TRDR
+Read Recovery time
+300
+ns
+tDA
+Data access after RE active
+400
+ns
+tDH
+Data hold after RE inactive
+25
+ns
+ADDR
+A0A1A2 STABLE
+tHLD
+CS
+ISET
+tRDR
+RE
+tRE
+tDA
+tDH
+DATA VALID
+DBO-7
+Figure 3-1.   Host Task File Read Timing
+3.1.2 HOST TASK FILE WRITE TIMING
+The task files written to by the host are physically
+located in the WD1010 device except for the com-
+mand register, which is located in the WD1014 EDS
+device.
+Table 3-2.   Host Task File Write Timing
+SYMBOL
+CHARACTERISTIC
+MIN.
+MAX.       UNITS
+tSET
+Addr, Card select setup to WE
+0.1
+10
+us
+tHLD
+Addr, Card select hold from WE
+30
+ns
+tWE
+Write enable pulsewidth
+0.2
+10
+us
+tWER
+Write Recovery time
+1.0
+us
+tDS
+Data access setup to WE active
+0.2
+10
+us
+tDH
+Data hold after WE inactive
+10
+ns
+3-1

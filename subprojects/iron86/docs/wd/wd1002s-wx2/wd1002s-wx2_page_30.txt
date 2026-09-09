@@ -1,0 +1,50 @@
+--- Page 1 ---
+TABLE 5-5. CONTROLLER RETURNED ERROR CODES
+HEX
+CODE
+DEFINITION
+00        No error detected.
+02        No SC signal from the drive. The WD1002S-WX2 has not received a SC from the drive within
+one. second (3.5 seconds with WD1015-24) following the last step pulse of a non-buffered
+seek operation.
+03        Write Fault signal received from the drive. This error is reported when the WD1002S-WX2
+detects WF asserted by a drive either at the completion of a Sector Data Transfer or after
+initially selecting a drive and the drive indicates ready.
+04
+Drive Not Ready. The WD1002S-WX2 reports this error when DRDY is not received from the
+drive at the time selection is attempted, or is de-asserted after the drive has been selected.
+06        Track 0 Not Found. This error is reported during a Recalibrate command if TK000 is not
+received from the drive before stepping the Read/Write Heads 1024 steps.
+08
+Drive Still Seeking. This status is returned in response to a Test Drive Ready command when a
+drive performing a buffered seek has not yet asserted SC.
+11
+Uncorrectable Data Error. The ECC logic detected an error burst greater than its correction
+capabilities. The data in the Sector Buffer is not sent to the Host.
+12        Data Address Mark Not Found. The proper Sector ID was read by the drive but failed to detect
+the Data Address Mark.
+15        Seek Error. The desired Sector ID field could not be found on the selected track, or a CRC
+error occurred on the ID field.
+18
+Correctable Data Error. An error occurred in the data field that was within the tolerance of
+the ECC logic and was corrected. The data in the Sector Buffer is transmitted to the Host.
+This status is set as a warning to the Host that a marginal condition may exist.
+19
+Track Is Flagged Bad. A sector had been encountered that has the Bad Block Mark set in the
+ID Field. The Format Bad Track command records this bit in all sectors of the designated flag-
+ging them all as bad. No retries are attempted in response to this error.
+20
+Invalid Command. The WD1002S-WX2 has received a command with an invalid class or
+op code, Interleave Factor.
+21
+Illegal Sector Address. This error is asserted when a command attempts to address a sector
+beyond the capacity of the drive. This could be at the time the command is issued, or in the
+case of a multiple sector transfer, after the last available sector has been used.
+30        Sector Buffer Error. An error occurred while performing Sector Buffer Diagnostics (Command
+Code EO and E4). A disk drive is not involved in this test.
+31
+Controller ROM checksum Error. A ROM checksum error was detected during the Controller
+Diagnostic command (E4).
+32        ECC Polynomial Error. During the Controller Diagnostic command (E4), the hardware ECC
+generator (WD11C00-17) failed its test.
+5-6

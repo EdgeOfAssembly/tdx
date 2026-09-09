@@ -1,0 +1,25 @@
+--- Page 1 ---
+TABLE 4-3 CONTROLLER-HOST ADAPTER HANDSHAKING
+NAME
+DRV/RCVR
+DEFINITION
+REQ-
+Drv OC
+Request:        The   controller sends this
+active low signal to the host adapter for
+each     byte     transferred     across     the
+interface.    This signal qualifies signals
+I-/O, C-/D and MSG-.
+ACK-
+Rcvr, 220/330
+Acknowledge:
+The     host     adapter
+generates   this   active   low   signal   in
+response to the REQ- signal from the
+controller when the host is ready to
+receive or transmit a byte of data.    In
+order to complete the handshake, the
+host adapter must send an acknowledge
+(ACK-) in   response to each   request
+(REQ-) from the controller.
+Page -21-

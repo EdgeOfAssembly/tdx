@@ -1,0 +1,89 @@
+--- Page 1 ---
+WD1002
+INTRQ >
+MR
+DAL4
+Q
+CS
+SYSTEM
+WE
+INTRQ
+AO
+DMA
+INTRQ
+Figure 7-1.   Interrupt Selection Circuit
+7.4.5   SIMULATED COMPLETIONS
+All WD1002-05 commands (except multiple sector
+3. Wait for interrupt or for BUSY bit in status register
+transfers) act in precisely the same manner, whether
+to be reset
+or not an error was encountered. The only way to de
+4. Check error bit in status register for proper
+termine whether an error has occurred is to sample
+completion
+the error bit in the status register. Simulated comple-
+To execute a
+or multiple
+tions offer the system designer the following tangi-
+mand in DMA single mode with
+sector Type III com-
+ble benefits:
+interrupts, the system soft-
+ware goes through the following steps:
+Simplifies masking and generation of interrupts
+1. Set up task file and issue command
+Simplifies non-error handling portions of the
+2. Set up DMA controller (DMA controller
+system software
+data from memory to WD1002-05) (WD1002-05 will move will
+Eliminates the software overhead of handling
+attempt to write sector or format)
+different types of errors
+3. Wait for interrupt from WD1002-05
+Simplifies   system    software   error   handling
+4. Check error bit in status register
+validation (any error is handled the same way as
+completion
+for proper
+any other error)
+Note: Steps 1 and 2 above can be reversed.
+Prevents system failure in the event of some
+obscure error condition that the system program-
+7.5.1   FORMATTING
+mer did not anticipate
+The format command is very similar to the write sec-
+7.5   TYPE III COMMAND PROGRAMMING
+tor command, except that the sector buffer is filled
+Write sector and format
+with interleave and bad block information instead of
+are Type III commands.
+with user data. Two bytes will be written to the
+These commands are characterized by the transfer of
+for each sector to be formatted.
+buffer
+al block of data from the host to the WD1002-05 buffer
+Like the Type II commands, these commands feature
+The first (lower) byte will be either a 00 or an 80 in hex.
+implied seek with an implicit stepping rate. To exe-
+If the lower byte is a 00, the sector is marked as good.
+cute a single sector Type III command in pro-
+If the lower byte is an 80, and there is any attempt to
+grammed I/O mode, the system software must go
+read it or write to it, the sector will set the bad block
+through the following   functions in the order
+bit in the status register. See cautions regarding
+indicated:
+media imperfections mapping in subsection 7.5 Bad
+Block Mapping.
+1. Set up task file and issue command
+2. Perform block
+The second (upper) byte is the logical sector number
+move from system memory to
+of the next sector to be formatted. This number
+WD1002-05 buffer (WD1002-05 will attempt to write
+be recorded on the disk. The sector
+will
+a sector or format)
+is not used during format.
+number register
+7-4

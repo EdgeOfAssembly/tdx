@@ -1,0 +1,41 @@
+--- Page 1 ---
+SECTION IV
+INTERFACE TIMING
+4.1   TIMING
+Timing diagrams are shown in Figures 4-1 through        for both cases. The processor executes I/O and
+4-4 and their values are listed in Tables 4-1 through        memory reads from the ports and the on-board
+4-4 respectively. Since the Controller I/O ports        BIOS ROM, and writes to the ports. DMA is
+can be accessed by either the Host system DMA        used for data transfers between the data I/O port
+Controller or the Host processor, timing is given        and the Host RAM.
+A19-A0,
+ADDRESS WILL BE VALID
+AEN
+IOR , MEMR
++t AS1
+OE
+I-toHI
+D7 - DO
+DATA. MUST
+I
+BE VALID
+*ACC(BIOS)
+FIGURE 4-1    HOST I/O OR BIOS READ TIMING
+TABLE 4-1    HOST I/O OR BIOS READ TIMING
+SYMBOL
+CHARACTERISTIC
+MIN.
+MAX.
+tAS1
+Address Setup Time
+50
+tACC
+Address Access Time    (BIOS)
+250
+toe
+Output Enable Time
+175
+DH1
+Data Hold Time
+0
+NOTE: All units in Table 4-1 are in nsec.
+4-1

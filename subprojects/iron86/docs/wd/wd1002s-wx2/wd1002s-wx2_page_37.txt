@@ -1,0 +1,128 @@
+--- Page 1 ---
+P1-A
+DATA BUS
+WIN
+H C ADA19
+AO-A12
+BDO-BD7
+DRIVERS
+IKOOD,
+RIOS
+DO-D7
+WCLK
+HSELO-HSEL3*
+ROMEN*
+HR
+DSELO*
+*
+AZ-A7,A9,A13-A19     DEVICE
+4
+RD
+DSEL1
+ACCOSS
+C/D
+STEP
+MEMR
+DADD
+DADD
+1/0
+WD1015
+A
+CSECC      LURKCER
+DO-D7
+DU-D7
+IREQ      CONTROL
+V
+PROCESSOR
+AEN      T
+AEN a
+REQ
+BUSY 4
+P1-B
+ECC NOT 0
+MEHR
+CONFI FIGURATION OPO-OP3
+H C
+JUMPERS*
+OPO-OP3
+L/S/DIR/WPC
+S      DACK3
+DACK3
+ADO-AD7
+I      TOR
+TOR
+TOW
+TOW     WD1100-17
+RESET
+RESET,     ARRAC
+ADO-AD7
+* DRO3
+DRQ3
+IROS(TRO2)
+IRQ5(IRQ2)*
+J2,J3
+WMFM
+RAMCS
+D D    RMFM
+RAMMR -
+BEETOR
+TEARLY
+WCLK       -
+RAO-RA9
+TNOMINAL
+DELAY    TLATE
+WD10C20
+E a
+-
+WCLK
+ZOLYDR
+RG*
+J1
+ADO-AD7
+WD
+A
+DRUN
+DRDY
+-
+EARLY
+RCLK
+RA10
+SC
+A
+LATE
+RDATA
+CS1010
+INDEX
+WINT
+TKOOO
+RDATA
+B
+RCLK
+ERAE
+WF
+CONTROLLER DRUN
+RWC*
+MCLK
+WG
+EEo
+RA10
+RAS
+4 RA8
+MOLAPERNT RCEETURS AOARCTANLDOT INFORMATION ON
+FIGURE 6-2. WD1002S-WX2 DETAILED BLOCK DIAGRAM
+6.3 BUS PROTOCOL
+The Host and WD1002S-WX2 protocol consists of
+Depending upon the type of command being
+the following bus phases:
+executed, the Data phase does not always occur.
+Select
+Also, depending upon the type of errors detected
+Command
+by the WD1015 or WD1010A-05, an immediate
+Data
+skip to the Completion phase can occur. Execution
+Completion
+of the Completion phase always occurs regardless
+of the command or error.
+Normal execution occurs in the order listed above.
+6-2

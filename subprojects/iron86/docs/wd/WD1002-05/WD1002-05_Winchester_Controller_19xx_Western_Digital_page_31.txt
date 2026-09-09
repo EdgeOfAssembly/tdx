@@ -1,0 +1,132 @@
+--- Page 1 ---
+SECTION 6
+(
+COMMANDS
+6.1   GENERAL
+Table 6-1.   Command Types
+The WD1002-05 executes six, easy-to-use, macro
+commands. Most commands feature automatic "im-
+BITS
+plied" seek, which means the host system need not
+TYPE   COMMAND
+7 - 6 5 - 4 3 2 1 0
+tell the WD1002-05 where the RW heads of each
+I
+Test
+1 0 0 1 0 0 0 0
+drive are nor when to move them. The controller auto
+I
+Restore
+0 0 0 1 13 12 r1 ro
+matically performs all retries on errors encountered,
+I
+Seek
+0 1 1 1
+r1 ro
+including data ECC errors. If the RW head mis-posi-
+tions, the WD1002-05 will automatically perform a
+II
+Read Sector
+0 0    1   0
+V
+0
+restore and a re-seek. If the error is completely unre-
+III
+Write Sector
+0 0 1   1 0 M        0
+coverable, the WD1002-05 will simulate a normal
+III
+Format Track        0 1   U   1 0 U   0 0
+completion to simplify the host's software.
+Thë commands executed by the WD1002-05 are
+L = Long bit
+0 = normal mode
+mapped to the commands supported     the two disk
+M = Multiple sect 0 =
+by
+:
+Single sector
+controllers. The format of the WD1002-05 commands
+D = read interrupt: 0 = Programmed IIO Mode
+is the same as that of the WD1010 commands. The
+onboard WD1015 buffer manager translates this for-
+1 = Long mode
+mat for the WD2797, transparent to the user. Error cor-
+1 = Multiple sector
+1 = DMA Mode
+rection and the Long modes are only supported for
+the Winchester Disk Controller, therefore the host
+6.2.1   STEPPING RATES
+must set SDH bit 7 = 0 and L = 0 for all the
+commands when a floppy disk is selected.
+Table 6-2.
+r3-r0 I Stepping Rate
+Commands are executed by loading the command
+byte into the command register while the controller
+r3-r0    Winchester Disk Drives   Floppy Disk Drives
+is not busy. The host must observe the following
+simple protocol:
+0000
+~35 us
+~15 us
+The task file must be loaded prior to issuing a
+0001
+0.5 ms
+1.0 ms
+command. Only parameters that change from the
+0010
+1.0 ms
+2.0 ms
+previous command need be entered.
+0011
+1.5 ms
+3.0 ms
+For any write/format operations, the sector buffer
+0100
+2.0 ms
+must be filled with the appropriate data before the
+4.0 ms
+command can be executed by the WD1002-05.
+0101
+2.5 ms
+5.0 ms
+No command will execute if the seek complete or
+0110
+3.0 ms
+6.0 ms
+ready lines are false, or the write fault line is true.
+0111
+3.5 ms
+8.0 ms
+Normally it is not necessary to poll these signals be-
+fore issuing a command. If the WD1002-05 receives a
+1000
+4.0 ms
+10   ms
+command that is not defined in Table 6-1, undefined
+1001
+4.5 ms
+12   ms
+results will occur.
+1010
+5.0 ms
+14    ms
+6.2   WD1002-05 COMMAND SUMMARY
+1011
+5.5 ms
+16   ms
+Commands have been divided into three types as
+1100
+6.0 ms
+18   ms
+summarized in Table 6-1.
+1101
+6.5 ms
+20   ms
+1110
+7.0 ms
+25   ms
+1111
+7.5 ms
+40   ms
+6-1

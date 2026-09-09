@@ -1,0 +1,39 @@
+--- Page 1 ---
+TABLE 2-6
+CONNECTORS J2 and J3, SIGNALS, PIN ASSIGNMENTS
+Signal Pin
+Ground Return
+Signal Name
+1
+2
+Drive Selected
+3
+4
+Spare / -Recalibrate
+5
+6
+Spare / -Write protected
+7
+8
+Reserved
+9
+10
+Spare / -Cartridge Changed
+11
+12
+Ground (GND)
+13
+MFM Write Data+
+14
+MFM Write Data-
+15
+16
+Ground (GND)
+17
+MFM Read Data+
+18
+MFM Read Data-
+20
+19
+Ground (GND)
+Page -9-
