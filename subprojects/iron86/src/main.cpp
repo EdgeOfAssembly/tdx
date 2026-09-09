@@ -7,6 +7,7 @@
 #include "iron86/hdc.h"
 #include "iron86/pc.h"
 
+#include <cstdarg>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -15,49 +16,96 @@
 #include <iterator>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 static const char *k_version = "0.17";
 
-static void usage(FILE *out)
+/**
+ * @brief write(2) the whole buffer (stdio FILE* is lost on SIGTERM).
+ * @param[in] fd Host descriptor (1 or 2).
+ * @param[in] s  Bytes; may be NULL only when @p n is 0.
+ * @param[in] n  Length.
+ */
+static void fd_write(int fd, const char *s, size_t n)
 {
-    std::fputs(
-        "Usage: iron86 [options] [file.com]\n"
-        "       iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]\n"
-        "       iron86 --floppy-a PATH [--floppy-b PATH] [--keys STRING]\n"
-        "\n"
-        "  Chip-level 8086 (C++23, Py86 port). Hardware only — no DOS.\n"
-        "  .COM loads at 1000:0100. --floppy-a without --bios: 0000:7C00.\n"
-        "  --bios: 8K 5150 at FE000; 40K U19+U18 or 64K 5160 at F0000.\n"
-        "  PPI/PIT/PIC/DMA/FDC (PyFloppy uPD765) for 1981 POST + INT 19h.\n"
-        "  --hdc: Xebec S1410 @ 320h IRQ5 DMA3; IBM ROS at C8000 if found.\n"
-        "  Fast-post (BDA 1234h) is default. PC speaker BEL is default.\n"
-        "  Floppy PATH is a 160K/180K/320K/360K/720K/1.2M/1.44M image\n"
-        "  (CHS from exact size, else nearest) or a directory packed as FlopFS\n"
-        "  (360K if it fits, else 720K 80/2/9). No 2.88M on PC/XT/AT.\n"
-        "  CLI overrides INI overrides preset. Options and operands may be interleaved.\n"
-        "\n"
-        "Options:\n"
-        "  -h, --help           Show this help and exit\n"
-        "  -v, --version        Show version and exit\n"
-        "  --config PATH        INI file (default: iron86.ini in cwd if present)\n"
-        "  --preset NAME        ibm-pc (default), ibm-xt; ibm-at/8286 not yet\n"
-        "  --bios FILE          8K@FE000, 40K U19+U18, or 64K 5160@F0000\n"
-        "  --no-fast-post       Cold POST (do not set RESET_FLAG=1234h)\n"
-        "  --no-audio           Disable PC speaker BEL (default: on)\n"
-        "  --mda                MDA 80×25 (B000, DIP 0x3D). Default CGA\n"
-        "  --floppy-a PATH      Drive 0: image or directory (pack FlopFS)\n"
-        "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
-        "  --floppy PATH        Alias for --floppy-a\n"
-        "  --hdc PATH           Raw HDD image (Xebec Type-1 306x4x17)\n"
-        "  --hdc-rom FILE       Xebec option ROM at C8000 (IBM 5000059)\n"
-        "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
-        "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
-        "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
-        "  --prefetch-bytes N   BIU prefetch queue (default: 4; 0=off, 6=8086; max 1024)\n"
-        "\n",
-        out);
-    std::fprintf(out, "iron86 %s\n", k_version);
+    while (n > 0u)
+    {
+        const ssize_t w = ::write(fd, s, n);
+        if (w <= 0)
+        {
+            return;
+        }
+        s += static_cast<size_t>(w);
+        n -= static_cast<size_t>(w);
+    }
+}
+
+static void fd_puts(int fd, const char *s)
+{
+    if (s == nullptr)
+    {
+        return;
+    }
+    fd_write(fd, s, std::strlen(s));
+}
+
+static void fd_printf(int fd, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+
+static void fd_printf(int fd, const char *fmt, ...)
+{
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    const int n = std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    if (n <= 0)
+    {
+        return;
+    }
+    const size_t cap = sizeof(buf) - 1u;
+    const size_t w = (static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : cap;
+    fd_write(fd, buf, w);
+}
+
+static void usage(int fd)
+{
+    fd_puts(fd,
+            "Usage: iron86 [options] [file.com]\n"
+            "       iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]\n"
+            "       iron86 --floppy-a PATH [--floppy-b PATH] [--keys STRING]\n"
+            "\n"
+            "  Chip-level 8086 (C++23, Py86 port). Hardware only — no DOS.\n"
+            "  .COM loads at 1000:0100. --floppy-a without --bios: 0000:7C00.\n"
+            "  --bios: 8K 5150 at FE000; 40K U19+U18 or 64K 5160 at F0000.\n"
+            "  PPI/PIT/PIC/DMA/FDC (PyFloppy uPD765) for 1981 POST + INT 19h.\n"
+            "  --hdc: Xebec S1410 @ 320h IRQ5 DMA3; IBM ROS at C8000 if found.\n"
+            "  Fast-post (BDA 1234h) is default. PC speaker BEL is default.\n"
+            "  Floppy PATH is a 160K/180K/320K/360K/720K/1.2M/1.44M image\n"
+            "  (CHS from exact size, else nearest) or a directory packed as FlopFS\n"
+            "  (360K if it fits, else 720K 80/2/9). No 2.88M on PC/XT/AT.\n"
+            "  CLI overrides INI overrides preset. Options and operands may be interleaved.\n"
+            "\n"
+            "Options:\n"
+            "  -h, --help           Show this help and exit\n"
+            "  -v, --version        Show version and exit\n"
+            "  --config PATH        INI file (default: iron86.ini in cwd if present)\n"
+            "  --preset NAME        ibm-pc (default), ibm-xt; ibm-at/8286 not yet\n"
+            "  --bios FILE          8K@FE000, 40K U19+U18, or 64K 5160@F0000\n"
+            "  --no-fast-post       Cold POST (do not set RESET_FLAG=1234h)\n"
+            "  --no-audio           Disable PC speaker BEL (default: on)\n"
+            "  --mda                MDA 80×25 (B000, DIP 0x3D). Default CGA\n"
+            "  --floppy-a PATH      Drive 0: image or directory (pack FlopFS)\n"
+            "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
+            "  --floppy PATH        Alias for --floppy-a\n"
+            "  --hdc PATH           Raw HDD image (Xebec Type-1 306x4x17)\n"
+            "  --hdc-rom FILE       Xebec option ROM at C8000 (IBM 5000059)\n"
+            "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
+            "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
+            "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
+            "  --prefetch-bytes N   BIU prefetch queue (default: 4; 0=off, 6=8086; max 1024)\n"
+            "\n");
+    fd_printf(fd, "iron86 %s\n", k_version);
 }
 
 /**
@@ -135,8 +183,8 @@ static unsigned clamp_prefetch(unsigned long v)
 {
     if (v > iron86::k_prefetch_max)
     {
-        std::fprintf(stderr, "iron86: --prefetch-bytes %lu clamped to %u\n", v,
-                     iron86::k_prefetch_max);
+        fd_printf(STDERR_FILENO, "iron86: --prefetch-bytes %lu clamped to %u\n", v,
+                  iron86::k_prefetch_max);
         return iron86::k_prefetch_max;
     }
     return static_cast<unsigned>(v);
@@ -161,8 +209,8 @@ static bool mount_floppy(iron86::pc *p, uint8_t unit, const char *path)
     }
     if (!p->attach_floppy_path(unit, path))
     {
-        std::fprintf(stderr, "iron86: cannot attach floppy %c: %s\n",
-                     (unit == 0) ? 'A' : 'B', path);
+        fd_printf(STDERR_FILENO, "iron86: cannot attach floppy %c: %s\n",
+                  (unit == 0) ? 'A' : 'B', path);
         return false;
     }
     return true;
@@ -181,6 +229,56 @@ static bool b800_has_prompt(const iron86::cpu &c)
         }
     }
     return false;
+}
+
+/** @brief One write(2) of 25 CGA text rows (no FILE* buffering). */
+static void dump_b800(const iron86::cpu &c)
+{
+    char buf[2304];
+    size_t o = 0;
+    uint8_t row = 0;
+    for (; row < 25u; row++)
+    {
+        const int n = std::snprintf(buf + o, sizeof(buf) - o, "B800[%u]: ",
+                                    static_cast<unsigned>(row));
+        if ((n < 0) || (static_cast<size_t>(n) >= (sizeof(buf) - o)))
+        {
+            break;
+        }
+        o += static_cast<size_t>(n);
+        size_t col = 0;
+        for (; col < 80u; col++)
+        {
+            if ((o + 1u) >= sizeof(buf))
+            {
+                break;
+            }
+            const uint8_t ch =
+                c.mem_read8(0xB8000u + (static_cast<uint32_t>(row) * 80u +
+                                        static_cast<uint32_t>(col)) *
+                                           2u);
+            buf[o++] = ((ch >= 32u) && (ch < 127u)) ? static_cast<char>(ch) : ' ';
+        }
+        if ((o + 1u) >= sizeof(buf))
+        {
+            break;
+        }
+        buf[o++] = '\n';
+    }
+    fd_write(STDERR_FILENO, buf, o);
+}
+
+static void emit_tty(const std::string &t)
+{
+    if (t.empty())
+    {
+        return;
+    }
+    fd_write(STDOUT_FILENO, t.data(), t.size());
+    if (t.back() != '\n')
+    {
+        fd_write(STDOUT_FILENO, "\n", 1);
+    }
 }
 
 static const char *find_default_xebec_ros()
@@ -216,9 +314,11 @@ static bool mount_hdc(iron86::pc *p, const char *path, uint32_t cyl, uint32_t he
     }
     if (!p->attach_hdc_path(path, cyl, heads, spt))
     {
-        std::fprintf(stderr, "iron86: cannot attach hdc %s\n", path);
+        fd_printf(STDERR_FILENO, "iron86: cannot attach hdc %s\n", path);
         return false;
     }
+    fd_printf(STDERR_FILENO, "HDC %s  %ux%ux%u  %u sectors\n", path, cyl, heads, spt,
+                 cyl * heads * spt);
     return true;
 }
 
@@ -232,25 +332,25 @@ static bool mount_hdc_rom(iron86::pc *p, const char *explicit_rom)
     {
         if (!p->load_hdc_rom_path(explicit_rom))
         {
-            std::fprintf(stderr, "iron86: cannot load hdc-rom %s\n", explicit_rom);
+            fd_printf(STDERR_FILENO, "iron86: cannot load hdc-rom %s\n", explicit_rom);
             return false;
         }
-        std::fprintf(stderr, "Xebec ROS %s at C8000\n", explicit_rom);
+        fd_printf(STDERR_FILENO, "Xebec ROS %s at C8000\n", explicit_rom);
         return true;
     }
     const char *ros = find_default_xebec_ros();
     if (ros == nullptr)
     {
-        std::fputs("iron86: warning: no Xebec ROS (set --hdc-rom or IRON86_XEBEC_ROM)\n",
-                   stderr);
+        fd_puts(STDERR_FILENO,
+                "iron86: warning: no Xebec ROS (set --hdc-rom or IRON86_XEBEC_ROM)\n");
         return true;
     }
     if (!p->load_hdc_rom_path(ros))
     {
-        std::fprintf(stderr, "iron86: warning: failed to map Xebec ROS %s\n", ros);
+        fd_printf(STDERR_FILENO, "iron86: warning: failed to map Xebec ROS %s\n", ros);
         return true;
     }
-    std::fprintf(stderr, "Xebec ROS %s at C8000\n", ros);
+    fd_printf(STDERR_FILENO, "Xebec ROS %s at C8000\n", ros);
     return true;
 }
 
@@ -258,7 +358,7 @@ int main(int argc, char **argv)
 {
     if (argc <= 1)
     {
-        usage(stdout);
+        usage(STDOUT_FILENO);
         return 0;
     }
     const char *path = nullptr;
@@ -279,12 +379,12 @@ int main(int argc, char **argv)
         const char *opt = nullptr;
         if ((std::strcmp(a, "-h") == 0) || (std::strcmp(a, "--help") == 0))
         {
-            usage(stdout);
+            usage(STDOUT_FILENO);
             return 0;
         }
         if ((std::strcmp(a, "-v") == 0) || (std::strcmp(a, "--version") == 0))
         {
-            std::printf("iron86 %s\n", k_version);
+            fd_printf(STDOUT_FILENO, "iron86 %s\n", k_version);
             return 0;
         }
         t = take_path_opt(a, "--config", &config_path, &i, argc, argv);
@@ -292,7 +392,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --config needs PATH\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --config needs PATH\n");
                 return 2;
             }
             continue;
@@ -302,7 +402,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --preset needs NAME\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --preset needs NAME\n");
                 return 2;
             }
             {
@@ -310,12 +410,12 @@ int main(int argc, char **argv)
                 const int r = iron86::parse_preset_name(opt, &p);
                 if (r < 0)
                 {
-                    std::fprintf(stderr, "iron86: unknown preset %s\n", opt);
+                    fd_printf(STDERR_FILENO, "iron86: unknown preset %s\n", opt);
                     return 2;
                 }
                 if (r > 0)
                 {
-                    std::fprintf(stderr, "iron86: preset %s is not yet implemented\n",
+                    fd_printf(STDERR_FILENO, "iron86: preset %s is not yet implemented\n",
                                  iron86::machine_preset_name(p));
                     return 2;
                 }
@@ -329,7 +429,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --floppy-a needs PATH\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --floppy-a needs PATH\n");
                 return 2;
             }
             cli.floppy_a = opt;
@@ -340,7 +440,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --floppy-b needs PATH\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --floppy-b needs PATH\n");
                 return 2;
             }
             cli.floppy_b = opt;
@@ -351,7 +451,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --floppy needs PATH\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --floppy needs PATH\n");
                 return 2;
             }
             cli.floppy_a = opt;
@@ -362,7 +462,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --hdc-rom needs FILE\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --hdc-rom needs FILE\n");
                 return 2;
             }
             hdc_rom = opt;
@@ -373,7 +473,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --hdc needs PATH\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --hdc needs PATH\n");
                 return 2;
             }
             cli.hdc_image = opt;
@@ -384,7 +484,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --bios needs FILE\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --bios needs FILE\n");
                 return 2;
             }
             cli.bios_rom = opt;
@@ -415,7 +515,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --exec-map needs FILE\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --exec-map needs FILE\n");
                 return 2;
             }
             continue;
@@ -425,7 +525,7 @@ int main(int argc, char **argv)
         {
             if (t < 0)
             {
-                std::fputs("iron86: --keys needs STRING\n", stderr);
+                fd_puts(STDERR_FILENO, "iron86: --keys needs STRING\n");
                 return 2;
             }
             continue;
@@ -437,7 +537,7 @@ int main(int argc, char **argv)
             {
                 if (t < 0)
                 {
-                    std::fputs("iron86: --prefetch-bytes needs N\n", stderr);
+                    fd_puts(STDERR_FILENO, "iron86: --prefetch-bytes needs N\n");
                     return 2;
                 }
                 cli.prefetch_bytes = clamp_prefetch(pv);
@@ -447,8 +547,8 @@ int main(int argc, char **argv)
         }
         if (a[0] == '-')
         {
-            std::fprintf(stderr, "iron86: unknown option %s\n", a);
-            usage(stderr);
+            fd_printf(STDERR_FILENO, "iron86: unknown option %s\n", a);
+            usage(STDERR_FILENO);
             return 2;
         }
         path = a;
@@ -459,7 +559,7 @@ int main(int argc, char **argv)
         std::string err;
         if (!iron86::merge_machine_config(config_path, cli, &cfg, &err))
         {
-            std::fprintf(stderr, "iron86: %s\n", err.c_str());
+            fd_printf(STDERR_FILENO, "iron86: %s\n", err.c_str());
             return 2;
         }
     }
@@ -468,18 +568,23 @@ int main(int argc, char **argv)
     const char *bios = cfg.bios_rom.empty() ? nullptr : cfg.bios_rom.c_str();
     const char *hdc = cfg.hdc_image.empty() ? nullptr : cfg.hdc_image.c_str();
     const unsigned prefetch_bytes = clamp_prefetch(cfg.prefetch_bytes);
-    /* A .COM operand is exclusive: cwd iron86.ini must not steal the run. */
+    const bool cli_hdc = !cli.hdc_image.empty();
+    /* A .COM operand ignores INI floppy/BIOS so cwd iron86.ini cannot steal
+     * tiny.com tests. CLI --hdc still attaches (hdcprobe). */
     if (path != nullptr)
     {
         floppy_a = nullptr;
         floppy_b = nullptr;
         bios = nullptr;
-        hdc = nullptr;
+        if (!cli_hdc)
+        {
+            hdc = nullptr;
+        }
     }
 
     if ((path == nullptr) && (floppy_a == nullptr) && (floppy_b == nullptr) && (bios == nullptr))
     {
-        usage(stdout);
+        usage(STDOUT_FILENO);
         return 0;
     }
 
@@ -488,14 +593,14 @@ int main(int argc, char **argv)
         const std::vector<uint8_t> rom = slurp(bios);
         if (rom.empty())
         {
-            std::fprintf(stderr, "iron86: cannot read BIOS %s\n", bios);
+            fd_printf(STDERR_FILENO, "iron86: cannot read BIOS %s\n", bios);
             return 1;
         }
         iron86::pc p;
         p.c.set_prefetch_bytes(prefetch_bytes);
         if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
         {
-            std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
+            fd_printf(STDERR_FILENO, "iron86: cannot create exec-map %s\n", exec_map);
             return 1;
         }
         if (no_audio)
@@ -516,7 +621,7 @@ int main(int argc, char **argv)
         }
         if (!p.c.load_bios(rom.data(), rom.size()))
         {
-            std::fprintf(stderr,
+            fd_printf(STDERR_FILENO,
                          "iron86: unsupported BIOS size %zu (need 8K, 40K U19+U18, or 64K)\n",
                          rom.size());
             return 1;
@@ -545,17 +650,17 @@ int main(int argc, char **argv)
         }
         if (rom.size() == 65536u)
         {
-            std::fprintf(stderr, "5160 64K BIOS %zu bytes at F0000, reset FFFF:0000%s\n",
+            fd_printf(STDERR_FILENO, "5160 64K BIOS %zu bytes at F0000, reset FFFF:0000%s\n",
                          rom.size(), no_fast_post ? "" : " fast-post");
         }
         else if (rom.size() == 40960u)
         {
-            std::fprintf(stderr, "5160 40K BIOS (U19+U18) at F0000/F8000%s\n",
+            fd_printf(STDERR_FILENO, "5160 40K BIOS (U19+U18) at F0000/F8000%s\n",
                          no_fast_post ? "" : " fast-post");
         }
         else
         {
-            std::fprintf(stderr, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000%s\n",
+            fd_printf(STDERR_FILENO, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000%s\n",
                          rom.size(), no_fast_post ? "" : " fast-post");
         }
         uint64_t n = 0;
@@ -571,31 +676,10 @@ int main(int argc, char **argv)
                 break;
             }
         }
-        {
-            char line[81];
-            uint8_t row = 0;
-            size_t col = 0;
-            for (row = 0; row < 25u; row++)
-            {
-                for (col = 0; col < 80u; col++)
-                {
-                    const uint8_t ch =
-                        p.c.mem_read8(0xB8000u + (static_cast<uint32_t>(row) * 80u +
-                                                  static_cast<uint32_t>(col)) *
-                                                     2u);
-                    line[col] = ((ch >= 32u) && (ch < 127u)) ? static_cast<char>(ch) : ' ';
-                }
-                line[80] = '\0';
-                std::fprintf(stderr, "B800[%u]: %s\n", row, line);
-            }
-        }
-        std::fputs(p.tty().c_str(), stdout);
-        if (!p.tty().empty() && (p.tty().back() != '\n'))
-        {
-            std::fputc('\n', stdout);
-        }
-        std::fprintf(stderr, "halted AX=%04X CS:IP=%04X:%04X last=%02X steps=%llu\n", p.c.ax(),
-                     p.c.cs(), p.c.ip(), p.c.last_op(), static_cast<unsigned long long>(n));
+        dump_b800(p.c);
+        emit_tty(p.tty());
+        fd_printf(STDERR_FILENO, "halted AX=%04X CS:IP=%04X:%04X last=%02X steps=%llu\n", p.c.ax(),
+                  p.c.cs(), p.c.ip(), p.c.last_op(), static_cast<unsigned long long>(n));
         return ((p.c.cs() == 0xF000) || (p.c.cs() < 0x2000)) ? 0 : 1;
     }
 
@@ -605,7 +689,7 @@ int main(int argc, char **argv)
         p.c.set_prefetch_bytes(prefetch_bytes);
         if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
         {
-            std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
+            fd_printf(STDERR_FILENO, "iron86: cannot create exec-map %s\n", exec_map);
             return 1;
         }
         if (no_audio)
@@ -614,7 +698,7 @@ int main(int argc, char **argv)
         }
         if (floppy_a == nullptr)
         {
-            std::fputs("iron86: --floppy-b needs --floppy-a or --bios to boot\n", stderr);
+            fd_puts(STDERR_FILENO, "iron86: --floppy-b needs --floppy-a or --bios to boot\n");
             return 2;
         }
         if (!mount_floppy(&p, 0, floppy_a))
@@ -676,31 +760,10 @@ int main(int argc, char **argv)
                 }
             }
         }
-        std::fputs(p.tty().c_str(), stdout);
-        if (!p.tty().empty() && (p.tty().back() != '\n'))
-        {
-            std::fputc('\n', stdout);
-        }
-        std::fprintf(stderr, "halted AX=%04X CS:IP=%04X:%04X last=%02X steps=%llu\n", p.c.ax(),
-                     p.c.cs(), p.c.ip(), p.c.last_op(), static_cast<unsigned long long>(n));
-        {
-            char line[81];
-            uint8_t row = 0;
-            size_t col = 0;
-            for (row = 0; row < 25u; row++)
-            {
-                for (col = 0; col < 80u; col++)
-                {
-                    const uint8_t ch =
-                        p.c.mem_read8(0xB8000u + (static_cast<uint32_t>(row) * 80u +
-                                                  static_cast<uint32_t>(col)) *
-                                                     2u);
-                    line[col] = ((ch >= 32u) && (ch < 127u)) ? static_cast<char>(ch) : ' ';
-                }
-                line[80] = '\0';
-                std::fprintf(stderr, "B800[%u]: %s\n", row, line);
-            }
-        }
+        emit_tty(p.tty());
+        fd_printf(STDERR_FILENO, "halted AX=%04X CS:IP=%04X:%04X last=%02X steps=%llu\n", p.c.ax(),
+                  p.c.cs(), p.c.ip(), p.c.last_op(), static_cast<unsigned long long>(n));
+        dump_b800(p.c);
         const bool ok = (p.tty().find("A>") != std::string::npos) ||
                         (p.tty().find("FCB OK") != std::string::npos);
         return ok ? 0 : 1;
@@ -709,14 +772,42 @@ int main(int argc, char **argv)
     const std::vector<uint8_t> buf = slurp(path);
     if (buf.empty())
     {
-        std::fprintf(stderr, "iron86: cannot open %s\n", path);
+        fd_printf(STDERR_FILENO, "iron86: cannot open %s\n", path);
         return 1;
+    }
+    if (hdc != nullptr)
+    {
+        iron86::pc p;
+        p.c.set_prefetch_bytes(prefetch_bytes);
+        if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
+        {
+            fd_printf(STDERR_FILENO, "iron86: cannot create exec-map %s\n", exec_map);
+            return 1;
+        }
+        if (!mount_hdc(&p, hdc, cfg.hdc_cylinders, cfg.hdc_heads, cfg.hdc_spt))
+        {
+            return 1;
+        }
+        p.wire_pc_hw();
+        p.c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xF4);
+        p.c.set_ivt(0x20, 0xF000, 0x0000);
+        p.c.set_ivt(0x21, 0xF000, 0x0000);
+        p.c.load_com(buf.data(), buf.size(), 0x1000);
+        uint64_t n = 0;
+        while ((!p.c.halted()) && (n < 1000000ull))
+        {
+            (void)p.c.step();
+            n++;
+        }
+        fd_printf(STDERR_FILENO, "halted AX=%04X CS:IP=%04X:%04X steps=%llu\n", p.c.ax(), p.c.cs(),
+                     p.c.ip(), static_cast<unsigned long long>(n));
+        return p.c.halted() ? 0 : 1;
     }
     iron86::cpu c;
     c.set_prefetch_bytes(prefetch_bytes);
     if ((exec_map != nullptr) && !c.open_exec_map(exec_map))
     {
-        std::fprintf(stderr, "iron86: cannot create exec-map %s\n", exec_map);
+        fd_printf(STDERR_FILENO, "iron86: cannot create exec-map %s\n", exec_map);
         return 1;
     }
     c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xF4);
@@ -729,7 +820,7 @@ int main(int argc, char **argv)
         (void)c.step();
         n++;
     }
-    std::fprintf(stderr, "halted AX=%04X CS:IP=%04X:%04X steps=%llu\n", c.ax(), c.cs(), c.ip(),
+    fd_printf(STDERR_FILENO, "halted AX=%04X CS:IP=%04X:%04X steps=%llu\n", c.ax(), c.cs(), c.ip(),
                  static_cast<unsigned long long>(n));
     return c.halted() ? 0 : 1;
 }

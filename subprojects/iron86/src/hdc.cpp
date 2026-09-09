@@ -9,9 +9,8 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdio>
 #include <cstring>
-#include <fstream>
-#include <iterator>
 
 namespace iron86
 {
@@ -55,33 +54,43 @@ bool hdc_xebec::attach(const char *path, uint32_t cylinders, uint32_t heads, uin
         return false;
     }
     close_file();
-    std::ifstream in(path, std::ios::binary);
-    if (!in)
+    /* One fopen + fread; istreambuf_iterator is per-byte and stalls ASAN on 10 MiB. */
+    std::FILE *fp = std::fopen(path, "r+b");
+    if (fp == nullptr)
     {
         return false;
     }
-    std::vector<uint8_t> data((std::istreambuf_iterator<char>(in)),
-                              std::istreambuf_iterator<char>());
-    in.close();
-    fp_ = std::fopen(path, "r+b");
-    if (fp_ == nullptr)
+    if (std::fseek(fp, 0, SEEK_END) != 0)
     {
+        std::fclose(fp);
         return false;
     }
+    const long sz = std::ftell(fp);
+    if (sz < 0)
+    {
+        std::fclose(fp);
+        return false;
+    }
+    std::rewind(fp);
     cylinders_ = cylinders;
     heads_ = heads;
     spt_ = spt;
     sector_count_ = cylinders * heads * spt;
     const uint32_t need = sector_count_ * k_hdc_sector_size;
-    image_ = std::move(data);
-    if (image_.size() < need)
+    const size_t file_n = static_cast<size_t>(sz);
+    const size_t load_n =
+        (file_n < static_cast<size_t>(need)) ? file_n : static_cast<size_t>(need);
+    image_.assign(static_cast<size_t>(need), 0);
+    if (load_n > 0u)
     {
-        image_.resize(need, 0);
+        if (std::fread(image_.data(), 1, load_n, fp) != load_n)
+        {
+            image_.clear();
+            std::fclose(fp);
+            return false;
+        }
     }
-    else if (image_.size() > need)
-    {
-        image_.resize(need);
-    }
+    fp_ = fp;
     path_ = path;
     attached_ = true;
     cur_cyl_[0] = 0;

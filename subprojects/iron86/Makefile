@@ -83,6 +83,14 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	grep -q 'not yet' /tmp/iron86-at.err
 	./iron86 --preset 8286 >/tmp/iron86-8286.out 2>/tmp/iron86-8286.err; test $$? -eq 2
 	grep -q 'not yet' /tmp/iron86-8286.err
+	dd if=/dev/zero of=/tmp/iron86-hdc-smoke.img bs=512 count=1 status=none
+	./iron86 tests/fixtures/hdcprobe.com --hdc /tmp/iron86-hdc-smoke.img \
+		>/tmp/iron86-hdc-smoke.out 2>/tmp/iron86-hdc-smoke.err
+	grep -q '306x4x17' /tmp/iron86-hdc-smoke.err
+	grep -q '20808 sectors' /tmp/iron86-hdc-smoke.err
+	grep -q 'AX=2F00' /tmp/iron86-hdc-smoke.err
+	./iron86 tests/fixtures/hdcprobe.com >/tmp/iron86-hdc-none.out 2>/tmp/iron86-hdc-none.err
+	grep -q 'AX=FFFF' /tmp/iron86-hdc-none.err
 
 tests: test
 
