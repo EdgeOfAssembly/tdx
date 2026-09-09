@@ -26,17 +26,27 @@ Boot FloppyOS with `./iron86 --floppy-a ../floppyos/build/floppyos.img`.
 (image file or a host directory packed as FlopFS: 360K if it fits, else 720K
 80/2/9).
 Genuine IBM 5150 8K BIOS (Py86 `load_bios_5150_8k`): image at `FE000`,
-reset vector at `FFFF0`, CPU `FFFF:0000`. Do not commit the ROM.
+reset vector at `FFFF0`, CPU `FFFF:0000`. `--bios` also accepts a **40K**
+5160 concat (U19 8K + U18 32K) or a **64K** 5160 image at `F0000`
+(`cat U19 U18`). Do not commit the ROM.
+
+Xebec / IBM XT Fixed Disk Adapter (`--hdc PATH`, `--hdc-rom` optional):
+ports **320h–323h**, IRQ **5**, DMA **3**, IBM CHS DCB, option ROM at **C8000**.
+Type-1 geometry 306×4×17. INT 13h with DL bit 7 set is not stolen (ROS owns C:).
+Prep / FORMAT C: notes: `tests/hdc-format-c.sh`.
 
 ```text
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.16** — 8088-style prefetch queue (`--prefetch-bytes`, default 4), dual floppy A:/B: (`--floppy-a` / `--floppy-b`, directory
-packs 360K or 720K FlopFS), 544K PPI I/O nibble (Py86 `0x0F`, 1981 BIOS max),
-PC speaker BEL
-(PIT ch2 + PPI 61h bits 0+1; `--no-audio` only). Fast-post
-(BDA `RESET_FLAG=1234h`) is the `--bios` default; `--no-fast-post` for cold.
+Version **0.17** — INI (`--config`, default `iron86.ini` in cwd), `--preset ibm-pc`
+(default) / `ibm-xt` (`ibm-at`/`8286` not yet), `--hdc PATH` plumbing, floppy CHS
+auto-detect (160K/180K/320K/360K/720K/1.2M/1.44M; no 2.88M on PC/XT/AT),
+8088-style prefetch queue (`--prefetch-bytes`, default 4), dual floppy A:/B:
+(`--floppy-a` / `--floppy-b`, directory packs 360K or 720K FlopFS), 544K PPI I/O
+nibble (Py86 `0x0F`, 1981 BIOS max), PC speaker BEL (PIT ch2 + PPI 61h bits 0+1;
+`--no-audio` only). Fast-post (BDA `RESET_FLAG=1234h`) is the `--bios` default;
+`--no-fast-post` for cold. `--until-prompt` and `--exec-map FILE` stay.
 
 ```text
 make -s -j$(nproc)

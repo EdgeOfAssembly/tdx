@@ -6,13 +6,16 @@
  * the 24APR81 VIDEO_IO at F000:F065; AH=00 and hooked INT 10h stay in ROS.
  */
 #include "iron86/pc.h"
+#include "iron86/chs_lba.h"
 #include "iron86/crtc.h"
 #include "iron86/flopfs_pack.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
 #include <sys/stat.h>
+#include <vector>
 
 namespace iron86
 {
@@ -83,6 +86,10 @@ static void text_scroll_up(cpu &c, unsigned n, unsigned r0, unsigned c0, unsigne
 
 const std::vector<uint8_t> *pc::floppy_media(uint8_t drv) const
 {
+    if ((drv & 0x80u) != 0)
+    {
+        return nullptr;
+    }
     const uint8_t unit = static_cast<uint8_t>(drv & 3u);
     if (unit > 1u)
     {
@@ -176,6 +183,79 @@ bool pc::attach_floppy_path(uint8_t unit, const char *path)
 bool pc::attach_floppy_b(const uint8_t *img, size_t n)
 {
     return attach_floppy(1, img, n);
+}
+
+bool pc::attach_hdc_path(const char *path, uint32_t cylinders, uint32_t heads, uint32_t spt)
+{
+    if ((path == nullptr) || (path[0] == '\0'))
+    {
+        return false;
+    }
+    struct stat st{};
+    if ((stat(path, &st) != 0) || (!S_ISREG(st.st_mode)) || (st.st_size < 512))
+    {
+        return false;
+    }
+    if (!hdc_.attach(path, cylinders, heads, spt))
+    {
+        return false;
+    }
+    hdc_.bind_bus(&c, &hw_.dma);
+    hdc_path_ = path;
+    hdc_bytes_ = static_cast<size_t>(st.st_size);
+    return true;
+}
+
+bool pc::load_hdc_rom(const uint8_t *data, size_t n)
+{
+    if ((data == nullptr) || (n < 3u) || (data[0] != 0x55u) || (data[1] != 0xAAu))
+    {
+        return false;
+    }
+    uint32_t bytes = static_cast<uint32_t>(data[2]) * 512u;
+    if ((bytes == 0u) || (bytes > n))
+    {
+        bytes = static_cast<uint32_t>(n);
+    }
+    if (bytes > 8192u)
+    {
+        bytes = 8192u;
+    }
+    uint32_t i = 0;
+    for (; i < bytes; i++)
+    {
+        c.mem_write8(k_hdc_ros_phys + i, data[i]);
+    }
+    hdc_rom_loaded_ = true;
+    return true;
+}
+
+bool pc::load_hdc_rom_path(const char *path)
+{
+    if ((path == nullptr) || (path[0] == '\0'))
+    {
+        return false;
+    }
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
+    {
+        return false;
+    }
+    const std::vector<uint8_t> rom((std::istreambuf_iterator<char>(in)),
+                                   std::istreambuf_iterator<char>());
+    return load_hdc_rom(rom.data(), rom.size());
+}
+
+void pc::hdc_sync_irq()
+{
+    if (hdc_.irq_line())
+    {
+        pic_assert(k_hdc_irq);
+    }
+    else
+    {
+        pic_deassert(k_hdc_irq);
+    }
 }
 
 bool pc::load_floppy(const uint8_t *img, size_t n)
@@ -413,33 +493,51 @@ void pc::type_keys(const char *s)
     }
 }
 
-static void floppy_geom(size_t n, uint32_t *spt, uint32_t *heads)
+void floppy_geom(size_t n, uint32_t *spt, uint32_t *heads)
 {
-    if (n >= 1474560u)
+    static const struct
     {
-        *spt = 18; /* 1.44M 80/2/18 */
-        *heads = 2;
-    }
-    else if (n >= 737280u)
+        size_t bytes;
+        uint32_t spt;
+        uint32_t heads;
+    } k_ibm[] = {
+        {k_floppy_bytes_160k, 8u, 1u},
+        {k_floppy_bytes_180k, 9u, 1u},
+        {k_floppy_bytes_320k, 8u, 2u},
+        {k_floppy_bytes_360k, 9u, 2u},
+        {k_floppy_bytes_720k, 9u, 2u},
+        {k_floppy_bytes_1200k, 15u, 2u},
+        {k_floppy_bytes_1440k, 18u, 2u},
+    };
+    if ((spt == nullptr) || (heads == nullptr))
     {
-        *spt = 9; /* 720K 80/2/9 */
-        *heads = 2;
+        return;
     }
-    else if ((n >= 512u) && (n < 300000u))
+    size_t best_i = 0;
+    size_t best_d = static_cast<size_t>(-1);
+    size_t i = 0;
+    for (; i < (sizeof(k_ibm) / sizeof(k_ibm[0])); i++)
     {
-        *spt = 8;
-        *heads = 1;
+        if (k_ibm[i].bytes == n)
+        {
+            *spt = k_ibm[i].spt;
+            *heads = k_ibm[i].heads;
+            return;
+        }
+        const size_t d = (n > k_ibm[i].bytes) ? (n - k_ibm[i].bytes) : (k_ibm[i].bytes - n);
+        if (d < best_d)
+        {
+            best_d = d;
+            best_i = i;
+        }
     }
-    else
-    {
-        *spt = 9; /* 360K 40/2/9 */
-        *heads = 2;
-    }
+    *spt = k_ibm[best_i].spt;
+    *heads = k_ibm[best_i].heads;
 }
 
 uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
 {
-    /* sec is 1-based. Size picks 360K / 720K / 1.44M / tiny 8-spt. */
+    /* sec is 1-based. Size picks IBM floppy geom (exact then nearest). */
     if (sec == 0)
     {
         return UINT32_MAX;
@@ -450,7 +548,8 @@ uint32_t pc::chs_lba(uint8_t cyl, uint8_t head, uint8_t sec, uint8_t unit) const
     {
         floppy_geom(floppy_[unit].size(), &spt, &nh);
     }
-    return (static_cast<uint32_t>(cyl) * nh + head) * spt + (static_cast<uint32_t>(sec) - 1u);
+    return iron86_chs_to_lba(static_cast<uint32_t>(cyl), nh, static_cast<uint32_t>(head), spt,
+                             static_cast<uint32_t>(sec));
 }
 
 bool pc::bios_int(uint8_t vector)
@@ -727,6 +826,11 @@ bool pc::int13()
     const uint8_t cl = static_cast<uint8_t>(c.cx());
     const uint8_t dh = static_cast<uint8_t>(c.dx() >> 8);
     const uint8_t dl = static_cast<uint8_t>(c.dx());
+    if ((dl & 0x80u) != 0)
+    {
+        /* HDD: Xebec ROS / option ROM. Do not map C: onto A:. */
+        return false;
+    }
     if (ah == 0x00)
     {
         c.set_ax(static_cast<uint16_t>(c.ax() & 0x00FFu)); /* AH=0 */
@@ -800,7 +904,12 @@ bool pc::int13()
         floppy_geom(n, &spt32, &heads32);
         const uint8_t spt = static_cast<uint8_t>(spt32);
         const uint8_t heads = static_cast<uint8_t>(heads32);
-        const uint16_t cyls = static_cast<uint16_t>((n / 512u) / (spt32 * heads32));
+        const uint32_t denom = spt32 * heads32;
+        uint16_t cyls = 0;
+        if (denom != 0u)
+        {
+            cyls = static_cast<uint16_t>((n / 512u) / denom);
+        }
         const uint8_t maxc = (cyls > 1u) ? static_cast<uint8_t>(cyls - 1u) : 0;
         uint8_t ndrv = 1;
         if (floppy_[1].size() >= 512u)
@@ -876,6 +985,7 @@ void pc::wire_pc_hw()
         hw_.pit.ch[i].gate = 1;
     }
     hw_.dma.mask = 0x0F;
+    hdc_.bind_bus(&c, &hw_.dma);
     hw_.fdc.msr = 0x80;
     {
         uint32_t spt = 9;
@@ -1684,9 +1794,12 @@ void pc::fdc_exec()
         const uint8_t n = hw_.fdc.cmd[5];
         uint8_t eot = hw_.fdc.cmd[6];
         uint8_t spt = 9;
-        if ((media != nullptr) && (media->size() >= 512u) && (media->size() < 300000u))
+        if (media != nullptr)
         {
-            spt = 8;
+            uint32_t spt32 = 9;
+            uint32_t heads32 = 2;
+            floppy_geom(media->size(), &spt32, &heads32);
+            spt = static_cast<uint8_t>(spt32);
         }
         if (spt > eot)
         {
@@ -1900,6 +2013,13 @@ uint8_t pc::in_port(uint16_t port)
     {
         return hw_.dma.page[0];
     }
+    if (hdc_.attached() &&
+        (((p >= k_hdc_port_data) && (p <= k_hdc_port_mask)) || (p == k_hdc_port_probe)))
+    {
+        const uint8_t v = hdc_.read_port(p);
+        hdc_sync_irq();
+        return v;
+    }
     return 0xFF;
 }
 
@@ -2024,6 +2144,13 @@ void pc::out_port(uint16_t port, uint8_t v)
     if (p == 0x87u)
     {
         hw_.dma.page[0] = v;
+        return;
+    }
+    if (hdc_.attached() &&
+        (((p >= k_hdc_port_data) && (p <= k_hdc_port_mask)) || (p == k_hdc_port_probe)))
+    {
+        hdc_.write_port(p, v);
+        hdc_sync_irq();
     }
 }
 

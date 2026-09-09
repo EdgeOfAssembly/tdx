@@ -2,6 +2,7 @@
  * @file test_pc.cpp
  * @brief Packed 5150 chipset: PIC IMR, PIT, DMA, PPI DIP/256K nibble, speaker.
  */
+#include "iron86/chs_lba.h"
 #include "iron86/crtc.h"
 #include "iron86/flopfs_pack.h"
 #include "iron86/hw.h"
@@ -715,6 +716,151 @@ int main()
                 expect_eq(p.c.ip(), 0xF065, "int10-00 ip rom");
             }
         }
+    }
+
+    {
+        uint32_t spt = 0;
+        uint32_t heads = 0;
+        iron86::floppy_geom(iron86::k_floppy_bytes_160k, &spt, &heads);
+        expect((spt == 8u) && (heads == 1u), "geom 160k 40/1/8");
+        iron86::floppy_geom(iron86::k_floppy_bytes_180k, &spt, &heads);
+        expect((spt == 9u) && (heads == 1u), "geom 180k 40/1/9 not 360k");
+        iron86::floppy_geom(iron86::k_floppy_bytes_320k, &spt, &heads);
+        expect((spt == 8u) && (heads == 2u), "geom 320k 40/2/8");
+        iron86::floppy_geom(iron86::k_floppy_bytes_360k, &spt, &heads);
+        expect((spt == 9u) && (heads == 2u), "geom 360k 40/2/9");
+        iron86::floppy_geom(iron86::k_floppy_bytes_720k, &spt, &heads);
+        expect((spt == 9u) && (heads == 2u), "geom 720k 80/2/9");
+        iron86::floppy_geom(iron86::k_floppy_bytes_1200k, &spt, &heads);
+        expect((spt == 15u) && (heads == 2u), "geom 1.2M 80/2/15");
+        iron86::floppy_geom(iron86::k_floppy_bytes_1440k, &spt, &heads);
+        expect((spt == 18u) && (heads == 2u), "geom 1.44M 80/2/18");
+        iron86::floppy_geom(512u, &spt, &heads);
+        expect((spt == 8u) && (heads == 1u), "geom 512 nearest 160k");
+        iron86::floppy_geom(200000u, &spt, &heads);
+        expect((spt == 9u) && (heads == 1u), "geom 200k nearest 180k");
+        expect_eq(static_cast<uint16_t>(iron86_chs_to_lba(50u, 2u, 0u, 9u, 1u)), 900u,
+                  "lba cyl50");
+        expect_eq(static_cast<uint16_t>(iron86_chs_to_lba(0u, 1u, 0u, 9u, 9u)), 8u, "lba 180k s9");
+        expect_eq(static_cast<uint16_t>(iron86_chs_to_lba(0u, 2u, 1u, 8u, 1u)), 8u, "lba 320k h1");
+    }
+    {
+        /* 180K: cyl 1 / head 0 / sec 1 is LBA 9 (would be 18 if 360K 2 heads). */
+        std::vector<uint8_t> img(iron86::k_floppy_bytes_180k, 0);
+        img[9u * 512u] = 0xB1;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "180k attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0, 0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,
+            0xB9, 0x01, 0x01, 0xBA, 0x00, 0x00, /* C=1 S=1 H=0 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "180k AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0xB1, "180k cyl1");
+    }
+    {
+        /* 320K: C=0 H=1 S=1 is LBA 8 (would be 9 if 9 spt). */
+        std::vector<uint8_t> img(iron86::k_floppy_bytes_320k, 0);
+        img[8u * 512u] = 0xC8;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "320k attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0, 0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,
+            0xB9, 0x01, 0x00, 0xBA, 0x00, 0x01, /* C=0 S=1 H=1 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "320k AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0xC8, "320k h1");
+    }
+    {
+        /* INT 13 AH=08: cyls = size/(512*spt*heads); 180K → CH=39 CL=9 DH=0. */
+        std::vector<uint8_t> img(iron86::k_floppy_bytes_180k, 0);
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "ah08 180k attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {0xB4, 0x08, 0xB2, 0x00, 0xCD, 0x13, 0xF4};
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect((p.c.ax() & 0xFF00u) == 0, "ah08 180k AH=0");
+        expect_eq(p.c.cx(), 0x2709, "ah08 180k CX");
+        expect_eq(static_cast<uint16_t>(p.c.dx() >> 8), 0, "ah08 180k DH heads-1");
+    }
+    {
+        std::vector<uint8_t> img(iron86::k_floppy_bytes_320k, 0);
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "ah08 320k attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {0xB4, 0x08, 0xB2, 0x00, 0xCD, 0x13, 0xF4};
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(p.c.cx(), 0x2708, "ah08 320k CX");
+        expect_eq(static_cast<uint16_t>(p.c.dx() >> 8), 1, "ah08 320k DH");
+    }
+    {
+        std::vector<uint8_t> img(iron86::k_floppy_bytes_1200k, 0);
+        img[14u * 512u] = 0x15;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "1.2M attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0, 0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,
+            0xB9, 0x0F, 0x00, 0xBA, 0x00, 0x00, /* C=0 S=15 H=0 */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "1.2M AH=0");
+        expect_eq(p.c.mem_read8(0x10200u), 0x15, "1.2M spt15");
+        const uint8_t ah08[] = {0xB4, 0x08, 0xB2, 0x00, 0xCD, 0x13, 0xF4};
+        p.c.load_com(ah08, sizeof(ah08), 0x1000);
+        run(p.c, 16);
+        expect_eq(p.c.cx(), 0x4F0F, "ah08 1.2M CX");
+    }
+    {
+        /* INT 13 DL=80h must not map HDD onto floppy (Xebec ROS owns C:). */
+        uint8_t img[512];
+        std::memset(img, 0xAA, sizeof(img));
+        img[510] = 0x55;
+        img[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img, sizeof(img)), "dl80 attach");
+        p.boot();
+        p.c.set_ivt(0x13, 0x1000, 0x0300);
+        p.c.mem_write8(0x10300u, 0xC6); /* MOV BYTE [0200], EEh */
+        p.c.mem_write8(0x10301u, 0x06);
+        p.c.mem_write8(0x10302u, 0x00);
+        p.c.mem_write8(0x10303u, 0x02);
+        p.c.mem_write8(0x10304u, 0xEE);
+        p.c.mem_write8(0x10305u, 0xF4);
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0, 0xB8, 0x01, 0x02, 0xBB, 0x00, 0x02,
+            0xB9, 0x01, 0x00, 0xBA, 0x80, 0x00, /* DX=0080 HDD */
+            0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(p.c.mem_read8(0x10200u), 0xEE, "int13 DL=80 not floppy");
+    }
+    {
+        uint8_t img[512];
+        std::memset(img, 0, sizeof(img));
+        const char *hdc = "/tmp/iron86-hdc-stub.img";
+        {
+            std::ofstream f(hdc, std::ios::binary);
+            f.write(reinterpret_cast<const char *>(img), sizeof(img));
+        }
+        iron86::pc p;
+        expect(p.attach_hdc_path(hdc), "hdc stub attach");
+        expect(p.hdc_path() == hdc, "hdc path stored");
+        expect(p.hdc_bytes() == 512u, "hdc size 512");
+        expect(!p.attach_hdc_path("/no/such/hdc.img"), "hdc missing");
+        expect(!p.attach_hdc_path(""), "hdc empty");
     }
 
     if (g_fail != 0)
