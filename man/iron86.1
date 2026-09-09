@@ -1,4 +1,4 @@
-.TH IRON86 1 "2026-09-07" "iron86 0.16" "User Commands"
+.TH IRON86 1 "2026-09-10" "iron86 0.17" "User Commands"
 .SH NAME
 iron86 \- chip-level 8086 IBM PC (no DOS)
 .SH SYNOPSIS
@@ -10,6 +10,8 @@ iron86 \- chip-level 8086 IBM PC (no DOS)
 .BI \-\-bios " BIOS.BIN"
 [\fB\-\-floppy\-a\fR \fIPATH\fR]
 [\fB\-\-floppy\-b\fR \fIPATH\fR]
+[\fB\-\-hdc\fR \fIPATH\fR]
+[\fB\-\-hdc\-rom\fR \fIFILE\fR]
 [\fB\-\-keys\fR \fISTRING\fR]
 .SH DESCRIPTION
 .B iron86
@@ -19,16 +21,45 @@ It does not implement DOS; FloppyOS or a BIOS INT 19 boot provides that.
 .B tdx \-\-bios
 embeds iron86.
 This binary is the standalone smoke tool.
+.P
+CLI flags override an INI file, which overrides the preset.
+Default preset is
+.BR ibm-pc
+(5150, 8086/8088).
+.B ibm-xt
+is the same CPU plus Xebec-capable HDD.
+.B ibm-at
+and
+.B 8286
+(5170 AT, not XT) are reserved (exit 2, "not yet").
 .SH OPTIONS
 .TP
 .BR \-h ", " \-\-help
 Print usage and exit.
+With no arguments,
+.B iron86
+prints the same usage.
 .TP
 .BR \-v ", " \-\-version
 Print version and exit.
 .TP
+.BI \-\-config " PATH"
+INI file. If omitted, load
+.B iron86.ini
+from the current directory when that file exists.
+.TP
+.BI \-\-preset " NAME"
+.BR ibm-pc
+(default) or
+.BR ibm-xt .
+.B ibm-at
+and
+.B 8286
+print "not yet" on stderr and exit 2.
+.TP
 .BI \-\-bios " FILE"
-Load IBM 5150 8K BIOS (FE000, reset FFFF:0000).
+8K IBM 5150 at FE000; 40K 5160 concat (U19 8K + U18 32K) at F0000/F8000;
+or 64K 5160 (concat U19+U18) at F0000. Reset FFFF:0000.
 .TP
 .B \-\-no\-fast\-post
 Cold POST (do not set BDA RESET_FLAG=1234h).
@@ -50,8 +81,28 @@ Drive 1: same rules.
 Alias for
 .BR \-\-floppy\-a .
 .TP
+.BI \-\-hdc " PATH"
+Raw HDD image (512-byte sectors) for the IBM XT Fixed Disk Adapter
+(Xebec S1410-class) at 320h–323h, IRQ 5, DMA 3.
+Default geometry is Type-1 306×4×17 (INI
+.B [hdc]
+cylinders/heads/spt override).
+Writes persist to the host file.
+When attached, the IBM 5000059 option ROM is mapped at C8000 if found
+(see
+.BR \-\-hdc\-rom ).
+INT 13h with DL bit 7 set is not stolen (ROS owns C:).
+.TP
+.BI \-\-hdc\-rom " FILE"
+Xebec option ROM at C8000 (55 AA). Default: IBM_XEBEC_5000059_1982.BIN
+or
+.BR IRON86_XEBEC_ROM .
+.TP
 .BI \-\-keys " STRING"
 Type STRING as INT 16h keys.
+.TP
+.B \-\-until\-prompt
+Stop at FloppyOS/DOS A> (boot bench; default off).
 .TP
 .BI \-\-exec\-map " FILE"
 1 MiB executed-opcode map.
@@ -62,20 +113,36 @@ Values above 1024 are clamped to 1024 (note on stderr).
 Queued bytes are not snooped on data writes (self-modifying code).
 A taken jump/call/ret/int/iret flushes the queue.
 .SH FLOPPY GEOMETRY
+Exact image sizes first, then nearest IBM geometry. No 2.88M on PC/XT/AT.
+.P
+160K 40/1/8 (163840), 180K 40/1/9 (184320), 320K 40/2/8 (327680),
+360K 40/2/9 (368640), 720K 80/2/9 (737280), 1.2M 80/2/15 (1228800),
+1.44M 80/2/18 (1474560).
+.P
+INT 13 AH=08 cylinder count is size/(512×spt×heads).
 Directory pack is non-recursive, max 32 8.3 names, 360K or 720K only.
-Raw images smaller than 300000 bytes use 8 spt / 1 head;
-larger use 9 spt / 2 heads (360K and 720K).
-1.2M and 1.44M are not auto-detected.
+.SH HARD DISK
+IBM XT Fixed Disk Adapter (Xebec). DCB sector is 0-based (ROS DEC CL).
+LBA = ((cyl × heads) + head) × spt + sector0.
+.P
+Concatenate 5160 motherboard chips for a 64K
+.B \-\-bios
+file:
+.B cat U19 U18 > xt5160_64k.bin
+(1986 32K+32K, or 08NOV82 27256 U19 + U18).
+08NOV82 8K U19 + 32K U18 is accepted as 40K.
+Prep script:
+.B subprojects/iron86/tests/hdc-format-c.sh
 .SH EXIT STATUS
 .TP
 .B 0
-Success (or guest halt).
+Success (or guest halt), or help/version.
 .TP
 .B 1
 Runtime error.
 .TP
 .B 2
-Bad command line.
+Bad command line, or reserved preset.
 .SH SEE ALSO
 .BR tdx (1),
 .BR tdxview (1)

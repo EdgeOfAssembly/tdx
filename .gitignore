@@ -8,6 +8,7 @@
 /subprojects/iron86/tests/run_pc
 /subprojects/iron86/tests/run_crtc
 /subprojects/iron86/tests/run_pack
+/subprojects/iron86/tests/run_config
 /tests/fixtures/*.com
 /tests/fixtures/*.exe
 *.o
