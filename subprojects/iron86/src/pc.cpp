@@ -1072,6 +1072,7 @@ void pc::wire_pc_hw(bool trace_io)
      * (SW2 bit 5 is ignored until the 27-OCT-82 BIOS). 0x6 was 256K. */
     hw_.ppi.io_nibble = 0x0F;
     hw_.pic.imr = 0xFF;
+    hw_.pit.ch[0].gate = 1; /* PC: ch0 GATE tied high */
     hw_.pic.vector_base = 8;
     hw_.pic.read_isr = 1;
     for (uint8_t i = 0; i < 3u; i++)
@@ -1274,17 +1275,29 @@ void pc::ppi_on_port_b()
     {
         speaker_rising();
     }
-    const bool clock_was_low = (prev & 0x40u) == 0;
     const bool clock_now_high = (now & 0x40u) != 0;
-    const bool clock_released = clock_was_low && clock_now_high;
-    if (clock_released)
+    const bool kbd_en = (now & 0x80u) == 0;
+    /* Clock low = XT kbd reset. BAT 0xAA is presented when clock is high and
+     * PB7 enables the interface (F9E3: 08h → C8h → 48h). Same-write PB7 ack
+     * on C8h used to clear AA before POST IN 60h (error 301). */
+    if ((now & 0x40u) == 0)
+    {
+        kbd_bat_ = 1;
+    }
+    if ((kbd_bat_ != 0) && kbd_en && clock_now_high)
     {
         p.kbd_data = 0xAA;
         p.kbd_ready = 1;
         p.kbd_irq_pend = 1;
+        kbd_bat_ = 0;
+#ifndef NDEBUG
+        fd_printf(STDERR_FILENO, "KBD BAT AA\n");
+        log_trace("KBD BAT AA\n");
+#endif
         pic_deassert(1);
+        ppi_tick();
     }
-    const bool kbd_sel = (now & 0x80u) == 0;
+    const bool kbd_sel = kbd_en;
     if (kbd_sel && clock_now_high && (p.kbd_irq_pend != 0))
     {
         ppi_tick();
@@ -1454,7 +1467,13 @@ uint8_t pc::pit_read(uint16_t port)
 
 void pc::wall_clock_irq0()
 {
-    /* Same edge as Unicorn pit_poll: drop then raise so edge-triggered IRR latches. */
+    /* Do not latch IRQ0 until the guest has programmed 8253 ch0. tdx pit_poll
+     * used to pulse IRQ0 during 5160 POST; unmask-all then took the dummy
+     * ISR which wrote IMR=01 and failed TST6 (CLI+HLT at E38C). */
+    if (hw_.pit.ch[0].running == 0)
+    {
+        return;
+    }
     pic_deassert(0);
     pic_assert(0);
 }
@@ -2023,6 +2042,15 @@ uint8_t pc::in_port(uint16_t port)
              * IN 60h then pulses PB7 (OR 80h / OUT 61h / restore) to ack.
              * Clearing ready on the read broke wrap-INT9 games (M1TP
              * CGAGRPH: IN 60h, then CALL FAR the ROM handler). */
+#ifndef NDEBUG
+            if (c.rom_bios())
+            {
+                fd_printf(STDERR_FILENO, "KBD IN 60=%02X ready=%u\n", hw_.ppi.kbd_data,
+                          static_cast<unsigned>(hw_.ppi.kbd_ready));
+                log_trace("KBD IN 60=%02X ready=%u\n", hw_.ppi.kbd_data,
+                          static_cast<unsigned>(hw_.ppi.kbd_ready));
+            }
+#endif
             return hw_.ppi.kbd_data;
         }
         if (p == 0x61u)

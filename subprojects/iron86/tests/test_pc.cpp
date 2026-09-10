@@ -113,6 +113,20 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0, "pic ocw1 no icw");
     }
     {
+        /* wall_clock_irq0 is a no-op until PIT ch0 is programmed. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        p.wall_clock_irq0();
+        const uint8_t prog[] = {
+            0xB0, 0x13, 0xE6, 0x20, 0xB0, 0x08, 0xE6, 0x21, 0xB0, 0x09, 0xE6, 0x21,
+            0xB0, 0x00, 0xE6, 0x21, /* IMR=0 */
+            0xE4, 0x21, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0, "imr 0 after silent wall irq");
+    }
+    {
         /* DMA wrap: write FFFF to ch0 addr, read back (PCBIOS C17). */
         iron86::pc p;
         p.wire_pc_hw();
@@ -220,6 +234,18 @@ int main()
         run(p.c, 32);
         expect(p.c.halted(), "irq1 inject hlt");
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x0048, "irq1 inject scan");
+    }
+    {
+        /* 5160 F9E3: OUT 61 08/C8/48 then IN 60 must be BAT 0xAA (else POST 301). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x08, 0xE6, 0x61, 0xB0, 0xC8, 0xE6, 0x61, 0xB0, 0x48, 0xE6, 0x61,
+            0xE4, 0x60, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x00AA, "xt kbd BAT AA");
     }
     {
         /* PIT ch2 mode 3 + OUT 61h bits 0+1 → one rising-edge beep. */
