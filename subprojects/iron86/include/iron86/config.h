@@ -23,7 +23,8 @@ inline constexpr const char *k_default_ini_name = "iron86.ini";
 /**
  * @brief Named machine preset.
  *
- * `ibm-pc` is the 5150 default. `ibm-xt` is the same 8086/8088 plus Xebec.
+ * `ibm-pc` / `5150` is floppy-only (8K BIOS, no option-ROM scan).
+ * `ibm-xt` / `5160` scans C8000 (Xebec). Both default to 8086 prefetch 6.
  * `ibm-at` / `8286` are reserved (5170 AT, not XT).
  */
 enum class machine_preset : uint8_t
@@ -61,14 +62,20 @@ struct machine_config
 /**
  * @brief Parse `--preset` / `[machine] preset=` name.
  *
- * @param[in]  name ASCII name (`ibm-pc`, `ibm-xt`, `ibm-at`, `8286`).
+ * @param[in]  name ASCII name (`ibm-pc`/`5150`, `ibm-xt`/`5160`, `ibm-at`, `8286`).
  * @param[out] out  Preset id on @retval 0 or 1.
  * @return 0 known and implemented, 1 reserved (not yet), -1 unknown.
- * @retval 0 `ibm-pc` or `ibm-xt`
+ * @retval 0 `ibm-pc` or `ibm-xt` (and aliases)
  * @retval 1 `ibm-at` or `8286`
  * @retval -1 anything else (including NULL)
  */
 int parse_preset_name(const char *name, machine_preset *out);
+
+/** @brief First existing 5150 8K or 5160 64K BIOS for @p p (empty if none). */
+std::string find_default_bios_rom(machine_preset p);
+
+/** @brief First existing IBM 5000059 Xebec ROS (empty if none). */
+std::string find_default_hdc_rom();
 
 /** @brief True for `ibm-at` and `8286`. */
 bool preset_is_reserved(machine_preset p);

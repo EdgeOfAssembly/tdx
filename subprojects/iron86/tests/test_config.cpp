@@ -48,12 +48,26 @@ int main()
         expect(p == iron86::machine_preset::ibm_pc, "id ibm-pc");
         expect(iron86::parse_preset_name("IBM-XT", &p) == 0, "parse ibm-xt");
         expect(p == iron86::machine_preset::ibm_xt, "id ibm-xt");
+        expect(iron86::parse_preset_name("5150", &p) == 0, "parse 5150");
+        expect(p == iron86::machine_preset::ibm_pc, "id 5150");
+        expect(iron86::parse_preset_name("5160", &p) == 0, "parse 5160");
+        expect(p == iron86::machine_preset::ibm_xt, "id 5160");
+        expect(iron86::parse_preset_name("ibm-5150", &p) == 0, "parse ibm-5150");
+        expect(iron86::parse_preset_name("ibm-5160", &p) == 0, "parse ibm-5160");
         expect(iron86::parse_preset_name("ibm-at", &p) == 1, "parse ibm-at reserved");
         expect(iron86::preset_is_reserved(p), "ibm-at reserved");
         expect(iron86::parse_preset_name("8286", &p) == 1, "parse 8286 reserved");
         expect(std::strcmp(iron86::machine_preset_name(p), "8286") == 0, "name 8286");
         expect(iron86::parse_preset_name("nope", &p) == -1, "unknown preset");
         expect(iron86::parse_preset_name(nullptr, &p) == -1, "null preset");
+        {
+            iron86::machine_config cfg{};
+            iron86::apply_preset(iron86::machine_preset::ibm_xt, &cfg);
+            expect_eq_u(cfg.prefetch_bytes, 6u, "xt preset prefetch 8086");
+            iron86::machine_config pc{};
+            iron86::apply_preset(iron86::machine_preset::ibm_pc, &pc);
+            expect_eq_u(pc.prefetch_bytes, 6u, "pc preset prefetch 8086");
+        }
     }
     {
         iron86::machine_config cfg{};

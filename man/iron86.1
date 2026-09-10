@@ -25,9 +25,9 @@ This binary is the standalone smoke tool.
 CLI flags override an INI file, which overrides the preset.
 Default preset is
 .BR ibm-pc
-(5150, 8086/8088).
+(5150, floppy only, 8086 prefetch 6).
 .B ibm-xt
-is the same CPU plus Xebec-capable HDD.
+is 5160: same 8086 plus Xebec (option-ROM scan at C8000).
 .B ibm-at
 and
 .B 8286
@@ -49,13 +49,17 @@ INI file. If omitted, load
 from the current directory when that file exists.
 .TP
 .BI \-\-preset " NAME"
-.BR ibm-pc
-(default) or
-.BR ibm-xt .
+.BR ibm-pc / 5150
+(default, floppy) or
+.BR ibm-xt / 5160
+(Xebec).
 .B ibm-at
 and
 .B 8286
 print "not yet" on stderr and exit 2.
+CPU is 8086 (prefetch 6) on both; pass
+.B \-\-prefetch-bytes 4
+for a stock 8088 queue.
 .TP
 .BI \-\-bios " FILE"
 8K IBM 5150 at FE000; 40K 5160 concat (U19 8K + U18 32K) at F0000/F8000;

@@ -237,12 +237,12 @@ int parse_preset_name(const char *name, machine_preset *out)
     {
         return -1;
     }
-    if (ascii_ieq(name, "ibm-pc"))
+    if (ascii_ieq(name, "ibm-pc") || ascii_ieq(name, "5150") || ascii_ieq(name, "ibm-5150"))
     {
         *out = machine_preset::ibm_pc;
         return 0;
     }
-    if (ascii_ieq(name, "ibm-xt"))
+    if (ascii_ieq(name, "ibm-xt") || ascii_ieq(name, "5160") || ascii_ieq(name, "ibm-5160"))
     {
         *out = machine_preset::ibm_xt;
         return 0;
@@ -279,6 +279,63 @@ const char *machine_preset_name(machine_preset p)
         return "8286";
     }
     return "unknown";
+}
+
+static bool is_regular_file(const char *path)
+{
+    struct stat st{};
+    return (path != nullptr) && (path[0] != '\0') && (stat(path, &st) == 0) &&
+           S_ISREG(st.st_mode);
+}
+
+static std::string first_regular_file(const char *const *cands, size_t n, const char *env_name)
+{
+    const char *env = (env_name != nullptr) ? std::getenv(env_name) : nullptr;
+    if (is_regular_file(env))
+    {
+        return std::string(env);
+    }
+    size_t i = 0;
+    for (; i < n; i++)
+    {
+        if (is_regular_file(cands[i]))
+        {
+            return std::string(cands[i]);
+        }
+    }
+    return {};
+}
+
+std::string find_default_bios_rom(machine_preset p)
+{
+    if (p == machine_preset::ibm_xt)
+    {
+        static const char *const k_xt[] = {
+            "/mnt/TurboDebugger/subprojects/iron86/tests/images/hdc-proof/xt5160_10jan86_64k.bin",
+            "subprojects/iron86/tests/images/hdc-proof/xt5160_10jan86_64k.bin",
+            "tests/images/hdc-proof/xt5160_10jan86_64k.bin",
+            "../tests/images/hdc-proof/xt5160_10jan86_64k.bin",
+        };
+        return first_regular_file(k_xt, sizeof(k_xt) / sizeof(k_xt[0]), "IRON86_XT_BIOS");
+    }
+    static const char *const k_pc[] = {
+        "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN",
+        "Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN",
+        "../Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN",
+        "../../Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN",
+    };
+    return first_regular_file(k_pc, sizeof(k_pc) / sizeof(k_pc[0]), "IRON86_PC_BIOS");
+}
+
+std::string find_default_hdc_rom()
+{
+    static const char *const k_ros[] = {
+        k_hdc_ros_default,
+        "Py86/ROM/IBM/XT/FixedDiskAdapter/IBM_XEBEC_5000059_1982.BIN",
+        "../Py86/ROM/IBM/XT/FixedDiskAdapter/IBM_XEBEC_5000059_1982.BIN",
+        "../../Py86/ROM/IBM/XT/FixedDiskAdapter/IBM_XEBEC_5000059_1982.BIN",
+    };
+    return first_regular_file(k_ros, sizeof(k_ros) / sizeof(k_ros[0]), "IRON86_XEBEC_ROM");
 }
 
 void apply_preset(machine_preset p, machine_config *cfg)

@@ -24,7 +24,7 @@ using iron86::fd_puts;
 using iron86::fd_write;
 using iron86::log_event;
 
-static const char *k_version = "0.20";
+static const char *k_version = "0.21";
 
 static void usage(int fd)
 {
@@ -48,7 +48,7 @@ static void usage(int fd)
             "  -h, --help           Show this help and exit\n"
             "  -v, --version        Show version and exit\n"
             "  --config PATH        INI file (default: iron86.ini in cwd if present)\n"
-            "  --preset NAME        ibm-pc (default), ibm-xt; ibm-at/8286 not yet\n"
+            "  --preset NAME        ibm-pc/5150 (floppy), ibm-xt/5160 (Xebec); ibm-at not yet\n"
             "  --bios FILE          8K@FE000, 40K U19+U18, or 64K 5160@F0000\n"
             "  --no-fast-post       Cold POST (do not set RESET_FLAG=1234h)\n"
             "  --no-audio           Disable PC speaker BEL (default: on)\n"
@@ -63,7 +63,7 @@ static void usage(int fd)
             "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
             "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
             "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
-            "  --prefetch-bytes N   BIU prefetch queue (default: 4; 0=off, 6=8086; max 1024)\n"
+            "  --prefetch-bytes N   BIU prefetch queue (default: 6=8086; 4=8088; 0=off; max 1024)\n"
             "\n");
     fd_printf(fd, "iron86 %s\n", k_version);
 }
@@ -608,6 +608,26 @@ int main(int argc, char **argv)
             fd_printf(STDERR_FILENO, "iron86: %s\n", err.c_str());
             return 2;
         }
+    }
+    if (!cli.hdc_image.empty() && !cli.preset_set)
+    {
+        cfg.preset = iron86::machine_preset::ibm_xt;
+        cfg.preset_set = true;
+    }
+    if (cli.preset_set && cfg.bios_rom.empty() && (path == nullptr))
+    {
+        cfg.bios_rom = iron86::find_default_bios_rom(cfg.preset);
+        if (cfg.bios_rom.empty())
+        {
+            fd_printf(STDERR_FILENO, "iron86: --preset %s needs --bios (no default ROM found)\n",
+                      iron86::machine_preset_name(cfg.preset));
+            return 2;
+        }
+    }
+    if (!cfg.hdc_image.empty() && (cfg.preset == iron86::machine_preset::ibm_pc))
+    {
+        fd_puts(STDERR_FILENO,
+                "iron86: warning: ibm-pc/5150 BIOS does not scan C8000; HDD needs --preset ibm-xt\n");
     }
     const char *floppy_a = cfg.floppy_a.empty() ? nullptr : cfg.floppy_a.c_str();
     const char *floppy_b = cfg.floppy_b.empty() ? nullptr : cfg.floppy_b.c_str();

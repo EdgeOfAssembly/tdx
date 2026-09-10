@@ -2,7 +2,7 @@
 
 Order-independent options (cli-design). No-args prints usage except **tdxview**
 (attaches to `/tmp/tdx.sock`). `-h`/`--help` and `-v`/`--version` on every tool.
-Version **0.24** (tdx / tdxview / tdxctl), iron86 **0.16**.
+Version **0.27** (tdx / tdxview / tdxctl), iron86 **0.21**.
 `tdxctl getip` / `setip 0FDB:A360` / `setip 0xFE199` (canonical CS:IP).
 
 Runtime floppy swap (no CPU reset): `tdxctl floppy b /path/DISK02.IMG`
@@ -30,7 +30,8 @@ tdx --floppy-a image.img --no-bios [options]
 | `--floppy PATH` | Alias for `--floppy-a` |
 | `--floppy-b PATH` | B: image or host dir (FlopFS **360K** if it fits, else **720K**) |
 | `--uc-floppy IMAGE` | Same boot on Unicorn (not the iron86 `--bios` path) |
-| `--bios FILE` | IBM 5150 8K BIOS (`FFFF:0000`). **Default** with `--floppy-a` |
+| `--preset NAME` | `ibm-pc`/`5150` floppy; `ibm-xt`/`5160` Xebec. `--hdc` implies xt |
+| `--bios FILE` | IBM 5150 8K or 5160 64K. Default from `--preset` |
 | `--no-bios` | Skip ROM; iron86 C++ INT 10/13/16 (FloppyOS smoke) |
 | `--mda` | MDA 80×25 (B000). Default CGA |
 | `--no-ui` | Headless |
@@ -44,7 +45,7 @@ tdx --floppy-a image.img --no-bios [options]
 | `--run` | After load, run until break/halt |
 | `--verbose` | Log every stepped instruction |
 | `--exec-map FILE` | 1 MiB executed-opcode map (iron86) |
-| `--prefetch-bytes N` | BIU prefetch queue (default 4; 0=off, 6=8086; max 1024) |
+| `--prefetch-bytes N` | BIU prefetch queue (default **6=8086**; 4=8088; 0=off) |
 | `--scale N` | CPU window integer scale (default 2) |
 
 Always `scripts/tdx-kill.sh` before a new tdx/tdxview pair.
@@ -101,7 +102,8 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 |--------|---------|
 | `-h`, `--help` | Usage |
 | `-v`, `--version` | Version |
-| `--bios FILE` | 5150 8K BIOS |
+| `--preset NAME` | `ibm-pc`/`5150` floppy; `ibm-xt`/`5160` Xebec |
+| `--bios FILE` | 5150 8K or 5160 64K (default from `--preset`) |
 | `--no-fast-post` | Cold POST (no `RESET_FLAG=1234h`) |
 | `--no-audio` | Disable PC speaker BEL (default on) |
 | `--mda` | MDA 80×25 |
@@ -110,7 +112,7 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 | `--floppy PATH` | Alias for `--floppy-a` |
 | `--keys STRING` | Type STRING as INT 16h keys |
 | `--exec-map FILE` | 1 MiB executed-opcode map |
-| `--prefetch-bytes N` | BIU prefetch queue (default 4; 0=off, 6=8086; max 1024) |
+| `--prefetch-bytes N` | BIU prefetch queue (default **6=8086**; 4=8088; 0=off) |
 
 ---
 

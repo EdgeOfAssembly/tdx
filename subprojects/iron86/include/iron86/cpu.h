@@ -19,8 +19,8 @@ namespace iron86
 inline constexpr uint32_t k_mem_size = 0x100000u;
 /** @brief Prefetch queue cap; @ref cpu::set_prefetch_bytes clamps here. */
 inline constexpr unsigned k_prefetch_max = 1024u;
-/** @brief Default BIU queue: 8088 / IBM 5150 (6 = 8086). */
-inline constexpr unsigned k_prefetch_default = 4u;
+/** @brief Default BIU queue: 8086 (6). Use 4 for a stock IBM 8088. */
+inline constexpr unsigned k_prefetch_default = 6u;
 inline constexpr uint16_t k_flag_cf = 0x0001;
 inline constexpr uint16_t k_flag_pf = 0x0004;
 inline constexpr uint16_t k_flag_af = 0x0010;

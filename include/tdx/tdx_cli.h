@@ -5,6 +5,8 @@
 #ifndef TDX_CLI_H
 #define TDX_CLI_H
 
+#include "iron86/config.h"
+
 #include <cstdio>
 #include <string>
 
@@ -35,7 +37,10 @@ struct tdx_cli
     std::string exec_map;  /**< 1 MiB executed-opcode map (iron86). */
     bool mda = false;      /**< SW1 MDA 80×25 (B000, mode 7). Default CGA. */
     int scale = 2;
-    unsigned prefetch_bytes = 4; /**< iron86 BIU queue; 0=off. Default 8088. */
+    unsigned prefetch_bytes = 6; /**< iron86 BIU queue; 0=off. Default 8086. */
+    bool prefetch_set = false;
+    iron86::machine_preset preset = iron86::machine_preset::ibm_pc;
+    bool preset_set = false;
 };
 
 bool tdx_cli_parse(int argc, char **argv, tdx_cli *out);

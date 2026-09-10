@@ -91,8 +91,13 @@ int main(int argc, char **argv)
     }
     if (!cli.hdc.empty() && cli.bios.empty())
     {
-        std::fputs("tdx: --hdc needs --bios (5160 64K to scan Xebec ROS)\n", stderr);
+        std::fputs("tdx: --hdc needs --bios or --preset ibm-xt (5160 scans Xebec ROS)\n", stderr);
         return 2;
+    }
+    if (!cli.hdc.empty() && (cli.preset == iron86::machine_preset::ibm_pc))
+    {
+        std::fputs("tdx: warning: ibm-pc/5150 BIOS does not scan C8000; use --preset ibm-xt\n",
+                   stderr);
     }
     if (cli.verbose)
     {

@@ -8,8 +8,8 @@ PPI I/O nibble is now **0x0F = 544K** (24-APR-81 BIOS max).
 
 | Name | Chip | IBM box | Status |
 |------|------|---------|--------|
-| 8086 | 8086/8088 | **5150 PC** (default `--preset ibm-pc`) | current |
-| 8086 | 8088 + Xebec | **5160 XT** (`--preset ibm-xt`) | same CPU as 5150; HDC next |
+| 8086 | 8086 (prefetch 6; 4=8088) | **5150 PC** (`--preset ibm-pc` / `5150`) | floppy only |
+| 8086 | 8086 + Xebec | **5160 XT** (`--preset ibm-xt` / `5160`) | option-ROM scan C8000 |
 | 8286 | 80286 | **5170 AT** (`ibm-at` / `8286`) — **not XT** | reserved, not yet |
 | 8386 | 80386 | later | |
 | 8486 | 80486 | later | |

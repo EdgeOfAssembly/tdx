@@ -48,13 +48,13 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.26");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.27");
 }
 
-TEST_CASE("prefetch-bytes default 4; 0 is off")
+TEST_CASE("prefetch-bytes default 6 (8086); 0 is off")
 {
     auto a = parse({"game.exe"});
-    REQUIRE(a.prefetch_bytes == 4u);
+    REQUIRE(a.prefetch_bytes == 6u);
     auto b = parse({"--prefetch-bytes", "0", "game.exe"});
     REQUIRE(b.prefetch_bytes == 0u);
     auto c = parse({"game.exe", "--prefetch-bytes=6"});
@@ -143,6 +143,24 @@ TEST_CASE("fast-post is default; --no-fast-post is cold POST")
     REQUIRE(b.bios == "rom.bin");
     auto c = parse({"--no-fast-post", "--floppy-a", "a.img"});
     REQUIRE(c.no_fast_post);
+}
+
+TEST_CASE("preset ibm-pc/5150 vs ibm-xt/5160; --hdc implies xt")
+{
+    auto a = parse({"--preset", "ibm-pc", "--floppy-a", "a.img"});
+    REQUIRE(a.preset == iron86::machine_preset::ibm_pc);
+    REQUIRE(a.preset_set);
+    REQUIRE(a.prefetch_bytes == 6u);
+    auto b = parse({"--preset=5160", "--floppy-a", "a.img"});
+    REQUIRE(b.preset == iron86::machine_preset::ibm_xt);
+    auto c = parse({"--preset", "5150", "game.exe"});
+    REQUIRE(c.preset == iron86::machine_preset::ibm_pc);
+    auto d = parse({"--hdc", "disk.img", "--bios", "rom.bin"});
+    REQUIRE(d.preset == iron86::machine_preset::ibm_xt);
+    REQUIRE(d.preset_set);
+    auto e = parse({"--preset", "ibm-xt", "--prefetch-bytes", "4", "--floppy-a", "a.img"});
+    REQUIRE(e.prefetch_bytes == 4u);
+    REQUIRE(e.prefetch_set);
 }
 
 TEST_CASE("hdc is opt-in and order-independent")

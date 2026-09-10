@@ -39,14 +39,15 @@ Prep / FORMAT C: notes: `tests/hdc-format-c.sh`.
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.20** — INT 13h entry log under `--log` (HDD `DL>=80h` still
-passes to Xebec ROS). `--log FILE` (append event log; default off), `--lock-mem`
-(mlock guest RAM + HDC image; default off), HDC port traces under `--log`
-(`if constexpr`, no extra branches without `--log`). Unbuffered
-`write(2)` diagnostics. INI (`--config`, default `iron86.ini` in cwd), `--preset ibm-pc`
-(default) / `ibm-xt` (`ibm-at`/`8286` not yet), `--hdc PATH` plumbing, floppy CHS
+Version **0.21** — `--preset ibm-pc`/`5150` (floppy) vs `ibm-xt`/`5160` (Xebec).
+Default CPU is **8086** (prefetch 6; `--prefetch-bytes 4` for 8088). INT 13h
+entry log under `--log` (HDD `DL>=80h` still passes to Xebec ROS). `--log FILE`
+(append event log; default off), `--lock-mem` (mlock guest RAM + HDC image;
+default off), HDC port traces under `--log` (`if constexpr`). Unbuffered
+`write(2)` diagnostics. INI (`--config`, default `iron86.ini` in cwd), `--preset`
+(`ibm-at`/`8286` not yet), `--hdc PATH` plumbing, floppy CHS
 auto-detect (160K/180K/320K/360K/720K/1.2M/1.44M; no 2.88M on PC/XT/AT),
-8088-style prefetch queue (`--prefetch-bytes`, default 4), dual floppy A:/B:
+prefetch queue (`--prefetch-bytes`, default 6), dual floppy A:/B:
 (`--floppy-a` / `--floppy-b`, directory packs 360K or 720K FlopFS), 544K PPI I/O
 nibble (Py86 `0x0F`, 1981 BIOS max), PC speaker BEL (PIT ch2 + PPI 61h bits 0+1;
 `--no-audio` only). Fast-post (BDA `RESET_FLAG=1234h`) is the `--bios` default;

@@ -1,4 +1,4 @@
-.TH TDX 1 "2026-09-10" "tdx 0.26" "User Commands"
+.TH TDX 1 "2026-09-10" "tdx 0.27" "User Commands"
 .SH NAME
 tdx \- native Linux debugger for DOS EXE/COM (Turbo Debugger X)
 .SH SYNOPSIS
@@ -48,9 +48,20 @@ Drive B: (same rules). Directory pack uses 360K if it fits, else 720K.
 .BI \-\-uc\-floppy " IMAGE"
 Boot the same image on Unicorn (not the iron86 BIOS path).
 .TP
+.BI \-\-preset " NAME"
+.BR ibm-pc / 5150
+(floppy; 8K BIOS, no option-ROM scan) or
+.BR ibm-xt / 5160
+(Xebec HDD; 64K BIOS scans C8000). Both use 8086 prefetch (6).
+.B \-\-hdc
+without a preset implies
+.BR ibm-xt .
+.TP
 .BI \-\-bios " FILE"
 Load IBM BIOS on iron86 (8K 5150 at FE000, or 40K/64K 5160 at F0000).
-Reset FFFF:0000.
+Default from
+.BR \-\-preset
+when the ROM is on disk. Reset FFFF:0000.
 .TP
 .B \-\-no\-fast\-post
 Cold POST from FFFF:0000. Default sets RESET_FLAG=1234h and starts at

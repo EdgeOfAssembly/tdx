@@ -32,7 +32,8 @@ void tdx_print_usage(FILE *fp)
         "      --floppy PATH     Alias for --floppy-a\n"
         "      --floppy-b PATH   B: image or host dir (FlopFS 360K, or 720K if needed)\n"
         "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
-        "      --bios FILE       IBM 5150 8K or 5160 40K/64K BIOS (default with --floppy-a)\n"
+        "      --preset NAME     ibm-pc/5150 (floppy), ibm-xt/5160 (Xebec HDD)\n"
+        "      --bios FILE       IBM 5150 8K or 5160 40K/64K BIOS (default from preset)\n"
         "      --no-fast-post    Cold POST from FFFF:0000 (default skips STGTST via 1234h)\n"
         "      --hdc PATH        Raw HDD image (Xebec Type-1). Regular file only\n"
         "      --hdc-rom FILE    Xebec option ROM at C8000 (IBM 5000059)\n"
@@ -49,7 +50,7 @@ void tdx_print_usage(FILE *fp)
         "      --run             After load, run until break/halt (headless-friendly)\n"
         "      --verbose         Log every stepped instruction to stderr\n"
         "      --exec-map FILE   1 MiB executed-opcode map (iron86; same linear addrs)\n"
-        "      --prefetch-bytes N  BIU prefetch queue (default: 4; 0=off, 6=8086; max 1024)\n"
+        "      --prefetch-bytes N  BIU prefetch queue (default: 6=8086; 4=8088; 0=off)\n"
         "      --scale N         CPU window integer scale (default: 2)\n"
         "\n"
         "Keys (CPU window): F7 trace, F8 step over, F9 run/pause, F2 breakpoint,\n"
@@ -221,6 +222,47 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         {
             out->hdc_rom = a + 10;
         }
+        else if (std::strcmp(a, "--preset") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                std::fputs("tdx: --preset needs NAME\n", stderr);
+                out->usage_error = true;
+                return false;
+            }
+            {
+                iron86::machine_preset p = iron86::machine_preset::ibm_pc;
+                const int r = iron86::parse_preset_name(argv[++i], &p);
+                if (r < 0)
+                {
+                    std::fprintf(stderr, "tdx: unknown preset %s\n", argv[i]);
+                    out->usage_error = true;
+                    return false;
+                }
+                if (r > 0)
+                {
+                    std::fprintf(stderr, "tdx: preset %s is not yet implemented\n",
+                                 iron86::machine_preset_name(p));
+                    out->usage_error = true;
+                    return false;
+                }
+                out->preset = p;
+                out->preset_set = true;
+            }
+        }
+        else if (std::strncmp(a, "--preset=", 9) == 0)
+        {
+            iron86::machine_preset p = iron86::machine_preset::ibm_pc;
+            const int r = iron86::parse_preset_name(a + 9, &p);
+            if (r != 0)
+            {
+                std::fprintf(stderr, "tdx: unknown or reserved preset %s\n", a + 9);
+                out->usage_error = true;
+                return false;
+            }
+            out->preset = p;
+            out->preset_set = true;
+        }
         else if (std::strcmp(a, "--no-bios") == 0)
         {
             out->no_bios = true;
@@ -341,6 +383,7 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
                 pv = iron86::k_prefetch_max;
             }
             out->prefetch_bytes = static_cast<unsigned>(pv);
+            out->prefetch_set = true;
         }
         else if (a[0] == '-')
         {
@@ -359,10 +402,24 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
             out->input = a;
         }
     }
-    if (!out->no_bios && out->bios.empty() && !out->floppy.empty())
+    if (!out->hdc.empty() && !out->preset_set)
     {
-        out->bios =
-            "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN";
+        out->preset = iron86::machine_preset::ibm_xt;
+        out->preset_set = true;
+    }
+    if (!out->prefetch_set)
+    {
+        out->prefetch_bytes = iron86::k_prefetch_default;
+    }
+    if (!out->no_bios && out->bios.empty() &&
+        (out->preset_set || !out->floppy.empty() || !out->hdc.empty()))
+    {
+        out->bios = iron86::find_default_bios_rom(out->preset);
+    }
+    if ((out->preset == iron86::machine_preset::ibm_xt) && out->hdc_rom.empty() &&
+        (!out->hdc.empty() || out->preset_set))
+    {
+        out->hdc_rom = iron86::find_default_hdc_rom();
     }
     return true;
 }
