@@ -83,6 +83,7 @@ public:
      * SDL must use this; type_keys() nested-steps and eats the first Enter.
      */
     void queue_ascii(uint8_t ch);
+    void set_steal_int16(bool on) { steal_int16_ = on; }
 
     /** @brief True when the INT 16h type-ahead buffer is empty. */
     bool keys_empty() const { return kbd_.empty(); }
@@ -92,6 +93,15 @@ public:
     bool kbd_empty() const { return kbd_.empty(); }
     /** @brief INT 16h AH=01 with empty buffer (COMMAND.COM poll loop). */
     bool kbd_poll_idle() const { return kbd_poll_idle_; }
+    /** @brief BIOS ring 40:1A==40:1C (ROM INT 16) or C++ kbd_ empty. */
+    bool kbd_hw_idle() const
+    {
+        if (c.rom_bios() && (!steal_int16_))
+        {
+            return c.mem_read16(0x41Au) == c.mem_read16(0x41Cu);
+        }
+        return kbd_.empty() && (waiting_key_ || kbd_poll_idle_);
+    }
     void clear_wait_key() { waiting_key_ = false; }
 
     const std::string &tty() const { return tty_; }
@@ -269,6 +279,9 @@ private:
      */
     static constexpr uint8_t k_xt_kbd_irq_delay = 16;
     uint8_t kbd_irq_delay_ = 0;
+    uint8_t kbd_break_ = 0;
+    uint8_t kbd_break_delay_ = 0;
+    bool steal_int16_ = false;
     std::chrono::steady_clock::time_point t0_{};
     uint8_t video_mode_ = 0x03;
     uint8_t cga_3d9_ = 0x30; /**< CGA color-select (3D9h / BDA 40:66). */

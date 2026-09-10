@@ -66,6 +66,7 @@ static void usage(int fd)
             "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
             "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; implies --headless)\n"
             "  --headless           No SDL window (default: window when not a bench)\n"
+            "  --steal-int16        C++ INT 16 even with IBM ROM (default: ROM INT 9/16)\n"
             "  --scale N            Integer window scale 1..8 (default: 2; 4:3 letterbox)\n"
             "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
             "  --prefetch-bytes N   BIU prefetch queue (default: 6=8086; 4=8088; 0=off; max 1024)\n"
@@ -418,6 +419,7 @@ int main(int argc, char **argv)
     bool mda = false;
     bool until_prompt = false;
     bool headless = false;
+    bool steal_int16 = false;
     int scale = 2;
     bool lock_mem = false;
     int i = 1;
@@ -578,6 +580,11 @@ int main(int argc, char **argv)
         if (std::strcmp(a, "--headless") == 0)
         {
             headless = true;
+            continue;
+        }
+        if (std::strcmp(a, "--steal-int16") == 0)
+        {
+            steal_int16 = true;
             continue;
         }
         t = take_path_opt(a, "--scale", &opt, &i, argc, argv);
@@ -825,8 +832,7 @@ int main(int argc, char **argv)
             {
                 break;
             }
-            if (video && allow_idle && p.kbd_empty() &&
-                (p.waiting_key() || p.kbd_poll_idle()))
+            if (video && allow_idle && p.kbd_hw_idle())
             {
                 struct timespec sl{};
                 struct timespec now{};
@@ -837,7 +843,7 @@ int main(int argc, char **argv)
                     break;
                 }
                 iron86::display_sdl_present(p.c, mda);
-                if (p.kbd_empty())
+                if (p.kbd_hw_idle())
                 {
                     (void)nanosleep(&sl, nullptr);
                     (void)clock_gettime(CLOCK_MONOTONIC, &now);

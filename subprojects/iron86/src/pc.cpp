@@ -506,11 +506,30 @@ void pc::type_scan(uint8_t make)
 
 void pc::queue_ascii(uint8_t ch)
 {
-    /* INT 16 is stolen: DOS reads kbd_ only. Do not IRQ1 (make without break
-     * confuses ROM INT 9) and do not pump. */
-    kbd_.push_back(ch);
     waiting_key_ = false;
     kbd_poll_idle_ = false;
+    if (c.rom_bios() && (!steal_int16_))
+    {
+        const uint8_t mk = ascii_make(ch);
+        if (mk == 0)
+        {
+            return;
+        }
+        if (ascii_needs_shift(ch))
+        {
+            queue_scan(0x2A);
+        }
+        queue_scan(mk);
+        kbd_break_ = static_cast<uint8_t>(mk | 0x80u);
+        kbd_break_delay_ = 32;
+        return;
+    }
+    kbd_.push_back(ch);
+    const uint8_t mk = ascii_make(ch);
+    if (mk != 0)
+    {
+        kbd_scan_.push_back(mk);
+    }
 }
 
 void pc::feed_ascii(uint8_t ch)
@@ -719,7 +738,13 @@ bool pc::bios_int(uint8_t vector)
     }
     if (vector == 0x16)
     {
-        return int16();
+        /* ROM INT 9/16 own the BIOS ring (40:1A). Steal only with no ROM
+         * (FloppyOS) or --steal-int16. tdxctl/SDL inject XT scancodes. */
+        if ((!c.rom_bios()) || steal_int16_)
+        {
+            return int16();
+        }
+        return false;
     }
     if (vector == 0x1A)
     {
@@ -1809,6 +1834,15 @@ uint8_t pc::dma_in(uint16_t port)
 
 void pc::after_insn()
 {
+    if (kbd_break_delay_ != 0)
+    {
+        kbd_break_delay_ = static_cast<uint8_t>(kbd_break_delay_ - 1u);
+        if ((kbd_break_delay_ == 0) && (kbd_break_ != 0))
+        {
+            queue_scan(kbd_break_);
+            kbd_break_ = 0;
+        }
+    }
     hw_.pit_div = static_cast<uint8_t>(hw_.pit_div + 1u);
     if ((hw_.pit_div & 3u) == 0)
     {
