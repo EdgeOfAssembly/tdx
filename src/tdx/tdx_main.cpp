@@ -17,6 +17,7 @@
 #include <string>
 
 #include <csignal>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static int print_headless(rex_session *s)
@@ -45,15 +46,43 @@ static int print_headless(rex_session *s)
     return 0;
 }
 
+static const char *ghidra_src(const tdx_cli *cli)
+{
+    if (cli == nullptr)
+    {
+        return nullptr;
+    }
+    if (!cli->input.empty())
+    {
+        return cli->input.c_str();
+    }
+    if (!cli->floppy.empty())
+    {
+        return cli->floppy.c_str();
+    }
+    if (!cli->bios.empty())
+    {
+        return cli->bios.c_str();
+    }
+    return nullptr;
+}
+
 static int maybe_ghidra(const tdx_cli *cli)
 {
     std::string cmd;
-    if ((cli == nullptr) || (!cli->ghidra) || cli->input.empty())
+    const char *src = ghidra_src(cli);
+    struct stat st{};
+    if ((cli == nullptr) || (!cli->ghidra) || (src == nullptr) || (src[0] == '\0'))
     {
         return 0;
     }
+    if ((stat(src, &st) == 0) && S_ISDIR(st.st_mode))
+    {
+        std::fprintf(stderr, "tdx: --ghidra needs a file, not a directory\n");
+        return 0;
+    }
     cmd = "sh scripts/ghidra_export.sh \"";
-    cmd += cli->input;
+    cmd += src;
     cmd += "\"";
     rex_logf(REX_LOG_INFO, "ghidra: %s", cmd.c_str());
     return std::system(cmd.c_str());
@@ -179,13 +208,24 @@ int main(int argc, char **argv)
     }
     else
     {
-        /* default: <stem>.sym next to the binary if present */
-        std::string stem = cli.input;
-        const auto dot = stem.rfind('.');
-        if (dot != std::string::npos)
+        /* <stem>.sym next to EXE, floppy image, or BIOS if present */
+        const char *cands[3] = {cli.input.c_str(), cli.floppy.c_str(), cli.bios.c_str()};
+        int ci = 0;
+        for (ci = 0; ci < 3; ci++)
         {
+            std::string stem = (cands[ci] != nullptr) ? cands[ci] : "";
+            const auto dot = stem.rfind('.');
+            const auto slash = stem.find_last_of('/');
+            if (stem.empty() || (dot == std::string::npos) ||
+                ((slash != std::string::npos) && (dot < slash)))
+            {
+                continue;
+            }
             stem = stem.substr(0, dot) + ".sym";
-            rex_symbols_load(s, stem.c_str()); /* ignore missing */
+            if (rex_symbols_load(s, stem.c_str()) == REX_OK)
+            {
+                break;
+            }
         }
     }
 

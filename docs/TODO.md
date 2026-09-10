@@ -6,7 +6,7 @@ tdxview old-CGA NTSC (Reenigne/86Box). B800 dump **byte-identical** to DOSBox
 `games/SCREEN.CGA`. How-to: `docs/HOWTO_DRAGON_WARS.md`. CLI: `docs/CLI.md` + `man/*.1`.
 
 **Earlier:** 5150 BIOS POST; FloppyOS A>; B: dir-as-FlopFS; Bushido INT 21h 4Bh;
-Unicorn MZ still default for `tdx file.exe`.
+Unicorn MZ still default for `tdx file.exe` (**frozen** — no new Unicorn features; play path is iron86).
 
 Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` before a new tdx/tdxview pair.
 
@@ -23,8 +23,8 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 - [x] **`tdxctl run` vs unpause** — agent `run`/`F9` is start-only (same as `unpause`). CPU-window F9 still toggles. `getip` `stop=1` is last slice STEP, not paused.
 - [x] **Unique sockets per pair** — if `/tmp/tdx.sock` (or tdxview listen) is live, fall back to `/tmp/tdx-<pid>.sock` and print the path.
 - [x] **CGA 3D9 palette** — iron86 OUT 3D9 → BDA 40:66; tdxview `dos_cga_palette_argb` (cyan/magenta vs green/red). Modes **0/1** 40-col fat glyphs.
-- [ ] **VCR / symbols / Ghidra** — keep working on Unicorn EXE; untested on `--bios` iron86.
-- [ ] **Unicorn FloppyOS keys** — host INT 21 + INT 16 workaround; `--uc-floppy` is not the Bushido path. Don’t spend time unless someone wants Unicorn as DOS.
+- [x] **VCR / symbols / Ghidra on iron86** — `mem_write8` hook feeds the tape; `--ghidra`/`--symbols` accept EXE, floppy image, or BIOS. Unicorn MZ path is **frozen** (Catch2 only).
+- [x] **Unicorn FloppyOS keys** — **WILLNOTFIX.** `--uc-floppy` frozen; use `--floppy-a` (iron86).
 
 ---
 

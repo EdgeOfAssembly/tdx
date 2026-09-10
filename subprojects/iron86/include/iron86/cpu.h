@@ -83,12 +83,24 @@ public:
         const uint32_t b = (lin + 1u) & 0xFFFFFu;
         return static_cast<uint16_t>(ram_[a] | (static_cast<uint16_t>(ram_[b]) << 8));
     }
+    /** @brief Optional RAM write spy (VCR). Not called for ROM windows. */
+    using mem_write_hook = void (*)(uint32_t lin, uint8_t oldv, uint8_t newv, void *user);
+    void set_mem_write_hook(mem_write_hook fn, void *user)
+    {
+        wr_hook_ = fn;
+        wr_user_ = user;
+    }
+
     void mem_write8(uint32_t lin, uint8_t v)
     {
         const uint32_t a = lin & 0xFFFFFu;
         if (rom_hit_(a))
         {
             return;
+        }
+        if (wr_hook_ != nullptr)
+        {
+            wr_hook_(a, ram_[a], v, wr_user_);
         }
         ram_[a] = v;
     }
@@ -546,6 +558,8 @@ private:
     uint8_t last_op_ = 0;
     bool rom_bios_ = false;
     bool bios_xt_ = false; /**< 40K/64K 5160 BIOS: Port C SW1 mux is PB3. */
+    mem_write_hook wr_hook_ = nullptr;
+    void *wr_user_ = nullptr;
     uint8_t rom_n_ = 0;
     uint32_t rom_lo_[4]{};
     uint32_t rom_hi_[4]{};

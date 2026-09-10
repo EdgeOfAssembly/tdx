@@ -40,7 +40,7 @@ tdx --floppy-a image.img --no-bios [options]
 | `--sock PATH` | Agent socket (default `/tmp/tdx.sock`) |
 | `--log-file PATH` | Also write logs to PATH |
 | `--symbols PATH` | TSV/MAP symbols |
-| `--ghidra` | Headless Ghidra export then load symbols |
+| `--ghidra` | Headless Ghidra export (EXE, floppy image, or BIOS) then load symbols |
 | `--cwd PATH` | DOS current directory for INT 21 |
 | `--run` | After load, run until break/halt |
 | `--verbose` | Log every stepped instruction |

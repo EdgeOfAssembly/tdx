@@ -4,8 +4,8 @@
 set -eu
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] || [ $# -lt 1 ]; then
-  printf '%s\n' "Usage: ghidra_export.sh <file.exe|file.com> [out.sym]" \
-    "  Runs analyzeHeadless (Ghidra 12) and writes TSV symbols." \
+  printf '%s\n' "Usage: ghidra_export.sh <file.exe|file.com|BIOS.bin|floppy.img> [out.sym]" \
+    "  Runs analyzeHeadless (Ghidra 12) and writes TSV symbols (iron86 or EXE)." \
     "ghidra_export.sh 0.1"
   exit 0
 fi

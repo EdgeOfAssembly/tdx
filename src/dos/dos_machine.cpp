@@ -36,6 +36,49 @@ namespace
 {
 constexpr uint64_t k_ram = static_cast<uint64_t>(DOS_RAM_SIZE);
 
+void iron_vcr_write(uint32_t lin, uint8_t oldv, uint8_t newv, void *user)
+{
+    auto *m = static_cast<dos_machine *>(user);
+    if ((m == nullptr) || (!m->vcr_rec) || (oldv == newv))
+    {
+        return;
+    }
+    vcr_delta d{};
+    d.lin = lin;
+    d.oldv = oldv;
+    d.newv = newv;
+    m->vcr_pending.push_back(d);
+    if (((lin >= 0xB8000u) && (lin < 0xC0000u)) || ((lin >= 0xB0000u) && (lin < 0xB8000u)))
+    {
+        m->video_dirty = true;
+    }
+}
+
+void bind_iron_vcr(dos_machine *m)
+{
+    if ((m == nullptr) || (!m->iron))
+    {
+        return;
+    }
+    m->iron->c.set_mem_write_hook(iron_vcr_write, m);
+}
+
+void vcr_poke(dos_machine *m, uint32_t lin, uint8_t v)
+{
+    if (m == nullptr)
+    {
+        return;
+    }
+    if (m->iron)
+    {
+        m->iron->c.mem_write8(lin, v);
+    }
+    if ((m->ram != nullptr) && ((size_t)lin < m->ram_size))
+    {
+        m->ram[lin] = v;
+    }
+}
+
 std::string norm_insn_pat(const char *s)
 {
     std::string in = (s != nullptr) ? s : "";
@@ -1019,6 +1062,7 @@ rex_status dos_machine::load_floppy(const char *image)
     }
     std::fclose(fp);
     iron = std::make_unique<iron86::pc>();
+    bind_iron_vcr(this);
     iron->c.set_prefetch_bytes(prefetch_bytes);
     if (!iron->load_floppy(img.data(), img.size()))
     {
@@ -1071,6 +1115,7 @@ rex_status dos_machine::load_bios_5150(const char *path)
     if (!iron)
     {
         iron = std::make_unique<iron86::pc>();
+        bind_iron_vcr(this);
     }
     iron->c.set_prefetch_bytes(prefetch_bytes);
     if (!iron->c.load_bios(rom.data(), rom.size()))
@@ -1165,6 +1210,7 @@ rex_status dos_machine::set_exec_map(const char *path)
     if (!iron)
     {
         iron = std::make_unique<iron86::pc>();
+        bind_iron_vcr(this);
     }
     iron->c.set_prefetch_bytes(prefetch_bytes);
     if (!iron->c.open_exec_map(path))
@@ -2005,10 +2051,7 @@ rex_status dos_machine::vcr_back(void)
     for (i = 0; i < vcr_tape[vcr_pos].undos.size(); i++)
     {
         const vcr_delta &d = vcr_tape[vcr_pos].undos[i];
-        if ((ram != nullptr) && ((size_t)d.lin < ram_size))
-        {
-            ram[d.lin] = d.oldv;
-        }
+        vcr_poke(this, d.lin, d.oldv);
     }
     vcr_pos--;
     set_regs(&vcr_tape[vcr_pos].regs);
@@ -2029,10 +2072,7 @@ rex_status dos_machine::vcr_end(void)
         for (i = 0; i < vcr_tape[vcr_pos].undos.size(); i++)
         {
             const vcr_delta &d = vcr_tape[vcr_pos].undos[i];
-            if ((ram != nullptr) && ((size_t)d.lin < ram_size))
-            {
-                ram[d.lin] = d.newv;
-            }
+            vcr_poke(this, d.lin, d.newv);
         }
         set_regs(&vcr_tape[vcr_pos].regs);
         video_mode = vcr_tape[vcr_pos].video_mode;
@@ -2073,10 +2113,7 @@ rex_status dos_machine::vcr_forward(bool step_into)
         for (i = 0; i < vcr_tape[vcr_pos].undos.size(); i++)
         {
             const vcr_delta &d = vcr_tape[vcr_pos].undos[i];
-            if ((ram != nullptr) && ((size_t)d.lin < ram_size))
-            {
-                ram[d.lin] = d.newv;
-            }
+            vcr_poke(this, d.lin, d.newv);
         }
         set_regs(&vcr_tape[vcr_pos].regs);
         video_mode = vcr_tape[vcr_pos].video_mode;

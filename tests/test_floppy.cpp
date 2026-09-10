@@ -52,6 +52,34 @@ TEST_CASE("attach floppy B after A")
     rex_session_destroy(s);
 }
 
+TEST_CASE("VCR back restores iron86 BIOS CS:IP")
+{
+    const char *rom = "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/"
+                      "BIOS_IBM5150_24APR81_5700051_U33.BIN";
+    {
+        std::ifstream in(rom, std::ios::binary);
+        if (!in)
+        {
+            SKIP("5150 BIOS ROM not mounted");
+        }
+    }
+    rex_session *s = rex_session_create();
+    rex_regs_i8086 a{};
+    rex_regs_i8086 b{};
+    REQUIRE(rex_session_load_bios(s, rom) == REX_OK);
+    rex_session_vcr_seed(s);
+    rex_session_get_regs_i8086(s, &a);
+    REQUIRE(rex_session_vcr_forward(s, true) == REX_OK);
+    rex_session_get_regs_i8086(s, &b);
+    const bool moved = (a.cs != b.cs) || (a.ip != b.ip);
+    REQUIRE(moved);
+    REQUIRE(rex_session_vcr_back(s) == REX_OK);
+    rex_session_get_regs_i8086(s, &b);
+    REQUIRE(b.cs == a.cs);
+    REQUIRE(b.ip == a.ip);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("BIOS 40:6C advances while COMMAND waits for a key")
 {
     const char *img = "subprojects/floppyos/build/floppyos.img";
