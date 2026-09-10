@@ -242,6 +242,17 @@ private:
     std::deque<uint8_t> kbd_scan_; /**< INT 16 AH (scancode); parallel to kbd_ */
     std::deque<uint8_t> scanq_;
     uint8_t kbd_bat_ = 0; /**< XT BAT 0xAA after clock-low reset (5160 301). */
+    /**
+     * Skip IRQ dispatch one insn after OCW1 (F9E3: OUT 21h then MOV [046B],0).
+     */
+    uint8_t pic_holdoff_ = 0;
+    /**
+     * Insns to wait after latching Port A before IRQ1. 10JAN86 F9E3 does
+     * SUB CX,CX / TEST [046B],2 / JNZ / LOOP; jcxz treats CX=0 as 301, so
+     * BAT must not interrupt before the first LOOP (real XT serial is slow).
+     */
+    static constexpr uint8_t k_xt_kbd_irq_delay = 16;
+    uint8_t kbd_irq_delay_ = 0;
     std::chrono::steady_clock::time_point t0_{};
     uint8_t video_mode_ = 0x03;
     uint8_t cur_x_ = 0;

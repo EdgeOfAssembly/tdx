@@ -430,6 +430,7 @@ void pc::queue_scan(uint8_t sc)
     hw_.ppi.kbd_data = sc;
     hw_.ppi.kbd_ready = 1;
     hw_.ppi.kbd_irq_pend = 1;
+    kbd_irq_delay_ = k_xt_kbd_irq_delay;
     pic_deassert(1);
 }
 
@@ -1287,6 +1288,7 @@ void pc::pic_write_data(uint8_t v)
         /* icw_step==0: OCW1 even if ICW never finished (5160 TST6). */
     }
     hw_.pic.imr = v;
+    pic_holdoff_ = 1;
 }
 
 void pc::ppi_on_port_b()
@@ -1315,6 +1317,7 @@ void pc::ppi_on_port_b()
         p.kbd_data = 0xAA;
         p.kbd_ready = 1;
         p.kbd_irq_pend = 1;
+        kbd_irq_delay_ = k_xt_kbd_irq_delay;
         kbd_bat_ = 0;
 #ifndef NDEBUG
         fd_printf(STDERR_FILENO, "KBD BAT AA\n");
@@ -1332,9 +1335,12 @@ void pc::ppi_on_port_b()
     const bool pb7_now = (now & 0x80u) != 0;
     if (!pb7_was && pb7_now)
     {
-        /* Keyboard ack: 5150 INT 9 OR AL,80h / OUT 61h. */
+        /* Keyboard ack: 5150 INT 9 OR AL,80h / OUT 61h. Port A goes idle so
+         * POST's stuck-key IN 60h (E3FE) reads 0, not leftover BAT 0xAA. */
         p.kbd_ready = 0;
         p.kbd_irq_pend = 0;
+        p.kbd_data = 0;
+        kbd_irq_delay_ = 0;
         pic_deassert(1);
     }
     if (pb7_was && !pb7_now)
@@ -1346,6 +1352,7 @@ void pc::ppi_on_port_b()
             scanq_.pop_front();
             p.kbd_ready = 1;
             p.kbd_irq_pend = 1;
+            kbd_irq_delay_ = k_xt_kbd_irq_delay;
         }
     }
 }
@@ -1368,17 +1375,25 @@ void pc::ppi_tick()
         scanq_.pop_front();
         p.kbd_ready = 1;
         p.kbd_irq_pend = 1;
+        kbd_irq_delay_ = k_xt_kbd_irq_delay;
         pic_deassert(1);
     }
     if ((p.kbd_irq_pend == 0) || ((p.port_b & 0x80u) != 0))
     {
         return;
     }
+    if (kbd_irq_delay_ != 0)
+    {
+        kbd_irq_delay_ = static_cast<uint8_t>(kbd_irq_delay_ - 1u);
+        return;
+    }
     if ((hw_.pic.imr & 0x02u) == 0)
     {
         pic_deassert(1);
         pic_assert(1);
-        p.kbd_irq_pend = 0;
+        /* Keep kbd_irq_pend until PB7 ack. F9E3 does OUT 21h,FDh then
+         * MOV [046B],0; if we fire IRQ1 on the OUT, dummy sets 046B and
+         * the MOV clears it → 301 / F1. */
     }
 }
 
@@ -1724,6 +1739,11 @@ void pc::after_insn()
     }
     if ((c.flags() & k_flag_if) == 0)
     {
+        return;
+    }
+    if (pic_holdoff_ != 0)
+    {
+        pic_holdoff_ = 0;
         return;
     }
     const uint8_t pending = static_cast<uint8_t>(hw_.pic.irr & static_cast<uint8_t>(~hw_.pic.imr));

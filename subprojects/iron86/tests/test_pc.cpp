@@ -943,6 +943,57 @@ int main()
         expect(!p.attach_hdc_path("/dev/sda"), "hdc refuse /dev/sda");
         expect(!p.attach_hdc_path("/dev/sdb"), "hdc refuse /dev/sdb");
     }
+    {
+        /* 10JAN86 F9E3 + dummy ISR FF23. 301 if CX=0, BL!=AA, or stuck-key IN 60. */
+        const char *bios_path = "tests/images/hdc-proof/xt5160_10jan86_64k.bin";
+        std::ifstream rin(bios_path, std::ios::binary);
+        if (!rin)
+        {
+            bios_path = "/mnt/TurboDebugger/subprojects/iron86/tests/images/hdc-proof/"
+                        "xt5160_10jan86_64k.bin";
+            rin.open(bios_path, std::ios::binary);
+        }
+        expect(static_cast<bool>(rin), "5160 10jan86 bios open");
+        if (rin)
+        {
+            std::vector<uint8_t> rom((std::istreambuf_iterator<char>(rin)),
+                                     std::istreambuf_iterator<char>());
+            expect(rom.size() == 65536u, "5160 bios 64k");
+            iron86::pc p;
+            expect(p.c.load_bios(rom.data(), rom.size()), "load 64k bios");
+            p.wire_pc_hw();
+            /* COM: DS=0, IVT 8/9 → F000:FF23, PIC ICW, STI, CALL F9E3 copy,
+             * save CX/BX/[046B], then E3E9 stuck-key IN 60h. */
+            std::vector<uint8_t> prog = {
+                0x31, 0xC0, 0x8E, 0xD8, 0x8E, 0xC0, 0x8E, 0xD0, 0xBC, 0x00, 0x04,
+                0xC7, 0x06, 0x20, 0x00, 0x23, 0xFF, 0xC7, 0x06, 0x22, 0x00, 0x00, 0xF0,
+                0xC7, 0x06, 0x24, 0x00, 0x23, 0xFF, 0xC7, 0x06, 0x26, 0x00, 0x00, 0xF0,
+                0xB0, 0x13, 0xE6, 0x20, 0xB0, 0x08, 0xE6, 0x21, 0xB0, 0x09, 0xE6, 0x21,
+                0xB0, 0xFF, 0xE6, 0x21, 0xFB, 0xE8, 0x24, 0x00, 0x89, 0x0E, 0x00, 0x05,
+                0x89, 0x1E, 0x02, 0x05, 0xA0, 0x6B, 0x04, 0xA2, 0x06, 0x05, 0xB0, 0x49,
+                0xE6, 0x61, 0xB0, 0xC8, 0xE6, 0x61, 0xB0, 0x48, 0xE6, 0x61, 0x31, 0xC9,
+                0xE2, 0xFE, 0xE4, 0x60, 0xA2, 0x04, 0x05, 0xF4,
+            };
+            prog.insert(prog.end(), rom.begin() + 0xF9E3, rom.begin() + 0xF9E3 + 47);
+            p.c.load_com(prog.data(), prog.size(), 0x1000);
+            run(p.c, 300000);
+            expect(p.c.halted(), "f9e3 hlt");
+            const uint16_t cx = p.c.mem_read16(0x500);
+            const uint8_t bl = p.c.mem_read8(0x502);
+            const uint8_t in60 = p.c.mem_read8(0x504);
+            const uint8_t b46b = p.c.mem_read8(0x46B);
+            if ((cx == 0) || (bl != 0xAAu) || (in60 != 0) || ((b46b & 2u) == 0))
+            {
+                std::fprintf(stderr, "F9E3 diag CX=%04X BL=%02X IN60=%02X [046B]=%02X\n",
+                             cx, static_cast<unsigned>(bl), static_cast<unsigned>(in60),
+                             static_cast<unsigned>(b46b));
+            }
+            expect(cx != 0, "f9e3 irq1 cx");
+            expect_eq(bl, 0x00AA, "f9e3 BAT BL");
+            expect((b46b & 2u) != 0, "f9e3 [046B] bit1");
+            expect_eq(in60, 0, "f9e3 stuck-key IN60");
+        }
+    }
 
     if (g_fail != 0)
     {
