@@ -62,6 +62,23 @@ tdx_agent_sock *tdx_agent_listen(const char *path)
         return nullptr;
     }
     sk->path = path;
+    {
+        int probe = socket(AF_UNIX, SOCK_STREAM, 0);
+        sockaddr_un live{};
+        live.sun_family = AF_UNIX;
+        std::snprintf(live.sun_path, sizeof(live.sun_path), "%s", path);
+        if ((probe >= 0) &&
+            (connect(probe, reinterpret_cast<sockaddr *>(&live), sizeof(live)) == 0))
+        {
+            close(probe);
+            delete sk;
+            return nullptr;
+        }
+        if (probe >= 0)
+        {
+            close(probe);
+        }
+    }
     unlink(path);
     sk->listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sk->listen_fd < 0)

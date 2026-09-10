@@ -689,7 +689,8 @@ void hdc_xebec::dma_from_memory()
     const uint8_t ch = k_hdc_dma_ch;
     const uint32_t phys =
         (static_cast<uint32_t>(dma_->page[ch] & 0x0Fu) << 16) | dma_->curr_addr[ch];
-    const uint32_t n = static_cast<uint32_t>(buf_.size());
+    uint32_t remaining = static_cast<uint32_t>(dma_->curr_count[ch]) + 1u;
+    const uint32_t n = std::min(static_cast<uint32_t>(buf_.size()), remaining);
     uint32_t i = 0;
     for (; i < n; i++)
     {

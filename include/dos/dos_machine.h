@@ -186,11 +186,11 @@ struct dos_machine
     /** @brief mmap a 1 MiB executed-opcode map (iron86). */
     rex_status set_exec_map(const char *path);
     /**
-     * @brief 8088-style prefetch queue for iron86 (0 = off). Default 4.
+     * @brief 8088-style prefetch queue for iron86 (0 = off). Default 6.
      * Applied when the iron86 PC is created and if it already exists.
      */
     void set_prefetch_bytes(unsigned n);
-    unsigned prefetch_bytes = 4; /**< iron86 BIU queue; 0 = off. */
+    unsigned prefetch_bytes = 6; /**< iron86 BIU queue; 0 = off. Default 8086. */
     /**
      * Default true: BX=[0472]=1234h and CS:IP=F000:E199 (10JAN86 skips STGTST).
      * --no-fast-post leaves reset FFFF:0000 for cold POST.

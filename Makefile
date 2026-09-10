@@ -181,6 +181,8 @@ test: tdx tdxview tests/run_tests fixtures
 	$(PY) scripts/tdxctl.py -h | grep -q bpm
 	$(PY) scripts/tdxctl.py -h | grep -q step-over
 	$(PY) scripts/tdxctl.py -h | grep -q floppy
+	$(PY) scripts/tdxctl.py -h | grep -q type
+	$(PY) scripts/tdxctl.py -v | grep -q 0.27
 	$(PY) scripts/tdxctl.py -v
 	@if command -v mandoc >/dev/null 2>&1; then \
 	  mandoc -T lint man/tdx.1 man/tdxview.1 man/tdxctl.1 man/iron86.1; \

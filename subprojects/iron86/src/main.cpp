@@ -16,6 +16,7 @@
 #include <iterator>
 #include <string>
 #include <sys/stat.h>
+#include <ctime>
 #include <unistd.h>
 #include <vector>
 
@@ -736,6 +737,8 @@ int main(int argc, char **argv)
             }
         }
         uint64_t n = 0;
+        struct timespec irq0_last{};
+        (void)clock_gettime(CLOCK_MONOTONIC, &irq0_last);
         while ((!p.c.halted()) && (n < 150000000ull))
         {
             if (!p.c.step())
@@ -743,6 +746,21 @@ int main(int argc, char **argv)
                 break;
             }
             n++;
+            if ((n & 4095ull) == 0ull)
+            {
+                struct timespec now{};
+                uint64_t dt = 0;
+                (void)clock_gettime(CLOCK_MONOTONIC, &now);
+                dt = (static_cast<uint64_t>(now.tv_sec) - static_cast<uint64_t>(irq0_last.tv_sec)) *
+                         1000000000ull +
+                     static_cast<uint64_t>(now.tv_nsec) -
+                     static_cast<uint64_t>(irq0_last.tv_nsec);
+                if (dt >= 55000000ull)
+                {
+                    p.wall_clock_irq0();
+                    irq0_last = now;
+                }
+            }
             if (until_prompt && ((n & 8191ull) == 0ull) && b800_has_prompt(p.c))
             {
                 break;

@@ -2068,17 +2068,9 @@ void pc::fdc_exec()
     }
     if ((cmd == 0x05) || (cmd == 0x09))
     {
-        hw_.fdc.st0 = have ? drv : static_cast<uint8_t>(0x40u | drv);
-        hw_.fdc.st1 = have ? 0 : 0x04;
-        hw_.fdc.st2 = 0;
-        hw_.fdc.res[0] = hw_.fdc.st0;
-        hw_.fdc.res[1] = hw_.fdc.st1;
-        hw_.fdc.res[2] = hw_.fdc.st2;
-        hw_.fdc.res[3] = hw_.fdc.cmd[2];
-        hw_.fdc.res[4] = static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u);
-        hw_.fdc.res[5] = hw_.fdc.cmd[4];
-        hw_.fdc.res[6] = hw_.fdc.cmd[5];
-        hw_.fdc.res_n = 7;
+        /* No DMA-from-mem yet. Do not ST0=OK (DOS COPY would lie). */
+        hw_.fdc.res[0] = 0x80;
+        hw_.fdc.res_n = 1;
         hw_.fdc.res_i = 0;
         hw_.fdc.phase = 1;
         hw_.fdc.msr = 0xD0;

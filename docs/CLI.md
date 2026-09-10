@@ -46,6 +46,9 @@ tdx --floppy-a image.img --no-bios [options]
 | `--verbose` | Log every stepped instruction |
 | `--exec-map FILE` | 1 MiB executed-opcode map (iron86) |
 | `--prefetch-bytes N` | BIU prefetch queue (default **6=8086**; 4=8088; 0=off) |
+| `--hdc PATH` | Xebec Type-1 image (regular file only; never `/dev/sd*`) |
+| `--hdc-rom FILE` | Xebec ROS at C8000 (default IBM 5000059 if present) |
+| `--no-fast-post` | Cold POST from FFFF:0000 (default skips STGTST via 1234h) |
 | `--scale N` | CPU window integer scale (default 2) |
 
 Always `scripts/tdx-kill.sh` before a new tdx/tdxview pair.
@@ -84,8 +87,9 @@ tdxctl [options] <command> [args…]
 | `--view` | Talk to tdxview (game window shot/keys) |
 | `--ctl` | Keep-alive stdin pipeline |
 
-Commands include `unpause`, `pause`, `delay [N]`, `key`, `shot`, `cga`, `status`,
-`bp` / `bpint` / `bpm`, `dump cga [FILE]` (16 KiB B800 → `SCREEN.CGA`),
+Commands include `unpause`, `pause`, `delay [N]`, `key`, `type` (`\\n` = Enter),
+`shot`, `cga`, `status` / `getip` (`running` + `stop`; `stop=1` is STEP, not
+paused), `bp` / `bpint` / `bpm`, `dump cga [FILE]` (16 KiB B800 → `SCREEN.CGA`),
 `dump mda [FILE]` (4 KiB B000 → `SCREEN.MDA`). Prefer **`unpause`** over `run`
 (F9 toggle).
 
@@ -112,6 +116,12 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 | `--floppy PATH` | Alias for `--floppy-a` |
 | `--keys STRING` | Type STRING as INT 16h keys |
 | `--exec-map FILE` | 1 MiB executed-opcode map |
+| `--hdc PATH` | Xebec Type-1 image (regular file only) |
+| `--hdc-rom FILE` | Xebec ROS at C8000 |
+| `--log FILE` | Append event log (default off) |
+| `--lock-mem` | mlock guest RAM + HDC (default off) |
+| `--config PATH` | INI (default `iron86.ini` in cwd if present) |
+| `--until-prompt` | Stop at B800 `A>` (boot bench) |
 | `--prefetch-bytes N` | BIU prefetch queue (default **6=8086**; 4=8088; 0=off) |
 
 ---
@@ -123,8 +133,8 @@ Fits **360K** (40/2/9) if possible, else **720K** (80/2/9). **Fails** if the
 tree needs more than 720K or more than 32 files. **No 1.2M / 1.44M packer yet.**
 **No subdirectories.** TODO: recursive tree, smallest standard size that fits.
 
-**Raw image CHS:** size **&lt; 300 000** bytes → 8 spt, 1 head; otherwise **9 spt,
-2 heads** (covers 360K and 720K). **1.2M (15 spt) and 1.44M (18 spt) are not
-auto-detected.** TODO: detect all common IBM PC floppy sizes at runtime.
+**Raw image CHS:** exact size first (160K/180K/320K/360K/720K/1.2M/1.44M), else
+nearest IBM geometry. No 2.88M.
 
-**Next:** XT HDD as **C:** for trees larger than a floppy — see `docs/TODO.md`.
+**HDD:** `tdx --preset ibm-xt --hdc FILE` — `DIR C:` proven empty FAT12. Copy+reboot
+and cold POST still open — see `docs/TODO.md`.

@@ -632,6 +632,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
 
     assert(session != nullptr);
     ui.scale = scale;
+    ui.running = rex_session_running(session) != 0;
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
     {
         std::fprintf(stderr, "tdx: SDL_Init: %s\n", SDL_GetError());
@@ -720,6 +721,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 else if (k == SDLK_F9)
                 {
                     ui.running = !ui.running;
+                    rex_session_set_running(session, ui.running ? 1 : 0);
                     if (!ui.running)
                     {
                         rex_session_request_stop(session);
@@ -732,6 +734,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 else if ((mod & KMOD_CTRL) && (k == SDLK_F2))
                 {
                     ui.running = false;
+                    rex_session_set_running(session, 0);
                     rex_session_reset(session);
                 }
                 else if ((k == SDLK_PLUS) || (k == SDLK_KP_PLUS) || (k == SDLK_EQUALS))
@@ -851,7 +854,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
             const int uic = rex_session_take_ui_cmd(session);
             if (uic == REX_UI_TOGGLE_RUN)
             {
-                ui.running = !ui.running;
+                ui.running = rex_session_running(session) != 0;
                 if (!ui.running)
                 {
                     rex_session_request_stop(session);
@@ -919,6 +922,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                     rex_session_halted(session))
                 {
                     ui.running = false;
+                    rex_session_set_running(session, 0);
                 }
             }
         }

@@ -1327,6 +1327,7 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         resp["cmd"] = cmd;
     }
     resp["stop"] = (int)rex_session_stop_reason(s);
+    resp["running"] = rex_session_running(s) != 0;
     resp["halted"] = rex_session_halted(s);
     resp["delay_ms"] = rex_session_run_delay_ms(s);
     resp["guest"] = json_latin1(rex_session_guest(s));
@@ -1360,6 +1361,24 @@ rex_sock *rex_sock_listen(const char *path)
         return nullptr;
     }
     sk->path = path;
+    {
+        int probe = socket(AF_UNIX, SOCK_STREAM, 0);
+        sockaddr_un live{};
+        live.sun_family = AF_UNIX;
+        std::snprintf(live.sun_path, sizeof(live.sun_path), "%s", path);
+        if ((probe >= 0) &&
+            (connect(probe, reinterpret_cast<sockaddr *>(&live), sizeof(live)) == 0))
+        {
+            close(probe);
+            rex_logf(REX_LOG_ERROR, "agent socket %s already in use", path);
+            delete sk;
+            return nullptr;
+        }
+        if (probe >= 0)
+        {
+            close(probe);
+        }
+    }
     unlink(path);
     sk->listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sk->listen_fd < 0)
@@ -1379,6 +1398,7 @@ rex_sock *rex_sock_listen(const char *path)
     if (listen(sk->listen_fd, 16) < 0)
     {
         close(sk->listen_fd);
+        unlink(path);
         delete sk;
         return nullptr;
     }

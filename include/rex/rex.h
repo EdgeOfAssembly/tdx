@@ -82,7 +82,7 @@ REX_API rex_status rex_session_attach_hdc_rom(rex_session *s, const char *path);
 REX_API void rex_session_set_mda(rex_session *s, int on);
 
 /**
- * @brief 8088-style prefetch queue (iron86). Default 4; 0 = off (always RAM).
+ * @brief 8088-style prefetch queue (iron86). Default 6; 0 = off (always RAM).
  * Clamped to 1024. Call before or after load; applied when the iron86 PC exists.
  */
 REX_API void rex_session_set_prefetch_bytes(rex_session *s, unsigned n);
@@ -204,6 +204,9 @@ REX_API void rex_session_set_run_delay_ms(rex_session *s, uint32_t ms);
 REX_API uint32_t rex_session_nudge_run_delay(rex_session *s, int dir);
 
 REX_API rex_stop rex_session_stop_reason(const rex_session *s);
+/** @brief F9/unpause live (independent of last stop reason; STEP is not pause). */
+REX_API int rex_session_running(const rex_session *s);
+REX_API void rex_session_set_running(rex_session *s, int on);
 REX_API bool rex_session_halted(const rex_session *s);
 REX_API int rex_session_exit_code(const rex_session *s);
 REX_API rex_arch rex_session_arch(const rex_session *s);

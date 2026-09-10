@@ -9,6 +9,19 @@
 
 #include <string>
 
+TEST_CASE("session running is independent of stop reason")
+{
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_running(s) == 0);
+    rex_session_set_running(s, 1);
+    REQUIRE(rex_session_running(s) == 1);
+    rex_session_post_ui_cmd(s, REX_UI_STOP);
+    REQUIRE(rex_session_running(s) == 0);
+    rex_session_post_ui_cmd(s, REX_UI_START_RUN);
+    REQUIRE(rex_session_running(s) == 1);
+    rex_session_destroy(s);
+}
+
 TEST_CASE("breakpoint at second insn stops before executing it")
 {
     rex_session *s = rex_session_create();

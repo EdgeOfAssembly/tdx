@@ -32,7 +32,7 @@ struct rex_session
     bool floppy = false;
     bool floppy_uc = false;
     bool bios = false;
-    unsigned prefetch_bytes = 4;
+    unsigned prefetch_bytes = 6;
     bool fast_post = true;
     std::string floppy_a;
     std::string floppy_b;
@@ -41,6 +41,7 @@ struct rex_session
     std::string guest;
     int ui_cmd = 0;
     uint32_t run_delay_ms = 0;
+    bool running = false;
 };
 
 namespace
@@ -477,9 +478,35 @@ rex_status rex_session_request_stop(rex_session *s)
 
 void rex_session_post_ui_cmd(rex_session *s, int cmd)
 {
+    if (s == nullptr)
+    {
+        return;
+    }
+    s->ui_cmd = cmd;
+    if (cmd == REX_UI_START_RUN)
+    {
+        s->running = true;
+    }
+    else if (cmd == REX_UI_STOP)
+    {
+        s->running = false;
+    }
+    else if (cmd == REX_UI_TOGGLE_RUN)
+    {
+        s->running = !s->running;
+    }
+}
+
+int rex_session_running(const rex_session *s)
+{
+    return (s != nullptr) && s->running ? 1 : 0;
+}
+
+void rex_session_set_running(rex_session *s, int on)
+{
     if (s != nullptr)
     {
-        s->ui_cmd = cmd;
+        s->running = (on != 0);
     }
 }
 

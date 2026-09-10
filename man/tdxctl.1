@@ -1,4 +1,4 @@
-.TH TDXCTL 1 "2026-09-10" "tdx 0.25" "User Commands"
+.TH TDXCTL 1 "2026-09-10" "tdx 0.27" "User Commands"
 .SH NAME
 tdxctl \- talk to tdx or tdxview over a UNIX socket
 .SH SYNOPSIS
@@ -81,9 +81,15 @@ uses the canonical split CS=lin>>4, IP=lin&0xF.
 keeps current CS.
 .TP
 .B getip
-Print CS:IP and linear (alias:
+Print CS:IP, linear,
+.B running
+(F9 live), and
+.B stop
+(last reason;
+.B 1
+is STEP, not paused). Alias:
 .B ip
-with no argument).
+with no argument.
 .TP
 .BI "dump cga " [FILE]
 16 KiB from B800:0000 to
@@ -100,6 +106,10 @@ Arbitrary range.
 .TP
 .BI "key " KEY
 Inject a DOS INT 16h key (starts run).
+.TP
+.BI "type " TEXT
+INT 16h string. A backslash-n in the text is Enter
+(example: type DIR C: then Enter). Starts run.
 .TP
 .BI "shot " [path]
 Screenshot; stdout is the versioned path.

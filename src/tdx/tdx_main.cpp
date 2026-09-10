@@ -91,7 +91,8 @@ int main(int argc, char **argv)
     }
     if (!cli.hdc.empty() && cli.bios.empty())
     {
-        std::fputs("tdx: --hdc needs --bios or --preset ibm-xt (5160 scans Xebec ROS)\n", stderr);
+        std::fputs("tdx: --hdc: no 5160 BIOS (set --bios, IRON86_XT_BIOS, or --preset ibm-xt)\n",
+                   stderr);
         return 2;
     }
     if (!cli.hdc.empty() && (cli.preset == iron86::machine_preset::ibm_pc))
@@ -199,7 +200,7 @@ int main(int argc, char **argv)
 
     if (cli.run)
     {
-        rex_session_run(s, 0);
+        rex_session_set_running(s, 1);
     }
 
     if (cli.no_ui)
@@ -211,7 +212,8 @@ int main(int argc, char **argv)
                    (rex_session_stop_reason(s) != REX_STOP_FAULT))
             {
                 rex_sock_poll(sk, s);
-                if (cli.run)
+                (void)rex_session_take_ui_cmd(s);
+                if (rex_session_running(s) != 0)
                 {
                     rex_session_run(s, 20000);
                 }

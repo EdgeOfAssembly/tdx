@@ -219,7 +219,7 @@ public:
      *
      * @param[in] n Bytes kept ahead of the EU. 0 disables the queue (every
      *              fetch reads RAM). Values above @c k_prefetch_max are
-     *              clamped to 1024. Default is 4 (8088 / IBM 5150); 6 is 8086.
+     *              clamped to 1024. Default is 6 (8086); 4 is 8088 / IBM 5150.
      *
      * @note 8086/8088 do not snoop data writes. A byte already in the queue
      *       is executed even if RAM was patched (self-modifying code). A

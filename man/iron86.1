@@ -1,4 +1,4 @@
-.TH IRON86 1 "2026-09-10" "iron86 0.20" "User Commands"
+.TH IRON86 1 "2026-09-10" "iron86 0.21" "User Commands"
 .SH NAME
 iron86 \- chip-level 8086 IBM PC (no DOS)
 .SH SYNOPSIS
@@ -88,6 +88,7 @@ Alias for
 .BI \-\-hdc " PATH"
 Raw HDD image (512-byte sectors) for the IBM XT Fixed Disk Adapter
 (Xebec S1410-class) at 320h–323h, IRQ 5, DMA 3.
+Must be a regular file — block devices (\fI/dev/sda\fP) are refused.
 Default geometry is Type-1 306×4×17 (INI
 .B [hdc]
 cylinders/heads/spt override).
@@ -136,7 +137,7 @@ Stop at FloppyOS/DOS A> (boot bench; default off).
 1 MiB executed-opcode map.
 .TP
 .BI \-\-prefetch\-bytes " N"
-8088-style BIU prefetch queue (default 4; 0 disables; 6 is 8086).
+BIU prefetch queue (default 6 = 8086; 4 = 8088; 0 disables).
 Values above 1024 are clamped to 1024 (note on stderr).
 Queued bytes are not snooped on data writes (self-modifying code).
 A taken jump/call/ret/int/iret flushes the queue.

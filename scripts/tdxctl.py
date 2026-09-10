@@ -9,7 +9,7 @@ import socket
 import sys
 from pathlib import Path
 
-VERSION = "0.24"
+VERSION = "0.27"
 
 
 def usage() -> None:
@@ -28,7 +28,7 @@ Commands:
   mem <seg:off> [len]
   poke <seg:off> <hex>   write bytes (90CF or 90 CF)
   setip <seg:off|linear> set CS:IP (0FDB:A360 or 0xFE199 canonical)
-  getip                  print CS:IP and 20-bit linear (alias: ip with no arg)
+  getip                  print CS:IP, linear, running (F9), stop (1=STEP not pause)
   type <text>            INT 16 string; \\n = Enter  (e.g. type 'B:\\nTANK\\n')
   dump cga [FILE]    16 KiB B800 → SCREEN.CGA (default)
   dump mda [FILE]    4 KiB B000 → SCREEN.MDA (default)

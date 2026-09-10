@@ -359,7 +359,7 @@ void send_key(int fd, std::string *acc, SDL_Keycode k)
     }
     if (k == SDLK_F9)
     {
-        send_line(fd, "{\"cmd\":\"run\"}");
+        send_line(fd, "{\"cmd\":\"unpause\"}");
         recv_line(fd, acc, &ignore);
         return;
     }

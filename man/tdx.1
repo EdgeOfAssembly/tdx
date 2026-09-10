@@ -63,6 +63,10 @@ Default from
 .BR \-\-preset
 when the ROM is on disk. Reset FFFF:0000.
 .TP
+.B \-\-no\-bios
+Skip ROM; iron86 C++ INT 10/13/16 only (FloppyOS smoke).
+Xebec needs a 5160 BIOS.
+.TP
 .B \-\-no\-fast\-post
 Cold POST from FFFF:0000. Default sets RESET_FLAG=1234h and starts at
 F000:E199 so 10JAN86 skips STGTST / extra RAM (looks instant at delay 0).
@@ -116,7 +120,7 @@ Log every stepped instruction to stderr.
 Write a 1 MiB executed-opcode map (iron86). Unexecuted bytes stay 0.
 .TP
 .BI \-\-prefetch\-bytes " N"
-iron86 8088-style prefetch queue (default 4; 0 disables; 6 is 8086; max 1024).
+iron86 BIU prefetch queue (default 6 = 8086; 4 = 8088; 0 disables; max 1024).
 .TP
 .BI \-\-scale " N"
 CPU window integer scale (default 2).
