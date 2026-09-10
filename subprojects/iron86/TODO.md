@@ -8,8 +8,8 @@ PPI I/O nibble is now **0x0F = 544K** (24-APR-81 BIOS max).
 
 | Name | Chip | IBM box | Status |
 |------|------|---------|--------|
-| 8086 | 8086 (prefetch 6; 4=8088) | **5150 PC** (`--preset ibm-pc` / `5150`) | floppy only |
-| 8086 | 8086 + Xebec | **5160 XT** (`--preset ibm-xt` / `5160`) | option-ROM scan C8000 |
+| 8086 | 8086 prefetch **6** (IBM shipped **8088** queue 4) | **5150 PC** (`ibm-pc` / `5150`) | floppy only; 8K BIOS, no C8000 scan |
+| 8086 | 8086 + Xebec | **5160 XT** (`ibm-xt` / `5160`) | 64K BIOS scans C8000; `DIR C:` proven `ff83f30` |
 | 8286 | 80286 | **5170 AT** (`ibm-at` / `8286`) — **not XT** | reserved, not yet |
 | 8386 | 80386 | later | |
 | 8486 | 80486 | later | |
@@ -17,7 +17,7 @@ PPI I/O nibble is now **0x0F = 544K** (24-APR-81 BIOS max).
 | AMD K5 | K5 | later | |
 | 8686 | Pentium Pro | later | |
 
-5160 XT is still an **8088** (same CPU class as the 5150) plus the IBM Fixed Disk Adapter (Xebec S1410 SASI @ 320h, IRQ5, DMA3). Do **not** call the 286 an XT. 5162 XT/286 is not the 286 target.
+IBM 5150/5160 **factory CPU is 8088**. iron86/tdx default both presets to **8086 prefetch 6** (`--prefetch-bytes 4` for stock 8088). Xebec is S1410 SASI @ 320h, IRQ5, DMA3. Do **not** call the 286 an XT. 5162 XT/286 is not the 286 target.
 
 ## Config (INI)
 
@@ -25,9 +25,10 @@ Precedence: **CLI overrides INI overrides preset**. No JSON/XML.
 
 - [x] INI parser (`include/iron86/config.h`, `src/config.cpp`)
 - [x] `--config PATH` (default `iron86.ini` in cwd if that file exists)
-- [x] `--preset ibm-pc` (default) / `ibm-xt` (8086 + Xebec-capable)
+- [x] `--preset ibm-pc` / `5150` (floppy) / `ibm-xt` / `5160` (Xebec); `--hdc` implies xt
 - [x] `--preset ibm-at` / `8286` reserved: stderr **not yet**, exit 2
-- [x] `--hdc PATH` plumbing (store path; Xebec command engine is next)
+- [x] `--hdc PATH` + Xebec engine (not a stub): 320h–323h, ROS C8000, Type-1 306×4×17
+- [x] `--log FILE`, `--lock-mem`, `--no-fast-post`, `--hdc-rom FILE`
 
 ```ini
 [machine]
@@ -48,7 +49,7 @@ heads = 4
 spt = 17
 
 [cpu]
-prefetch_bytes = 4
+prefetch_bytes = 6
 ```
 
 ## Floppy CHS (IBM PC compatible)
@@ -80,10 +81,13 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 
 8086 **does** support HDD; the missing piece is the **controller + BIOS**, not the ISA. 5150 8K BIOS has no HDD INT 13 — use 5160 BIOS or the IBM Xebec option ROM (`IBM_XEBEC_5000059_1982.BIN`) at C800:0. INT 13 with **DL & 0x80** must not map onto floppy (intercept returns false so ROS can run).
 
-- [x] `--hdc PATH` store path (stub `attach_hdc_path`)
+- [x] `--hdc PATH` refuse `/dev/sd*` (host disks)
 - [x] INT 13 DL&0x80 fall through (do not treat HDD as A:)
 - [x] Xebec command engine (`hdc.cpp` / `hdc.h`): 320h–323h, IRQ5, DMA3, IBM CHS DCB (0-based sector), opcodes 00/01/03/04/05/06/08/0A/0B/0C/0E/0F + class-7 stubs, persist to hdc.img, ROS at C8000, 8K/40K/64K `--bios`
-- [ ] **FORMAT C: proof** (mandatory): `dd if=/dev/zero of=hdc.img bs=512 count=20808` (306×4×17), boot MS-DOS 3.31 from A: (`ibm-pc` or `ibm-xt` + `--hdc`), FDISK, `FORMAT C:`, copy a file, reboot, `DIR C:` still shows it — harness: `tests/hdc-format-c.sh`
+- [x] 5160 POST **301/F1** (`fe9e529` IRQ1 delay + Port A idle) and **8259 nested IRQ** (`ff83f30`) so DOS does not stack-overflow
+- [x] **DIR C:** on `ibm-xt` + DOS 3.31 + Type-1 image (empty FAT12 root). Shot `re/tdx-tank/tdx-xt-dirc-20260910T212706.431.bmp`
+- [ ] **FORMAT C: full proof** — guest FDISK+FORMAT was done as **E:** then DIP mux made it **C:**. Still missing: `FORMAT C:` as letter C:, copy a file, reboot, `DIR C:` still shows it. Harness `tests/hdc-format-c.sh` not written
+- [ ] **Cold POST** `--no-fast-post`: KB OK works; after 640 KB OK CS=`4B20` executing zeros. Fast-post is the play path
 - [ ] **XT HDD C:** auto-size from a host dir larger than 1.44M (or any floppy)
 
 ## Bottom of queue (after those)

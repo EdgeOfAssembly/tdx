@@ -18,7 +18,9 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 - [ ] **Window title after AH=4Ch** — restore `COMMAND.COM` (or clear) when the child exits; today the last EXE name sticks.
 - [ ] **tdxview SDL_TEXTINPUT** — host FI layout sends `SDL_Keycode` `;` for `:`; colon is Shift+`;` on US XT. Type `B:` from a Finnish keyboard without tdxctl.
-- [ ] **`tdxctl run` vs unpause** — `run` toggles F9; agents should prefer `unpause`. Document or make `run` start-only.
+- [x] **`--preset ibm-pc`/`5150` vs `ibm-xt`/`5160`** (tdx 0.27); `--hdc` implies xt; prefetch default 6
+- [x] **`--hdc` / `--hdc-rom` / `--no-fast-post`**
+- [ ] **`tdxctl run` vs unpause** — `run` toggles F9; agents should prefer `unpause`. Document or make `run` start-only. `getip` often reports `stop=1` while the guest is advancing.
 - [ ] **Unique sockets per pair** — `/tmp/tdx.sock` is one pair; two TDX windows need `--sock` defaults that include PID, or a small launcher.
 - [ ] **CGA 3D9 palette** in tdxview for all palettes Bushido uses (cyan/magenta vs red/green).
 - [ ] **VCR / symbols / Ghidra** — keep working on Unicorn EXE; untested on `--bios` iron86.
@@ -32,7 +34,7 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 ### BIOS policy (2026-09-06)
 
-**Default: load official ROS** (`tdx --floppy-a` → 5150 8K unless `--no-bios`). Fast-post is warm-boot (`40:72` + `BX=1234h`, `CS:IP=F000:E199`). Do **not** grow the C++ INT 10/13/16 clone as the main path.
+**Default:** `tdx --floppy-a` → 5150 8K (`ibm-pc`) unless `--preset ibm-xt` / `5160` or `--hdc` (implies xt, 64K 10JAN86 + Xebec ROS). Fast-post is warm-boot (`40:72` + `BX=1234h`, jump `F000:E199`; 10JAN86 1234h compare is **E175**). `--no-fast-post` cold POST still dies after 640 KB OK. Do **not** grow the C++ INT 10/13/16 clone as the main path.
 
 - [x] **PIT/IRQ0 under tdx F9** — BIOS ch0 reload 0 strides in `pit_tick`; F9 slices keep stepping through INT 16 wait so ROM INT 8 advances `40:6C`. `pit_poll` pulses iron86 IRQ0 at 18.2 Hz wall. (TANK.COM INT 1A stall.)
 - [ ] **Profile POST** — `make profile` (gprof `-pg`), then speed warm-boot without patching ROS (checksum ERR01). PIT/CGA status waits, tdx F9 slice.
@@ -88,18 +90,21 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ### P1 — storage
 
-- [ ] **XT hard disk (Xebec / WD1002-ish) as C:** — ports `320h–323h`, DMA3, IRQ5,
-  option ROM `C800:0` if we ship a ROM. Py86 `hdc_xebec.py` is the reference.
-  **Next session (Fri/Sat):** `--hdc FILE` **and** auto-size a virtual HDD from a
-  host directory that does not fit any floppy (e.g. 1.3MB tree → C: image).
+- [x] **XT hard disk Xebec as C:** — `320h–323h`, DMA3, IRQ5, ROS `C800:0`
+  (`IBM_XEBEC_5000059`). `tdx --preset ibm-xt --hdc FILE`. Guest FDISK +
+  FORMAT (as E: then DIP mux) + **`DIR C:`** proven empty FAT12 (`ff83f30`).
+  Never `--hdc /dev/sd*`.
+- [ ] **FORMAT C: copy+reboot** — put a file on C:, reboot, `DIR C:` still shows it.
+  Harness `tests/hdc-format-c.sh` missing.
+- [ ] **HDD auto-size from a host dir** that does not fit any floppy (1.3MB tree → C:).
 - [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
 - [ ] **FDC Format / Scan / Read ID** — after Write.
 - [x] **720K geometry** — FlopFS packer: 360K if it fits, else 720K 80/2/9
-  (Dragon Wars ~708K). Over 720K → fail today (HDD C: next).
+  (Dragon Wars ~708K). Over 720K → fail today (use `--hdc`).
 
-**Floppy auto-size (answers 1–2, 2026-09-04) — not done yet**
+**Floppy auto-size (answers 1–2, 2026-09-04)** — raw CHS is done in iron86; dir pack still flat 32 names / 360–720 only.
 
-- [ ] **Raw image CHS at runtime** — pick geometry from file size, all common
+- [x] **Raw image CHS at runtime** (iron86) — pick geometry from file size, all common
   IBM PC floppy formats, not only “&lt;300KB → 8/1 else 9/2”:
   | Size | CHS | Notes |
   |------|-----|--------|
@@ -153,14 +158,15 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ## Suggested order
 
-1. **Profile 5150 POST** (`make profile` + gprof) — make `--bios` the normal play path.
-2. **XT HDD C:** auto-sized from a host dir that does not fit 720K (user: next Fri/Sat).
+1. **Cold POST** (`--no-fast-post`) after 640 KB OK (CS=`4B20` zeros) — or keep fast-post for play.
+2. **FORMAT C: copy+reboot** proof + `tests/hdc-format-c.sh`.
 3. FDC Write (saves / COPY / `AH=40`).
-4. FlopFS xxhash3/dedup.
-5. Raw-image CHS auto-detect (1.2M/1.44M) + dir pack smallest-fit including subdirs.
-6. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
-7. FAT12 and FDC Format/Scan.
-8. **Full C++/Intel-asm BIOS clone (PC/XT/AT/Pentium) — last.** `--no-bios` until then.
+4. HDD auto-size from a host dir larger than 1.44M.
+5. FlopFS xxhash3/dedup.
+6. Dir pack smallest-fit including subdirs (1.2M/1.44M).
+7. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
+8. FDC Format/Scan.
+9. **Full C++/Intel-asm BIOS clone (PC/XT/AT/Pentium) — last.** `--no-bios` until then.
 
 **Docs:** `docs/CLI.md`, `docs/HOWTO_DRAGON_WARS.md`, `docs/MILESTONE_CGA_COMPOSITE.md`, `man/*.1`. Keep this file in sync.
 
