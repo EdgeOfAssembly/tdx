@@ -506,15 +506,11 @@ void pc::type_scan(uint8_t make)
 
 void pc::queue_ascii(uint8_t ch)
 {
+    /* INT 16 is stolen: DOS reads kbd_ only. Do not IRQ1 (make without break
+     * confuses ROM INT 9) and do not pump. */
     kbd_.push_back(ch);
     waiting_key_ = false;
     kbd_poll_idle_ = false;
-    const uint8_t mk = ascii_make(ch);
-    if (mk != 0)
-    {
-        kbd_scan_.push_back(mk);
-        queue_scan(mk);
-    }
 }
 
 void pc::feed_ascii(uint8_t ch)
