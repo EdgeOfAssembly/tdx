@@ -233,6 +233,7 @@ private:
     void tty_scroll();
 
     std::vector<uint8_t> floppy_[2];
+    std::string floppy_path_[2]; /**< Host file for persist; empty if RAM-only. */
     hdc_xebec hdc_{};
     std::string hdc_path_;
     size_t hdc_bytes_ = 0;
@@ -291,6 +292,8 @@ private:
     uint8_t fdc_read_res();
     void fdc_exec();
     void fdc_dma_to_mem(const uint8_t *data, size_t n);
+    void fdc_dma_from_mem(uint8_t *data, size_t n);
+    void floppy_persist(uint8_t unit);
     const std::vector<uint8_t> *floppy_media(uint8_t drv) const;
     void sync_fdd_dip();
     void queue_scan(uint8_t sc);

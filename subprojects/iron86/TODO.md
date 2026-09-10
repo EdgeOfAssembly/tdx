@@ -72,8 +72,8 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] **Raw image CHS auto-detect** — table above; per-unit SPT/heads
 - [x] Floppy **B:** (second 360K, INT 13 DL=1, `attach_floppy` unit 1 / `--floppy-b`)
 - [x] **720K** FlopFS pack when a host dir does not fit 360K (`--floppy-b`)
-- [ ] FDC **Write Data** DMA-from-mem (persist image)
-- [ ] FDC **Format** / **Scan** / **Read ID**
+- [x] FDC **Write Data** DMA-from-mem (persist image)
+- [x] FDC **Format** / **Scan** / **Read ID**
 - [ ] **Dir pack: smallest floppy that fits** — recursive tree size, then
   360K → 720K → 1.2M → 1.44M. Today: flat dir, 32 names, 360/720 only.
 

@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <sys/stat.h>
@@ -158,6 +159,7 @@ bool pc::attach_floppy(uint8_t unit, const uint8_t *img, size_t n)
         return false;
     }
     floppy_[unit].assign(img, img + n);
+    floppy_path_[unit].clear();
     sync_fdd_dip();
     return true;
 }
@@ -193,7 +195,12 @@ bool pc::attach_floppy_path(uint8_t unit, const char *path)
     }
     const std::vector<uint8_t> img((std::istreambuf_iterator<char>(in)),
                                    std::istreambuf_iterator<char>());
-    return attach_floppy(unit, img.data(), img.size());
+    if (!attach_floppy(unit, img.data(), img.size()))
+    {
+        return false;
+    }
+    floppy_path_[unit] = path;
+    return true;
 }
 
 bool pc::attach_floppy_b(const uint8_t *img, size_t n)
@@ -973,6 +980,7 @@ bool pc::int13()
         {
             floppy_[unit][off + i] = c.mem_read8(src + i);
         }
+        floppy_persist(unit);
         c.set_ax(nsec);
         c.set_cf(false);
         return true;
@@ -1837,6 +1845,56 @@ void pc::fdc_dma_to_mem(const uint8_t *data, size_t n)
     }
 }
 
+void pc::fdc_dma_from_mem(uint8_t *data, size_t n)
+{
+    if ((data == nullptr) || (n == 0))
+    {
+        hw_.fdc.dma_more = 0;
+        return;
+    }
+    const uint32_t phys =
+        (static_cast<uint32_t>(hw_.dma.page[2] & 0x0Fu) << 16) | hw_.dma.curr_addr[2];
+    uint32_t remain = static_cast<uint32_t>(hw_.dma.curr_count[2]) + 1u;
+    if (remain == 0)
+    {
+        remain = 0x10000u;
+    }
+    const size_t ncopy = (n < remain) ? n : static_cast<size_t>(remain);
+    size_t i = 0;
+    for (i = 0; i < ncopy; i++)
+    {
+        data[i] = c.mem_read8((phys + static_cast<uint32_t>(i)) & 0xFFFFFu);
+    }
+    hw_.dma.curr_addr[2] =
+        static_cast<uint16_t>(hw_.dma.curr_addr[2] + static_cast<uint16_t>(ncopy));
+    const uint16_t nc = static_cast<uint16_t>(hw_.dma.curr_count[2] - static_cast<uint16_t>(ncopy));
+    hw_.dma.curr_count[2] = nc;
+    if ((ncopy > 0) && (nc == 0xFFFFu))
+    {
+        hw_.dma.status = static_cast<uint8_t>(hw_.dma.status | 0x04u);
+        hw_.fdc.dma_more = 0;
+    }
+    else
+    {
+        hw_.fdc.dma_more = (remain > ncopy) ? 1 : 0;
+    }
+}
+
+void pc::floppy_persist(uint8_t unit)
+{
+    if ((unit > 1u) || floppy_path_[unit].empty() || floppy_[unit].empty())
+    {
+        return;
+    }
+    std::ofstream out(floppy_path_[unit], std::ios::binary | std::ios::trunc);
+    if (!out)
+    {
+        return;
+    }
+    out.write(reinterpret_cast<const char *>(floppy_[unit].data()),
+              static_cast<std::streamsize>(floppy_[unit].size()));
+}
+
 void pc::fdc_write_dor(uint8_t v)
 {
     const uint8_t prev = hw_.fdc.dor;
@@ -2083,14 +2141,176 @@ void pc::fdc_exec()
         pic_assert(6);
         return;
     }
-    if ((cmd == 0x05) || (cmd == 0x09))
+    if ((cmd == 0x05) || (cmd == 0x09) || (cmd == 0x11) || (cmd == 0x19) || (cmd == 0x1D))
     {
-        /* No DMA-from-mem yet. Do not ST0=OK (DOS COPY would lie). */
-        hw_.fdc.res[0] = 0x80;
-        hw_.fdc.res_n = 1;
+        const uint8_t cyl = hw_.fdc.cmd[2];
+        const uint8_t head = static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u);
+        uint8_t sec = hw_.fdc.cmd[4];
+        const uint8_t n = hw_.fdc.cmd[5];
+        uint8_t eot = hw_.fdc.cmd[6];
+        uint8_t spt = 9;
+        const bool scan = (cmd == 0x11) || (cmd == 0x19) || (cmd == 0x1D);
+        if (media != nullptr)
+        {
+            uint32_t spt32 = 9;
+            uint32_t heads32 = 2;
+            floppy_geom(media->size(), &spt32, &heads32);
+            spt = static_cast<uint8_t>(spt32);
+        }
+        if (spt > eot)
+        {
+            eot = spt;
+        }
+        const uint32_t sec_sz = (n < 8u) ? (128u << n) : 512u;
+        hw_.fdc.st0 = static_cast<uint8_t>(drv);
+        hw_.fdc.st1 = 0;
+        hw_.fdc.st2 = 0;
+        if (!have || (drv > 1u))
+        {
+            hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
+            hw_.fdc.st1 = 0x04;
+        }
+        else
+        {
+            uint8_t k = 0;
+            for (k = 0; k < 64u; k++)
+            {
+                const uint32_t lba = chs_lba(cyl, head, sec, drv);
+                const uint32_t off = lba * sec_sz;
+                if ((lba == 0xFFFFFFFFu) || ((off + sec_sz) > floppy_[drv].size()))
+                {
+                    hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
+                    hw_.fdc.st1 = static_cast<uint8_t>(hw_.fdc.st1 | 0x04u);
+                    break;
+                }
+                if (scan)
+                {
+                    std::vector<uint8_t> buf(sec_sz, 0);
+                    fdc_dma_from_mem(buf.data(), sec_sz);
+                    size_t bi = 0;
+                    for (bi = 0; bi < sec_sz; bi++)
+                    {
+                        const uint8_t d = floppy_[drv][off + bi];
+                        if ((cmd == 0x11) && (buf[bi] != d))
+                        {
+                            hw_.fdc.st2 = static_cast<uint8_t>(hw_.fdc.st2 | 0x04u);
+                            break;
+                        }
+                        if ((cmd == 0x19) && (buf[bi] > d))
+                        {
+                            hw_.fdc.st2 = static_cast<uint8_t>(hw_.fdc.st2 | 0x04u);
+                            break;
+                        }
+                        if ((cmd == 0x1D) && (buf[bi] < d))
+                        {
+                            hw_.fdc.st2 = static_cast<uint8_t>(hw_.fdc.st2 | 0x04u);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    fdc_dma_from_mem(floppy_[drv].data() + off, sec_sz);
+                }
+                if (sec >= eot)
+                {
+                    break;
+                }
+                if (hw_.fdc.dma_more == 0)
+                {
+                    break;
+                }
+                sec = static_cast<uint8_t>(sec + 1u);
+            }
+            floppy_persist(drv);
+        }
+        hw_.fdc.res[0] = hw_.fdc.st0;
+        hw_.fdc.res[1] = hw_.fdc.st1;
+        hw_.fdc.res[2] = hw_.fdc.st2;
+        hw_.fdc.res[3] = cyl;
+        hw_.fdc.res[4] = head;
+        hw_.fdc.res[5] = sec;
+        hw_.fdc.res[6] = n;
+        hw_.fdc.res_n = 7;
         hw_.fdc.res_i = 0;
         hw_.fdc.phase = 1;
         hw_.fdc.msr = 0xD0;
+        pic_deassert(6);
+        pic_assert(6);
+        return;
+    }
+    if (cmd == 0x0D)
+    {
+        const uint8_t head = static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u);
+        const uint8_t n = hw_.fdc.cmd[2];
+        const uint8_t sc = hw_.fdc.cmd[3];
+        const uint8_t fill = hw_.fdc.cmd[5];
+        const uint32_t sec_sz = (n < 8u) ? (128u << n) : 512u;
+        uint8_t last_c = hw_.fdc.cyl[drv];
+        uint8_t last_h = head;
+        uint8_t last_r = 1;
+        hw_.fdc.st0 = static_cast<uint8_t>(drv);
+        hw_.fdc.st1 = 0;
+        hw_.fdc.st2 = 0;
+        if (!have || (drv > 1u))
+        {
+            hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
+            hw_.fdc.st1 = 0x04;
+        }
+        else
+        {
+            uint8_t i = 0;
+            const uint8_t nsec = (sc == 0) ? 1 : sc;
+            for (i = 0; i < nsec; i++)
+            {
+                uint8_t id[4] = {last_c, last_h, static_cast<uint8_t>(i + 1u), n};
+                fdc_dma_from_mem(id, 4);
+                last_c = id[0];
+                last_h = id[1];
+                last_r = id[2];
+                const uint32_t lba = chs_lba(id[0], id[1], id[2], drv);
+                const uint32_t off = lba * sec_sz;
+                if ((lba == 0xFFFFFFFFu) || ((off + sec_sz) > floppy_[drv].size()))
+                {
+                    hw_.fdc.st0 = static_cast<uint8_t>(0x40u | drv);
+                    hw_.fdc.st1 = 0x04;
+                    break;
+                }
+                std::memset(floppy_[drv].data() + off, fill, sec_sz);
+            }
+            floppy_persist(drv);
+        }
+        hw_.fdc.res[0] = hw_.fdc.st0;
+        hw_.fdc.res[1] = hw_.fdc.st1;
+        hw_.fdc.res[2] = hw_.fdc.st2;
+        hw_.fdc.res[3] = last_c;
+        hw_.fdc.res[4] = last_h;
+        hw_.fdc.res[5] = last_r;
+        hw_.fdc.res[6] = n;
+        hw_.fdc.res_n = 7;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 1;
+        hw_.fdc.msr = 0xD0;
+        pic_deassert(6);
+        pic_assert(6);
+        return;
+    }
+    if (cmd == 0x0A)
+    {
+        const uint8_t head = (hw_.fdc.cmd_n > 1u) ? static_cast<uint8_t>((hw_.fdc.cmd[1] >> 2) & 1u)
+                                                  : 0;
+        hw_.fdc.res[0] = have ? static_cast<uint8_t>(drv) : static_cast<uint8_t>(0x40u | drv);
+        hw_.fdc.res[1] = have ? 0 : 0x04;
+        hw_.fdc.res[2] = 0;
+        hw_.fdc.res[3] = hw_.fdc.cyl[drv];
+        hw_.fdc.res[4] = head;
+        hw_.fdc.res[5] = 1;
+        hw_.fdc.res[6] = 2;
+        hw_.fdc.res_n = 7;
+        hw_.fdc.res_i = 0;
+        hw_.fdc.phase = 1;
+        hw_.fdc.msr = 0xD0;
+        pic_deassert(6);
         pic_assert(6);
         return;
     }

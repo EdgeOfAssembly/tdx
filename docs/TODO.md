@@ -100,8 +100,8 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 - [x] Guest **FORMAT C:** from blank Type-1 as letter C: (`hdc-type1-fmt.img`,
   FAT12 `IBM  3.3`, `FORMAT.COM` 19683). Earlier FDISK-as-E: then DIP mux is obsolete.
 - [ ] **HDD auto-size from a host dir** that does not fit any floppy (1.3MB tree → C:).
-- [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
-- [ ] **FDC Format / Scan / Read ID** — after Write.
+- [x] **FDC Write Data** DMA-from-mem (persist A:/B: when attached from a host file).
+- [x] **FDC Format / Scan / Read ID**.
 - [x] **720K geometry** — FlopFS packer: 360K if it fits, else 720K 80/2/9
   (Dragon Wars ~708K). Over 720K → fail today (use `--hdc`).
 

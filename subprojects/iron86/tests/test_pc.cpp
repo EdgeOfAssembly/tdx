@@ -723,6 +723,81 @@ int main()
         expect_eq(p.c.mem_read8(0x10400u), 0x5A, "int13 write roundtrip");
     }
     {
+        /* INT 13 AH=03 persist to the host file (FDC Write uses the same image). */
+        const char *path = "/tmp/iron86-fdc-persist.img";
+        {
+            std::vector<uint8_t> z(512, 0);
+            z[510] = 0x55;
+            z[511] = 0xAA;
+            std::ofstream o(path, std::ios::binary);
+            o.write(reinterpret_cast<const char *>(z.data()), 512);
+        }
+        iron86::pc p;
+        expect(p.attach_floppy_path(0, path), "persist attach");
+        p.wire_pc_hw();
+        p.c.mem_write8(0x10200u, 0xA5);
+        const uint8_t prog[] = {
+            0x8C, 0xC8, 0x8E, 0xC0, 0xB8, 0x01, 0x03, 0xBB, 0x00, 0x02,
+            0xB9, 0x01, 0x00, 0xBA, 0x00, 0x00, 0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect((p.c.ax() & 0xFF00u) == 0, "persist AH=0");
+        std::ifstream in(path, std::ios::binary);
+        unsigned char b = 0;
+        in.read(reinterpret_cast<char *>(&b), 1);
+        expect_eq(static_cast<uint16_t>(b), 0xA5, "persist host");
+        (void)std::remove(path);
+    }
+    {
+        /* FDC Write Data 05h DMA-from-mem, then INT 13 read-back. */
+        std::vector<uint8_t> img(512, 0);
+        img[510] = 0x55;
+        img[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img.data(), img.size()), "wr attach");
+        p.wire_pc_hw();
+        p.c.mem_write8(0x10000u, 0xCC);
+        const uint8_t prog[] = {
+            0xB0, 0x4A, 0xE6, 0x0B,             /* mode ch2 read (mem→FDC) */
+            0xB0, 0x00, 0xE6, 0x04, 0xE6, 0x04, /* addr 0000 */
+            0xB0, 0x01, 0xE6, 0x81,             /* page 01h */
+            0xB0, 0xFF, 0xE6, 0x05, 0xB0, 0x01, 0xE6, 0x05,
+            0xB0, 0x02, 0xE6, 0x0A,
+            0xBA, 0xF2, 0x03, 0xB0, 0x0C, 0xEE, 0xB0, 0x1C, 0xEE,
+            0xBA, 0xF5, 0x03, 0xB0, 0x08, 0xEE, 0xEC, 0xEC,
+            0xB0, 0x03, 0xEE, 0xB0, 0xDF, 0xEE, 0xB0, 0x02, 0xEE,
+            0xB0, 0x05, 0xEE, 0xB0, 0x00, 0xEE, /* Write Data drv 0 */
+            0xB0, 0x00, 0xEE, 0xB0, 0x00, 0xEE, 0xB0, 0x01, 0xEE, 0xB0, 0x02, 0xEE,
+            0xB0, 0x09, 0xEE, 0xB0, 0x2A, 0xEE, 0xB0, 0xFF, 0xEE,
+            0x8C, 0xC8, 0x8E, 0xC0, 0xB8, 0x01, 0x02, 0xBB, 0x00, 0x04,
+            0xB9, 0x01, 0x00, 0xBA, 0x00, 0x00, 0xCD, 0x13, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 80);
+        expect((p.c.ax() & 0xFF00u) == 0, "fdc write AH=0");
+        expect_eq(p.c.mem_read8(0x10400u), 0xCC, "fdc write roundtrip");
+    }
+    {
+        /* Read ID 0Ah returns 7-byte ST0..N, not invalid 80h. */
+        uint8_t img[512];
+        std::memset(img, 0, sizeof(img));
+        img[510] = 0x55;
+        img[511] = 0xAA;
+        iron86::pc p;
+        expect(p.attach_floppy(0, img, sizeof(img)), "rid attach");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xBA, 0xF2, 0x03, 0xB0, 0x0C, 0xEE, 0xB0, 0x1C, 0xEE,
+            0xBA, 0xF5, 0x03, 0xB0, 0x08, 0xEE, 0xEC, 0xEC,
+            0xB0, 0x0A, 0xEE, 0xB0, 0x00, 0xEE, /* Read ID */
+            0xEC, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 40);
+        expect((p.c.ax() & 0xFFu) != 0x80u, "read id not invalid");
+    }
+    {
         /* INT 10h AH=02/03/09: SETUP.TNK centers menu lines (not AH=0E only). */
         iron86::pc p;
         p.boot();
