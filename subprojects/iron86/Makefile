@@ -17,6 +17,9 @@ LDFLAGS_PROFILE := -pg
 CXXFLAGS ?= $(CXXFLAGS_DEBUG)
 LDFLAGS ?= $(LDFLAGS_DEBUG)
 
+SDL_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null)
+SDL_LIBS := $(shell pkg-config --libs sdl2 2>/dev/null)
+
 .PHONY: all test tests verify clean release profile
 
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
@@ -31,8 +34,8 @@ HDR := include/iron86/cpu.h include/iron86/ea.h include/iron86/pc.h include/iron
 	include/iron86/chs_lba.h include/iron86/hdc.h include/iron86/log.h \
 	include/iron86/fpu.h
 
-iron86: $(SRC) src/main.cpp $(HDR)
-	$(CXX) $(CXXFLAGS) $(SRC) src/main.cpp -o $@ $(LDFLAGS)
+iron86: $(SRC) src/main.cpp src/display_sdl.cpp include/iron86/display_sdl.h $(HDR)
+	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(SRC) src/main.cpp src/display_sdl.cpp -o $@ $(LDFLAGS) $(SDL_LIBS)
 
 tests/run_tests: $(SRC) tests/test_cpu.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp src/log.cpp src/fpu.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
@@ -70,8 +73,10 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./tests/run_log
 	./tests/run_fpu
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.23'
-	./iron86 --no-audio -v | grep -q 'iron86 0.23'
+	./iron86 -v | grep -q 'iron86 0.24'
+	./iron86 --no-audio -v | grep -q 'iron86 0.24'
+	./iron86 -h | grep -q -- --headless
+	./iron86 -h | grep -q -- --scale
 	./iron86 -h | grep -q -- --exec-map
 	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 -h | grep -q -- --until-prompt

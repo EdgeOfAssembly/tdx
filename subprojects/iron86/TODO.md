@@ -98,6 +98,7 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] **CGA BIOS CRT_CHAR_GEN 8×8** (`F000:FA6E`, runtime from guest, tdxview 8×16 double-row)
 - [x] **MDA 8K 5788005** + tdxview B000 (`tdx --mda`). BIN gitignored, not pushed.
 - [x] CGA **3D9** palette (OUT 3D9 + BDA 40:66); **40-col** modes 0/1 in tdxview
+- [x] Standalone **SDL2** window (text + CGA gfx, IBM 5788005, `--scale`, `--headless`). tdx still uses its own views.
 - [x] **mode 6** 640×200 1bpp + composite in tdxview (Dragon Wars)
 - [x] **mode 4** 320×200 old-CGA NTSC (Reenigne/86Box); gold `games/SCREEN.CGA`
 - [x] PPI I/O nibble **0x0F = 544K** (24-APR-81 BIOS max; not 640K / not EMS)

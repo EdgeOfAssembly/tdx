@@ -4,6 +4,7 @@
  */
 #include "iron86/config.h"
 #include "iron86/cpu.h"
+#include "iron86/display_sdl.h"
 #include "iron86/hdc.h"
 #include "iron86/log.h"
 #include "iron86/pc.h"
@@ -25,7 +26,7 @@ using iron86::fd_puts;
 using iron86::fd_write;
 using iron86::log_event;
 
-static const char *k_version = "0.23";
+static const char *k_version = "0.24";
 
 static void usage(int fd)
 {
@@ -63,7 +64,9 @@ static void usage(int fd)
             "  --log FILE           Append event log (HDC/floppy/BIOS/ROS/INT13); default off\n"
             "  --lock-mem           mlock guest RAM + HDC image (default off)\n"
             "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
-            "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
+            "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; implies --headless)\n"
+            "  --headless           No SDL window (default: window when not a bench)\n"
+            "  --scale N            Integer window scale 1..8 (default: 2; 4:3 letterbox)\n"
             "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
             "  --prefetch-bytes N   BIU prefetch queue (default: 6=8086; 4=8088; 0=off; max 1024)\n"
             "\n");
@@ -414,6 +417,8 @@ int main(int argc, char **argv)
     bool no_8087 = false;
     bool mda = false;
     bool until_prompt = false;
+    bool headless = false;
+    int scale = 2;
     bool lock_mem = false;
     int i = 1;
     for (i = 1; i < argc; i++)
@@ -567,6 +572,36 @@ int main(int argc, char **argv)
         if (std::strcmp(a, "--until-prompt") == 0)
         {
             until_prompt = true;
+            headless = true;
+            continue;
+        }
+        if (std::strcmp(a, "--headless") == 0)
+        {
+            headless = true;
+            continue;
+        }
+        t = take_path_opt(a, "--scale", &opt, &i, argc, argv);
+        if (t != 0)
+        {
+            if ((t < 0) || (opt[0] == '\0'))
+            {
+                fd_puts(STDERR_FILENO, "iron86: --scale needs N\n");
+                return 2;
+            }
+            scale = 0;
+            {
+                const char *s = opt;
+                while ((*s >= '0') && (*s <= '9'))
+                {
+                    scale = scale * 10 + (*s - '0');
+                    s++;
+                }
+            }
+            if ((scale < 1) || (scale > 8))
+            {
+                fd_puts(STDERR_FILENO, "iron86: --scale 1..8\n");
+                return 2;
+            }
             continue;
         }
         if (std::strcmp(a, "--lock-mem") == 0)
@@ -769,10 +804,26 @@ int main(int argc, char **argv)
         }
         uint64_t n = 0;
         bool typed_date = false;
+        bool video = false;
         struct timespec irq0_last{};
+        struct timespec video_last{};
+        const uint64_t step_cap = until_prompt ? 150000000ull : 0ull;
         (void)clock_gettime(CLOCK_MONOTONIC, &irq0_last);
-        while ((!p.c.halted()) && (n < 150000000ull))
+        video_last = irq0_last;
+        if (!headless)
         {
+            video = iron86::display_sdl_open(scale);
+            if (!video)
+            {
+                fd_puts(STDERR_FILENO, "iron86: continuing headless (no SDL window)\n");
+            }
+        }
+        while (!p.c.halted())
+        {
+            if ((step_cap != 0ull) && (n >= step_cap))
+            {
+                break;
+            }
             if (!p.c.step())
             {
                 break;
@@ -792,6 +843,23 @@ int main(int argc, char **argv)
                     p.wall_clock_irq0();
                     irq0_last = now;
                 }
+                if (video)
+                {
+                    uint64_t vdt = (static_cast<uint64_t>(now.tv_sec) -
+                                    static_cast<uint64_t>(video_last.tv_sec)) *
+                                       1000000000ull +
+                                   static_cast<uint64_t>(now.tv_nsec) -
+                                   static_cast<uint64_t>(video_last.tv_nsec);
+                    if (vdt >= 16000000ull)
+                    {
+                        iron86::display_sdl_present(p.c, mda);
+                        if (!iron86::display_sdl_poll(p))
+                        {
+                            break;
+                        }
+                        video_last = now;
+                    }
+                }
             }
             if (until_prompt && ((n & 8191ull) == 0ull))
             {
@@ -805,6 +873,10 @@ int main(int argc, char **argv)
                     break;
                 }
             }
+        }
+        if (video)
+        {
+            iron86::display_sdl_close();
         }
         dump_b800(p.c);
         emit_tty(p.tty());
