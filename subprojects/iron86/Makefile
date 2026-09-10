@@ -65,8 +65,8 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./tests/run_hdc
 	./tests/run_log
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.21'
-	./iron86 --no-audio -v | grep -q 'iron86 0.21'
+	./iron86 -v | grep -q 'iron86 0.22'
+	./iron86 --no-audio -v | grep -q 'iron86 0.22'
 	./iron86 -h | grep -q -- --exec-map
 	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 -h | grep -q -- --until-prompt

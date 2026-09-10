@@ -266,6 +266,7 @@ bool cpu::load_bios_5150_8k(const uint8_t *data, size_t n)
     halted_ = false;
     last_op_ = 0;
     rom_bios_ = true;
+    bios_xt_ = false;
     rom_n_ = 0;
     add_rom_window(0xFE000u, 0x100000u);
     /* Keep bios_ intercept. pc::bios_int yields INT 10/16/1A to the ROM
@@ -329,6 +330,7 @@ bool cpu::load_bios(const uint8_t *data, size_t n)
     halted_ = false;
     last_op_ = 0;
     rom_bios_ = true;
+    bios_xt_ = true;
     return true;
 }
 

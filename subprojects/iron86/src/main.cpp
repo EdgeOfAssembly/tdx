@@ -25,7 +25,7 @@ using iron86::fd_puts;
 using iron86::fd_write;
 using iron86::log_event;
 
-static const char *k_version = "0.21";
+static const char *k_version = "0.22";
 
 static void usage(int fd)
 {

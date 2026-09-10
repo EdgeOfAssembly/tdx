@@ -511,6 +511,7 @@ int main()
         rom[8192 - 12] = 0xF0;
         iron86::cpu c;
         expect(c.load_bios_5150_8k(rom, sizeof(rom)), "bios load");
+        expect(c.bios_xt() == false, "8k not xt");
         expect_eq(c.cs(), 0xFFFF, "bios cs");
         expect_eq(c.ip(), 0, "bios ip");
         expect_eq(c.mem_read8(0xFFFF0), 0xEA, "ffff0 ea");
@@ -534,6 +535,7 @@ int main()
         expect_eq(c.mem_read8(0xF0000u), 0x90, "64k at F0000");
         expect_eq(c.mem_read8(0xFFFF0u), 0xEA, "64k ffff0");
         expect(c.rom_bios(), "64k rom_bios");
+        expect(c.bios_xt(), "64k bios_xt");
         expect(c.step(), "64k jmp far");
         expect_eq(c.cs(), 0xF000, "64k target cs");
         expect_eq(c.ip(), 0xE05B, "64k target ip");
@@ -550,6 +552,7 @@ int main()
         rom[40960 - 12] = 0xF0;
         iron86::cpu c;
         expect(c.load_bios(rom, sizeof(rom)), "bios 40k");
+        expect(c.bios_xt(), "40k bios_xt");
         expect_eq(c.mem_read8(0xF0000u), 0xCC, "40k U19");
         expect_eq(c.mem_read8(0xFFFF0u), 0xEA, "40k ffff0");
         expect(c.load_bios(rom, 12345u) == false, "bios bad size");

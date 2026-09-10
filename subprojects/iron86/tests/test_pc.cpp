@@ -169,6 +169,30 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "eq 2d 1 fdd");
     }
     {
+        /* 5160 C10 OUT 61h,A5h (PB3=0) then E211 mux must still be 0x2D.
+         * PB2 is 1 in both A5h and ADh; muxing on PB2 yields 0x22 (no IPL). */
+        iron86::pc p;
+        uint8_t rom[65536];
+        std::memset(rom, 0xCC, sizeof(rom));
+        rom[0xFFF0] = 0xEA;
+        rom[0xFFF1] = 0x5B;
+        rom[0xFFF2] = 0xE0;
+        rom[0xFFF3] = 0x00;
+        rom[0xFFF4] = 0xF0;
+        expect(p.c.load_bios(rom, sizeof(rom)), "xt bios for ppi");
+        expect(p.c.bios_xt(), "bios_xt");
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0xA5, 0xE6, 0x61,                   /* OUT 61h,A5h  C10 */
+            0xE4, 0x62, 0x24, 0x0F, 0x8A, 0xE0,       /* IN 62, AND 0F, AH=AL */
+            0xB0, 0xAD, 0xE6, 0x61,                   /* OUT 61h,ADh */
+            0xE4, 0x62, 0xB1, 0x04, 0xD2, 0xC0, 0x24, 0xF0, 0x0A, 0xC4, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 40);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "eq 2d after C10 A5");
+    }
+    {
         /* PIT ch1 mode 2 LSB count 0: after ticks, latch LSB is not stuck at 00. */
         iron86::pc p;
         p.wire_pc_hw();

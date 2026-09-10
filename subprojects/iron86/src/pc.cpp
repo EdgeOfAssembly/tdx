@@ -2156,10 +2156,14 @@ uint8_t pc::in_port(uint16_t port)
         }
         if (p == 0x62u)
         {
-            /* 5160: PC0–3 are SW1 low/high nibble selected by PB2 (E211–E228). */
+            /* 5150: PB2 selects SW1 low/high nibble.
+             * 5160 10JAN86: C10 `OUT 61h,A5h` and E217 `OUT 61h,ADh` both have
+             * PB2=1; the bank bit is PB3. Using PB2 after C10 yields
+             * EQUIP_FLAG=0022h (no IPL) and F15A `JMP START` forever. */
             const uint8_t sw = (hw_.ppi.dip != 0) ? hw_.ppi.dip : 0x2Du;
+            const uint8_t bank = c.bios_xt() ? 0x08u : 0x04u;
             uint8_t nibble = sw & 0x0Fu;
-            if ((hw_.ppi.port_b & 0x04u) != 0)
+            if ((hw_.ppi.port_b & bank) != 0)
             {
                 nibble = static_cast<uint8_t>((sw >> 4) & 0x0Fu);
             }

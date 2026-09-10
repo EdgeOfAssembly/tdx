@@ -87,9 +87,9 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] 5160 POST **301/F1** (`fe9e529` IRQ1 delay + Port A idle) and **8259 nested IRQ** (`ff83f30`) so DOS does not stack-overflow
 - [x] **DIR C:** on `ibm-xt` + DOS 3.31 + Type-1 image (empty FAT12 root). Shot `re/tdx-tank/tdx-xt-dirc-20260910T212706.431.bmp`
 - [x] **FORMAT C: copy+reboot** — `ECHO HELLO>C:HI.TXT` then kill tdx, restart same image, `DIR C:` still shows `HI.TXT` 7 bytes (`b16bc2a6…` persist). Burst `tdxctl type` of a long line can still stack-overflow; type per-char or pump in `feed_ascii`.
-- [ ] **FORMAT C: as letter C:** from a blank Type-1 (guest FDISK was E: then DIP mux). Harness `tests/hdc-format-c.sh` still print-only.
+- [x] **FORMAT C: as letter C:** guest FDISK + FORMAT C: on blank Type-1 (`hdc-type1-fmt.img`, FAT12 `IBM  3.3`, `FORMAT.COM` 19683). Shot `/tmp/tdx-dir-c-copy-*.bmp`.
 - [x] **Cold POST dummy-stack smash** — BIOS F000 is write-protected (real XT ROM). No more CS=`4B20` zeros after 640 KB OK.
-- [ ] **Cold POST to A>** — `--no-fast-post` counts KB OK to 640 then stays in STGTST (`F000:EDxx`). Fast-post remains the play path.
+- [x] **Cold POST to A>** — `--no-fast-post` 5160 10JAN86: 640 KB OK, EQUIP_FLAG=402Dh, date prompt, `DIR C:` still `FORMAT.COM` 19683. SW1 mux is PB3 (`0.22`). STGTST is slow (~3 min). Fast-post remains the play path.
 - [ ] **XT HDD C:** auto-size from a host dir larger than 1.44M (or any floppy)
 
 ## Bottom of queue (after those)

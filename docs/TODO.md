@@ -34,7 +34,7 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 ### BIOS policy (2026-09-06)
 
-**Default:** `tdx --floppy-a` → 5150 8K (`ibm-pc`) unless `--preset ibm-xt` / `5160` or `--hdc` (implies xt, 64K 10JAN86 + Xebec ROS). Fast-post is warm-boot (`40:72` + `BX=1234h`, jump `F000:E199`; 10JAN86 1234h compare is **E175**). `--no-fast-post` cold POST still dies after 640 KB OK. Do **not** grow the C++ INT 10/13/16 clone as the main path.
+**Default:** `tdx --floppy-a` → 5150 8K (`ibm-pc`) unless `--preset ibm-xt` / `5160` or `--hdc` (implies xt, 64K 10JAN86 + Xebec ROS). Fast-post is warm-boot (`40:72` + `BX=1234h`, jump `F000:E199`; 10JAN86 1234h compare is **E175**). `--no-fast-post` cold POST reaches 640 KB OK; 5160 SW1 mux is PB3 (iron86 0.22) so EQUIP_FLAG keeps IPL. Do **not** grow the C++ INT 10/13/16 clone as the main path.
 
 - [x] **PIT/IRQ0 under tdx F9** — BIOS ch0 reload 0 strides in `pit_tick`; F9 slices keep stepping through INT 16 wait so ROM INT 8 advances `40:6C`. `pit_poll` pulses iron86 IRQ0 at 18.2 Hz wall. (TANK.COM INT 1A stall.)
 - [ ] **Profile POST** — `make profile` (gprof `-pg`), then speed warm-boot without patching ROS (checksum ERR01). PIT/CGA status waits, tdx F9 slice.
@@ -160,7 +160,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ## Suggested order
 
-1. **Cold POST** (`--no-fast-post`) after 640 KB OK (CS=`4B20` zeros) — or keep fast-post for play.
+1. **Cold POST** (`--no-fast-post`) to A> after 640 KB OK — ROM WP + PB3 SW1 mux; STGTST is slow (~minutes at interpreter speed). Fast-post remains the play path.
 2. **FORMAT C: copy+reboot** proof + `tests/hdc-format-c.sh`.
 3. FDC Write (saves / COPY / `AH=40`).
 4. HDD auto-size from a host dir larger than 1.44M.

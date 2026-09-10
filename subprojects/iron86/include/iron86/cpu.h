@@ -185,6 +185,17 @@ public:
     }
 
     /**
+     * @brief True after a 40 KiB or 64 KiB 5160 BIOS load.
+     *
+     * 5160 10JAN86 muxes SW1 on Port C with **PB3** (`OUT 61h,A5h` vs `ADh`).
+     * 5150 8K uses **PB2**. @ref pc::in_port 62h follows this flag.
+     */
+    bool bios_xt() const
+    {
+        return bios_xt_;
+    }
+
+    /**
      * @brief Load a .COM image at CS:0100 (PSP-style). Does not build a PSP.
      * @param[in] bytes Image bytes.
      * @param[in] n     Length (capped at 64 KiB - 0x100).
@@ -534,6 +545,7 @@ private:
     bool halted_ = false;
     uint8_t last_op_ = 0;
     bool rom_bios_ = false;
+    bool bios_xt_ = false; /**< 40K/64K 5160 BIOS: Port C SW1 mux is PB3. */
     uint8_t rom_n_ = 0;
     uint32_t rom_lo_[4]{};
     uint32_t rom_hi_[4]{};

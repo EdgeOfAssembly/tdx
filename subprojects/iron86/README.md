@@ -39,7 +39,7 @@ Prep / FORMAT C: notes: `tests/hdc-format-c.sh`.
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.21** — `--preset ibm-pc`/`5150` (floppy) vs `ibm-xt`/`5160` (Xebec).
+Version **0.22** — `--preset ibm-pc`/`5150` (floppy) vs `ibm-xt`/`5160` (Xebec). 5160 Port C SW1 mux is PB3.
 Default CPU is **8086** (prefetch 6; `--prefetch-bytes 4` for 8088). INT 13h
 entry log under `--log` (HDD `DL>=80h` still passes to Xebec ROS). `--log FILE`
 (append event log; default off), `--lock-mem` (mlock guest RAM + HDC image;
