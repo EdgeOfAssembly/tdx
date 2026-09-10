@@ -733,6 +733,7 @@ int main(int argc, char **argv)
             return 1;
         }
         iron86::pc p;
+        p.set_steal_int16(steal_int16);
         p.c.set_prefetch_bytes(prefetch_bytes);
         if ((exec_map != nullptr) && !p.c.open_exec_map(exec_map))
         {
