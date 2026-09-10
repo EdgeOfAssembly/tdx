@@ -94,8 +94,10 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
   (`IBM_XEBEC_5000059`). `tdx --preset ibm-xt --hdc FILE`. Guest FDISK +
   FORMAT (as E: then DIP mux) + **`DIR C:`** proven empty FAT12 (`ff83f30`).
   Never `--hdc /dev/sd*`.
-- [ ] **FORMAT C: copy+reboot** — put a file on C:, reboot, `DIR C:` still shows it.
-  Harness `tests/hdc-format-c.sh` missing.
+- [x] **FORMAT C: copy+reboot** — `ECHO HELLO>C:HI.TXT`, full tdx restart, `DIR C:`
+  still lists `HI.TXT` (host image hash changed). Burst `tdxctl type` of a long
+  line can stack-overflow; slow type worked.
+- [ ] Guest **FORMAT C:** from blank Type-1 as letter C: (FDISK was E: then DIP mux).
 - [ ] **HDD auto-size from a host dir** that does not fit any floppy (1.3MB tree → C:).
 - [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
 - [ ] **FDC Format / Scan / Read ID** — after Write.

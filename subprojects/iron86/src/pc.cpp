@@ -464,15 +464,29 @@ void pc::feed_ascii(uint8_t ch)
     {
         return;
     }
+    auto pump = [this]() {
+        int n = 0;
+        for (n = 0; (n < 400) && (!c.halted()); n++)
+        {
+            if (!c.step())
+            {
+                break;
+            }
+        }
+    };
     if (ascii_needs_shift(ch))
     {
         queue_scan(0x2A);
+        pump();
     }
     queue_scan(mk);
+    pump();
     queue_scan(static_cast<uint8_t>(mk | 0x80u));
+    pump();
     if (ascii_needs_shift(ch))
     {
         queue_scan(0xAA);
+        pump();
     }
 }
 

@@ -86,7 +86,8 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] Xebec command engine (`hdc.cpp` / `hdc.h`): 320h–323h, IRQ5, DMA3, IBM CHS DCB (0-based sector), opcodes 00/01/03/04/05/06/08/0A/0B/0C/0E/0F + class-7 stubs, persist to hdc.img, ROS at C8000, 8K/40K/64K `--bios`
 - [x] 5160 POST **301/F1** (`fe9e529` IRQ1 delay + Port A idle) and **8259 nested IRQ** (`ff83f30`) so DOS does not stack-overflow
 - [x] **DIR C:** on `ibm-xt` + DOS 3.31 + Type-1 image (empty FAT12 root). Shot `re/tdx-tank/tdx-xt-dirc-20260910T212706.431.bmp`
-- [ ] **FORMAT C: full proof** — guest FDISK+FORMAT was done as **E:** then DIP mux made it **C:**. Still missing: `FORMAT C:` as letter C:, copy a file, reboot, `DIR C:` still shows it. Harness `tests/hdc-format-c.sh` not written
+- [x] **FORMAT C: copy+reboot** — `ECHO HELLO>C:HI.TXT` then kill tdx, restart same image, `DIR C:` still shows `HI.TXT` 7 bytes (`b16bc2a6…` persist). Burst `tdxctl type` of a long line can still stack-overflow; type per-char or pump in `feed_ascii`.
+- [ ] **FORMAT C: as letter C:** from a blank Type-1 (guest FDISK was E: then DIP mux). Harness `tests/hdc-format-c.sh` still print-only.
 - [ ] **Cold POST** `--no-fast-post`: KB OK works; after 640 KB OK CS=`4B20` executing zeros. Fast-post is the play path
 - [ ] **XT HDD C:** auto-size from a host dir larger than 1.44M (or any floppy)
 
