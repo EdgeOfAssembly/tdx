@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.25");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.26");
 }
 
 TEST_CASE("prefetch-bytes default 4; 0 is off")
@@ -132,6 +132,17 @@ TEST_CASE("in-process game window is opt-in")
     REQUIRE_FALSE(a.game);
     auto b = parse({"--game", "game.exe"});
     REQUIRE(b.game);
+}
+
+TEST_CASE("fast-post is default; --no-fast-post is cold POST")
+{
+    auto a = parse({"--bios", "rom.bin"});
+    REQUIRE_FALSE(a.no_fast_post);
+    auto b = parse({"--bios", "rom.bin", "--no-fast-post"});
+    REQUIRE(b.no_fast_post);
+    REQUIRE(b.bios == "rom.bin");
+    auto c = parse({"--no-fast-post", "--floppy-a", "a.img"});
+    REQUIRE(c.no_fast_post);
 }
 
 TEST_CASE("hdc is opt-in and order-independent")

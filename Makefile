@@ -168,6 +168,7 @@ test: tdx tdxview tests/run_tests fixtures
 	./tdx -h | grep -q -- --exec-map
 	./tdx -h | grep -q -- --hdc
 	./tdx -h | grep -q -- --hdc-rom
+	./tdx -h | grep -q -- --no-fast-post
 	./tdx -h >/dev/null
 	$(PY) scripts/tdxctl.py -h | grep -q dump
 	./tdxview -v

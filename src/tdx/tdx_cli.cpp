@@ -33,6 +33,7 @@ void tdx_print_usage(FILE *fp)
         "      --floppy-b PATH   B: image or host dir (FlopFS 360K, or 720K if needed)\n"
         "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
         "      --bios FILE       IBM 5150 8K or 5160 40K/64K BIOS (default with --floppy-a)\n"
+        "      --no-fast-post    Cold POST from FFFF:0000 (default skips STGTST via 1234h)\n"
         "      --hdc PATH        Raw HDD image (Xebec Type-1). Regular file only\n"
         "      --hdc-rom FILE    Xebec option ROM at C8000 (IBM 5000059)\n"
         "      --no-bios         Do not load ROM; iron86 C++ INT 10/13/16\n"
@@ -223,6 +224,10 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         else if (std::strcmp(a, "--no-bios") == 0)
         {
             out->no_bios = true;
+        }
+        else if (std::strcmp(a, "--no-fast-post") == 0)
+        {
+            out->no_fast_post = true;
         }
         else if (std::strcmp(a, "--no-sock") == 0)
         {

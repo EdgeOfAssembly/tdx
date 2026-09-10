@@ -112,8 +112,8 @@ public:
     void wire_pc_hw(bool trace_io = false);
 
     /**
-     * @brief Warm-boot POST: 40:72=BX=1234h and CS:IP=F000:E199.
-     * Skips PIT/DMA/64K fill; still runs 8259 ICW and real INT 10h/19h.
+     * @brief Warm-boot POST shortcut: 40:72=BX=1234h, CS:IP=F000:E199.
+     * 10JAN86 then skips STGTST (and later video/ext RAM). Still runs 8259 ICW.
      */
     void enable_fast_post();
 

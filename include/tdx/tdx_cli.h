@@ -29,6 +29,7 @@ struct tdx_cli
     std::string uc_floppy; /**< Same image on Unicorn (A/B vs iron86). */
     std::string bios;      /**< IBM 5150 8K or 5160 40K/64K BIOS. Default with --floppy-a. */
     bool no_bios = false;  /**< --no-bios: iron86 C++ INT 10/13/16 only. */
+    bool no_fast_post = false; /**< --no-fast-post: cold POST from FFFF:0000. */
     std::string hdc;       /**< Raw HDD image (Xebec Type-1). Regular file only. */
     std::string hdc_rom;   /**< Xebec option ROM at C8000. */
     std::string exec_map;  /**< 1 MiB executed-opcode map (iron86). */

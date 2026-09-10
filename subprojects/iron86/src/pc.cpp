@@ -1125,9 +1125,11 @@ void pc::wire_pc_hw(bool trace_io)
 
 void pc::enable_fast_post()
 {
-    /* Warm boot: BDA 40:72 and BX = 1234h (ROS mov [72],bx / cmp at E1AE).
-     * CS:IP = F000:E199 — after 64K fill, before 8259 ICW. jz E1F2 then
-     * skips expansion STGTST. Do not start at E1F2 (that skips ICW). */
+    /* 10JAN86: CMP BX,1234h at E175 skips STGTST then falls into E199
+     * (KBX / 16K at 40:0, then 8259 ICW). E2DD/E4A1 also skip video/ext RAM
+     * when [0472]=1234h. Jumping at E199 with BX=1234h is the shortcut;
+     * --no-fast-post leaves FFFF:0000 so RESET at E05B runs checksum+STGTST.
+     * DMA ch0 is programmed at E13C before E199; without it POST ECA9 spins. */
     c.mem_write8(0x472u, 0x34);
     c.mem_write8(0x473u, 0x12);
     c.set_bx(0x1234);

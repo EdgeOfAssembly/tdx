@@ -1078,14 +1078,17 @@ rex_status dos_machine::load_bios_5150(const char *path)
         return REX_ERR_IO;
     }
     iron->wire_pc_hw();
-    iron->enable_fast_post();
+    if (fast_post)
+    {
+        iron->enable_fast_post();
+    }
     image_path = path;
     video_mode = 0x03;
     entry_linear = 0xFFFF0u;
     halted = false;
     con_out.clear();
-    rex_logf(REX_LOG_INFO, "iron86 BIOS %s %zu bytes reset FFFF:0000 fast-post", path,
-             rom.size());
+    rex_logf(REX_LOG_INFO, "iron86 BIOS %s %zu bytes reset FFFF:0000%s", path, rom.size(),
+             fast_post ? " fast-post" : " cold-post");
     return REX_OK;
 }
 
@@ -1101,7 +1104,7 @@ rex_status dos_machine::attach_hdc_image(const char *path)
         return REX_ERR_IO;
     }
     iron->wire_pc_hw();
-    if (iron->c.rom_bios())
+    if (iron->c.rom_bios() && fast_post)
     {
         iron->enable_fast_post();
     }

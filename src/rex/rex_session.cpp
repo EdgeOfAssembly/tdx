@@ -33,6 +33,7 @@ struct rex_session
     bool floppy_uc = false;
     bool bios = false;
     unsigned prefetch_bytes = 4;
+    bool fast_post = true;
     std::string floppy_a;
     std::string floppy_b;
     std::string hdc;
@@ -201,9 +202,23 @@ rex_status rex_session_load_bios(rex_session *s, const char *path)
     s->floppy_uc = false;
     s->bios = true;
     s->dos->set_prefetch_bytes(s->prefetch_bytes);
+    s->dos->fast_post = s->fast_post;
     s->dos->exec_name.clear();
     refresh_guest(s);
     return s->dos->load_bios_5150(path);
+}
+
+void rex_session_set_fast_post(rex_session *s, int on)
+{
+    if (s == nullptr)
+    {
+        return;
+    }
+    s->fast_post = (on != 0);
+    if (s->dos)
+    {
+        s->dos->fast_post = s->fast_post;
+    }
 }
 
 void rex_session_set_prefetch_bytes(rex_session *s, unsigned n)

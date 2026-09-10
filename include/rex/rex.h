@@ -88,6 +88,12 @@ REX_API void rex_session_set_mda(rex_session *s, int on);
 REX_API void rex_session_set_prefetch_bytes(rex_session *s, unsigned n);
 
 /**
+ * @brief IBM BIOS POST shortcut (default on). 0 = cold POST from FFFF:0000.
+ * Call before @ref rex_session_load_bios.
+ */
+REX_API void rex_session_set_fast_post(rex_session *s, int on);
+
+/**
  * @brief 1 MiB executed-opcode map (iron86). Same linear layout as RAM; zeros
  *        where nothing was fetched. Enable-only; default off.
  */

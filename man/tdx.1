@@ -1,4 +1,4 @@
-.TH TDX 1 "2026-09-10" "tdx 0.25" "User Commands"
+.TH TDX 1 "2026-09-10" "tdx 0.26" "User Commands"
 .SH NAME
 tdx \- native Linux debugger for DOS EXE/COM (Turbo Debugger X)
 .SH SYNOPSIS
@@ -51,6 +51,10 @@ Boot the same image on Unicorn (not the iron86 BIOS path).
 .BI \-\-bios " FILE"
 Load IBM BIOS on iron86 (8K 5150 at FE000, or 40K/64K 5160 at F0000).
 Reset FFFF:0000.
+.TP
+.B \-\-no\-fast\-post
+Cold POST from FFFF:0000. Default sets RESET_FLAG=1234h and starts at
+F000:E199 so 10JAN86 skips STGTST / extra RAM (looks instant at delay 0).
 .TP
 .BI \-\-hdc " PATH"
 Raw HDD image for the Xebec XT adapter (Type-1 306×4×17).

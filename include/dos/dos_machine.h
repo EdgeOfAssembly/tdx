@@ -176,7 +176,7 @@ struct dos_machine
     rex_status load_bios_5150(const char *path);
     /**
      * @brief Attach a raw HDD image to the Xebec adapter (regular file only).
-     * Re-wires PC I/O and reapplies fast-post.
+     * Re-wires PC I/O; reapplies fast-post when @ref fast_post is true.
      */
     rex_status attach_hdc_image(const char *path);
     /** @brief Map Xebec ROS at C8000. NULL path uses the default IBM 5000059 dump. */
@@ -191,6 +191,11 @@ struct dos_machine
      */
     void set_prefetch_bytes(unsigned n);
     unsigned prefetch_bytes = 4; /**< iron86 BIU queue; 0 = off. */
+    /**
+     * Default true: BX=[0472]=1234h and CS:IP=F000:E199 (10JAN86 skips STGTST).
+     * --no-fast-post leaves reset FFFF:0000 for cold POST.
+     */
+    bool fast_post = true;
     /** @brief Mount IMAGE or host DIR as A: on the iron86 FDC (PyFloppy). */
     rex_status attach_floppy_image(const char *image);
     /** @brief Mount IMAGE or host DIR as B: (FDC unit 1 / INT 13h DL=1). */
