@@ -1076,7 +1076,12 @@ bool pc::int13()
 bool pc::int16()
 {
     const uint8_t ah = static_cast<uint8_t>(c.ax() >> 8);
-    if (ah == 0x01)
+    /* AH=10h/11h = extended keyboard (MS-DOS 3.3+ CON CHRIN). Treating 10h
+     * as "no key" left AX=10xx, AL=0 → CON ALT_SAVE; next CHRIN returns
+     * without INT 16 — first Enter eaten (need two Enters for CLS). */
+    const bool peek = (ah == 0x01u) || (ah == 0x11u);
+    const bool get = (ah == 0x00u) || (ah == 0x10u);
+    if (peek)
     {
         if (kbd_.empty())
         {
@@ -1094,7 +1099,7 @@ bool pc::int16()
         c.set_ax(axv);
         return true;
     }
-    if (ah == 0x00)
+    if (get)
     {
         if (kbd_.empty())
         {
@@ -1111,8 +1116,17 @@ bool pc::int16()
             scan = kbd_scan_.front();
             kbd_scan_.pop_front();
         }
+        else
+        {
+            scan = ascii_make(ch);
+        }
         c.set_zf(false);
         c.set_ax(static_cast<uint16_t>(ch) | (static_cast<uint16_t>(scan) << 8));
+        return true;
+    }
+    if ((ah == 0x02u) || (ah == 0x12u))
+    {
+        c.set_ax(static_cast<uint16_t>(c.ax() & 0xFF00u)); /* no shift bits */
         return true;
     }
     /* Other INT 16: no key. */
