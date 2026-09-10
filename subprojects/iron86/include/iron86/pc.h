@@ -78,6 +78,12 @@ public:
      */
     void feed_ascii(uint8_t ch);
 
+    /**
+     * @brief INT 16h ASCII only — no CPU pump, no make+break in one poll.
+     * SDL must use this; type_keys() nested-steps and eats the first Enter.
+     */
+    void queue_ascii(uint8_t ch);
+
     /** @brief True when the INT 16h type-ahead buffer is empty. */
     bool keys_empty() const { return kbd_.empty(); }
 

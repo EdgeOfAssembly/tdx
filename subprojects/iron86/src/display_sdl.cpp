@@ -185,25 +185,20 @@ void blit_mode4(cpu &c, uint8_t pal)
 
 void inject_key(pc &p, SDL_Keycode k)
 {
-    /* ROM INT 16 is stolen: AH=00 reads kbd_ ASCII, not PPI scancodes.
-     * type_scan() pushes NUL and DOS ignores it at the date prompt. */
-    char s[2] = {0, 0};
+    /* Queue only — type_keys() pumps thousands of nested steps and eats Enter. */
     if ((k == SDLK_RETURN) || (k == SDLK_KP_ENTER))
     {
-        s[0] = '\r';
-        p.type_keys(s);
+        p.queue_ascii(static_cast<uint8_t>('\r'));
         return;
     }
     if (k == SDLK_ESCAPE)
     {
-        s[0] = '\x1b';
-        p.type_keys(s);
+        p.queue_ascii(0x1B);
         return;
     }
     if (k == SDLK_BACKSPACE)
     {
-        s[0] = '\b';
-        p.type_keys(s);
+        p.queue_ascii(static_cast<uint8_t>('\b'));
     }
 }
 
@@ -340,8 +335,7 @@ bool display_sdl_poll(pc &p)
             const char *t = ev.text.text;
             if ((t != nullptr) && (t[0] >= 32) && (t[0] < 127))
             {
-                char s[2] = {t[0], 0};
-                p.type_keys(s);
+                p.queue_ascii(static_cast<uint8_t>(t[0]));
             }
         }
         else if (ev.type == SDL_KEYDOWN)

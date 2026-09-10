@@ -504,6 +504,19 @@ void pc::type_scan(uint8_t make)
     queue_scan(static_cast<uint8_t>(m | 0x80u));
 }
 
+void pc::queue_ascii(uint8_t ch)
+{
+    kbd_.push_back(ch);
+    waiting_key_ = false;
+    kbd_poll_idle_ = false;
+    const uint8_t mk = ascii_make(ch);
+    if (mk != 0)
+    {
+        kbd_scan_.push_back(mk);
+        queue_scan(mk);
+    }
+}
+
 void pc::feed_ascii(uint8_t ch)
 {
     kbd_.push_back(ch);
