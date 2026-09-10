@@ -647,6 +647,7 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                                      cpu_h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
     }
     ui.cpu_ren = SDL_CreateRenderer(ui.cpu_win, -1, SDL_RENDERER_ACCELERATED);
+    SDL_StartTextInput();
     ui.cpu_tex = SDL_CreateTexture(ui.cpu_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                    k_cols * k_cw, cpu_tex_h());
     SDL_MaximizeWindow(ui.cpu_win);
@@ -692,6 +693,14 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
             if (ev.type == SDL_QUIT)
             {
                 ui.quit = true;
+            }
+            else if (ev.type == SDL_TEXTINPUT)
+            {
+                const char *t = ev.text.text;
+                if ((t != nullptr) && (t[0] >= 32) && (t[0] < 127))
+                {
+                    rex_session_push_key(session, static_cast<uint8_t>(t[0]), 0);
+                }
             }
             else if (ev.type == SDL_KEYDOWN)
             {
@@ -831,14 +840,6 @@ int tdx_ui_run(rex_session *session, rex_sock *sock, const tdx_cli *cli)
                 {
                     ui.running = false;
                     (void)rex_session_vcr_end(session);
-                }
-                else if (k == SDLK_SPACE)
-                {
-                    rex_session_push_key(session, 32, 0x39);
-                }
-                else if ((k >= 32) && (k < 127))
-                {
-                    rex_session_push_key(session, (uint8_t)k, 0);
                 }
                 else if (k == SDLK_RETURN)
                 {

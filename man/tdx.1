@@ -16,7 +16,11 @@ tdx \- native Linux debugger for DOS EXE/COM (Turbo Debugger X)
 is a DOS 16-bit debugger for Linux.
 Unicorn is the default engine for MZ EXE/COM.
 .B \-\-bios
-runs iron86 with an IBM 5150 8K BIOS (POST, INT 19, FloppyOS).
+runs iron86 with an IBM 5150 8K or 5160 64K BIOS (POST, INT 19).
+.B \-\-preset ibm-xt
+plus
+.B \-\-hdc
+is the XT hard-disk path (Xebec).
 The CPU window is SDL2.
 The guest CGA/MDA screen is
 .B tdxview (1)
@@ -74,6 +78,7 @@ F000:E199 so 10JAN86 skips STGTST / extra RAM (looks instant at delay 0).
 .BI \-\-hdc " PATH"
 Raw HDD image for the Xebec XT adapter (Type-1 306×4×17).
 Must be a regular file — block devices (\fI/dev/sda\fP) are refused.
+Guest FDISK + FORMAT C: + DIR C: work; default fast-post skips STGTST.
 Requires
 .BR \-\-bios
 (5160 64K scans the option ROM).

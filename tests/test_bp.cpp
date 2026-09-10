@@ -7,6 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdio>
 #include <string>
 
 TEST_CASE("session running is independent of stop reason")
@@ -17,6 +18,16 @@ TEST_CASE("session running is independent of stop reason")
     REQUIRE(rex_session_running(s) == 1);
     rex_session_post_ui_cmd(s, REX_UI_STOP);
     REQUIRE(rex_session_running(s) == 0);
+    rex_session_post_ui_cmd(s, REX_UI_START_RUN);
+    REQUIRE(rex_session_running(s) == 1);
+    rex_session_destroy(s);
+}
+
+TEST_CASE("START_RUN is idempotent (agent run must not toggle)")
+{
+    rex_session *s = rex_session_create();
+    rex_session_post_ui_cmd(s, REX_UI_START_RUN);
+    REQUIRE(rex_session_running(s) == 1);
     rex_session_post_ui_cmd(s, REX_UI_START_RUN);
     REQUIRE(rex_session_running(s) == 1);
     rex_session_destroy(s);
@@ -160,6 +171,31 @@ TEST_CASE("guest label is EXE basename")
     REQUIRE(rex_session_load(s, "tests/fixtures/tiny.com", nullptr) == REX_OK);
     REQUIRE(std::string(rex_session_guest(s)) == "tiny.com");
     rex_session_destroy(s);
+}
+
+TEST_CASE("INT 21 AH=4C retitles COMMAND.COM")
+{
+    const char *path = "/tmp/tdx-exit4c.com";
+    FILE *f = std::fopen(path, "wb");
+    REQUIRE(f != nullptr);
+    const unsigned char bytes[] = {0xB4, 0x4C, 0xCD, 0x21};
+    REQUIRE(std::fwrite(bytes, 1, sizeof(bytes), f) == sizeof(bytes));
+    std::fclose(f);
+    rex_session *s = rex_session_create();
+    REQUIRE(rex_session_load(s, path, nullptr) == REX_OK);
+    int i = 0;
+    for (i = 0; i < 64; i++)
+    {
+        (void)rex_session_run(s, 32);
+        if (rex_session_halted(s))
+        {
+            break;
+        }
+    }
+    REQUIRE(rex_session_halted(s));
+    REQUIRE(std::string(rex_session_guest(s)) == "COMMAND.COM");
+    rex_session_destroy(s);
+    (void)std::remove(path);
 }
 
 TEST_CASE("F9 run delay nudges in 5ms steps and will not go below 0")

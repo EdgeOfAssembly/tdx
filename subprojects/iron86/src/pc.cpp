@@ -1094,6 +1094,7 @@ template void pc::bind_io<true>();
 void pc::wire_pc_hw(bool trace_io)
 {
     hw_ = {};
+    cga_3d9_ = 0x30;
     crtc_reset(&mda_, 1);
     crtc_reset(&cga_, 0);
     hw_.ppi.control = 0x99;
@@ -2226,6 +2227,10 @@ uint8_t pc::in_port(uint16_t port)
         {
             return crtc_read_status(&cga_);
         }
+        if (p == 0x3D9u)
+        {
+            return cga_3d9_;
+        }
         return 0xFFu;
     }
     if ((p >= 0x3F0u) && (p <= 0x3F7u))
@@ -2365,6 +2370,12 @@ void pc::out_port(uint16_t port, uint8_t v)
         if (p == 0x3D8u)
         {
             crtc_write_ctrl(&cga_, v);
+            return;
+        }
+        if (p == 0x3D9u)
+        {
+            cga_3d9_ = v;
+            c.mem_write8(0x466u, v); /* BDA crt_palette — tdxview cga3d9 */
             return;
         }
         return;

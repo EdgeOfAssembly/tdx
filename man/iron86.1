@@ -97,6 +97,9 @@ When attached, the IBM 5000059 option ROM is mapped at C8000 if found
 (see
 .BR \-\-hdc\-rom ).
 INT 13h with DL bit 7 set is not stolen (ROS owns C:).
+Guest MS-DOS 3.31 FDISK + FORMAT C: + DIR C: work on a Type-1 image.
+.B \-\-no\-fast\-post
+cold POST reaches A> (10JAN86 SW1 mux is Port B bit 3).
 .TP
 .BI \-\-hdc\-rom " FILE"
 Xebec option ROM at C8000 (55 AA). Default: IBM_XEBEC_5000059_1982.BIN

@@ -19,9 +19,9 @@ def usage() -> None:
 
   Talk to tdx or tdxview over a keep-alive UNIX socket (no Xmux).
 
-  run / F9 toggle run/pause (same as the CPU F9 key). pause/stop always
+  run / F9 start F9 (same as unpause; does not toggle). pause/stop always
   pause; unpause always resumes. delay/faster/slower change F9 slice park
-  (same as CPU +/- keys); 0 ms is fastest.
+  (same as CPU +/- keys); 0 ms is fastest. CPU-window F9 still toggles.
 
 Commands:
   step | step-in | over | step-over | run | stop | pause | unpause | delay | faster | slower | reset | regs | disasm | status | cga | ping | floppy | quit | help

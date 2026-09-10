@@ -2,7 +2,7 @@
 
 Order-independent options (cli-design). No-args prints usage except **tdxview**
 (attaches to `/tmp/tdx.sock`). `-h`/`--help` and `-v`/`--version` on every tool.
-Version **0.27** (tdx / tdxview / tdxctl), iron86 **0.21**.
+Version **0.27** (tdx / tdxview / tdxctl), iron86 **0.22**.
 `tdxctl getip` / `setip 0FDB:A360` / `setip 0xFE199` (canonical CS:IP).
 
 Runtime floppy swap (no CPU reset): `tdxctl floppy b /path/DISK02.IMG`
@@ -90,8 +90,8 @@ tdxctl [options] <command> [args…]
 Commands include `unpause`, `pause`, `delay [N]`, `key`, `type` (`\\n` = Enter),
 `shot`, `cga`, `status` / `getip` (`running` + `stop`; `stop=1` is STEP, not
 paused), `bp` / `bpint` / `bpm`, `dump cga [FILE]` (16 KiB B800 → `SCREEN.CGA`),
-`dump mda [FILE]` (4 KiB B000 → `SCREEN.MDA`). Prefer **`unpause`** over `run`
-(F9 toggle).
+`dump mda [FILE]` (4 KiB B000 → `SCREEN.MDA`). Agent **`run`** is start-only
+(same as `unpause`); CPU-window F9 still toggles.
 
 ---
 
@@ -136,5 +136,6 @@ tree needs more than 720K or more than 32 files. **No 1.2M / 1.44M packer yet.**
 **Raw image CHS:** exact size first (160K/180K/320K/360K/720K/1.2M/1.44M), else
 nearest IBM geometry. No 2.88M.
 
-**HDD:** `tdx --preset ibm-xt --hdc FILE` — `DIR C:` proven empty FAT12. Copy+reboot
-and cold POST still open — see `docs/TODO.md`.
+**HDD:** `tdx --preset ibm-xt --hdc FILE` — guest FDISK + FORMAT C: as letter C:,
+`DIR C:`, copy+reboot persist, and `--no-fast-post` cold POST to A> (iron86 0.22
+PB3 SW1 mux; STGTST ~3 min). Fast-post remains the play path. Never `--hdc /dev/sd*`.

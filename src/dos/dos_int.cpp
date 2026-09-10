@@ -975,6 +975,7 @@ static void handle_int21(dos_machine *m)
         m->halted = true;
         m->exit_code = (int)al;
         m->last_stop = REX_STOP_HALTED;
+        m->exec_name = "COMMAND.COM";
         uc_emu_stop(m->uc);
         rex_logf(REX_LOG_INFO, "DOS exit %d", m->exit_code);
         break;

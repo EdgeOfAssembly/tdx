@@ -194,7 +194,22 @@ int main(int argc, char **argv)
         sk = rex_sock_listen(cli.sock_path.c_str());
         if (sk == nullptr)
         {
-            std::fprintf(stderr, "tdx: warning: cannot bind %s\n", cli.sock_path.c_str());
+            char alt[80];
+            std::snprintf(alt, sizeof(alt), "/tmp/tdx-%d.sock", (int)getpid());
+            if (cli.sock_path == "/tmp/tdx.sock")
+            {
+                sk = rex_sock_listen(alt);
+                if (sk != nullptr)
+                {
+                    std::fprintf(stderr, "tdx: %s in use; listening on %s\n",
+                                 cli.sock_path.c_str(), alt);
+                    cli.sock_path = alt;
+                }
+            }
+            if (sk == nullptr)
+            {
+                std::fprintf(stderr, "tdx: warning: cannot bind %s\n", cli.sock_path.c_str());
+            }
         }
     }
 

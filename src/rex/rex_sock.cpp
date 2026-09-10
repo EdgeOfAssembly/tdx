@@ -244,8 +244,9 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
     }
     else if ((cmd == "run") || (cmd == "F9"))
     {
-        /* Same as the CPU-window F9 key: run if stopped, pause if running. */
-        rex_session_post_ui_cmd(s, REX_UI_TOGGLE_RUN);
+        /* Start-only. CPU-window F9 still toggles; agents must not pause a
+         * live guest with a second `run`. Use pause/stop to halt. */
+        rex_session_post_ui_cmd(s, REX_UI_START_RUN);
     }
     else if ((cmd == "stop") || (cmd == "pause"))
     {

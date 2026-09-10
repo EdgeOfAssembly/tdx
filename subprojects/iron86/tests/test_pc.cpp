@@ -193,6 +193,19 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "eq 2d after C10 A5");
     }
     {
+        /* OUT 3D9h latches color-select and BDA 40:66 (tdxview cga3d9). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x20, 0xBA, 0xD9, 0x03, 0xEE, /* MOV AL,20h; MOV DX,3D9h; OUT DX,AL */
+            0xEC, 0xF4,                         /* IN AL,DX; HLT */
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x20, "in 3d9");
+        expect_eq(p.c.mem_read8(0x466u), 0x20, "bda 40:66");
+    }
+    {
         /* PIT ch1 mode 2 LSB count 0: after ticks, latch LSB is not stuck at 00. */
         iron86::pc p;
         p.wire_pc_hw();

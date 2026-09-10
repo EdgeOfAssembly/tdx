@@ -255,6 +255,7 @@ private:
     uint8_t kbd_irq_delay_ = 0;
     std::chrono::steady_clock::time_point t0_{};
     uint8_t video_mode_ = 0x03;
+    uint8_t cga_3d9_ = 0x30; /**< CGA color-select (3D9h / BDA 40:66). */
     uint8_t cur_x_ = 0;
     uint8_t cur_y_ = 0;
     bool waiting_key_ = false;

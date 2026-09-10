@@ -16,13 +16,13 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 **Working:** CPU window, tdxview 640×400 text / 320×200×scale gfx, UNIX sockets, `tdxctl`, BPINT 10 **AX=0004** only, BPM, titles `TDX <ver> [FILE] PID:n` (file empty until load or INT 21h 4Bh).
 
-- [ ] **Window title after AH=4Ch** — restore `COMMAND.COM` (or clear) when the child exits; today the last EXE name sticks.
-- [ ] **tdxview SDL_TEXTINPUT** — host FI layout sends `SDL_Keycode` `;` for `:`; colon is Shift+`;` on US XT. Type `B:` from a Finnish keyboard without tdxctl.
+- [x] **Window title after AH=4Ch** — `exec_name` becomes `COMMAND.COM` on INT 21h 4Ch (Unicorn + iron86 CD 21).
+- [x] **tdxview SDL_TEXTINPUT** — printable keys (including FI `:`) from text input; KEYDOWN keeps F-keys/arrows/Enter.
 - [x] **`--preset ibm-pc`/`5150` vs `ibm-xt`/`5160`** (tdx 0.27); `--hdc` implies xt; prefetch default 6
 - [x] **`--hdc` / `--hdc-rom` / `--no-fast-post`**
-- [ ] **`tdxctl run` vs unpause** — `run` toggles F9; agents should prefer `unpause`. Document or make `run` start-only. `getip` often reports `stop=1` while the guest is advancing.
-- [ ] **Unique sockets per pair** — `/tmp/tdx.sock` is one pair; two TDX windows need `--sock` defaults that include PID, or a small launcher.
-- [ ] **CGA 3D9 palette** in tdxview for all palettes Bushido uses (cyan/magenta vs red/green).
+- [x] **`tdxctl run` vs unpause** — agent `run`/`F9` is start-only (same as `unpause`). CPU-window F9 still toggles. `getip` `stop=1` is last slice STEP, not paused.
+- [x] **Unique sockets per pair** — if `/tmp/tdx.sock` (or tdxview listen) is live, fall back to `/tmp/tdx-<pid>.sock` and print the path.
+- [x] **CGA 3D9 palette** — iron86 OUT 3D9 → BDA 40:66; tdxview `dos_cga_palette_argb` (cyan/magenta vs green/red). Modes **0/1** 40-col fat glyphs.
 - [ ] **VCR / symbols / Ghidra** — keep working on Unicorn EXE; untested on `--bios` iron86.
 - [ ] **Unicorn FloppyOS keys** — host INT 21 + INT 16 workaround; `--uc-floppy` is not the Bushido path. Don’t spend time unless someone wants Unicorn as DOS.
 
@@ -51,8 +51,8 @@ The card ROM `ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN` (MAME SHA1 `c2a8b108
 
 | Mode | Hardware | tdxview now |
 |------|----------|-------------|
-| 0 | CGA 40×25 B&W text | **missing** (drawn as 80×25) |
-| 1 | CGA 40×25 16-color text | **missing** (drawn as 80×25) |
+| 0 | CGA 40×25 B&W text | **ok** (fat 16×16 glyphs) |
+| 1 | CGA 40×25 16-color text | **ok** (fat 16×16 glyphs) |
 | 2 | CGA 80×25 B&W text | ok (80×25) |
 | 3 | CGA 80×25 16-color text | ok (FloppyOS A>) |
 | 4 | CGA 320×200 4-color | ok (Bushido) |
@@ -67,9 +67,9 @@ The card ROM `ROM/IBM_5788005_AM9264_1981_CGA_MDA_CARD.BIN` (MAME SHA1 `c2a8b108
 Still missing — **case-by-case when a game needs it** (composite artifact already has a test title):
 
 **CGA**
-- [ ] **3D9 palette** — full color-select (background, cyan/magenta vs red/green vs intense, burst).
+- [x] **3D9 palette** — OUT 3D9 + BDA 40:66; `dos_cga_palette_argb` (bg, cyan/magenta vs green/red, intensity).
 - [x] **Mode 6** 640×200 1bpp (tdxview; not mode 4’s 2bpp).
-- [ ] **Modes 0 / 1** 40-column text (0 ≈ B&W, 1 = 16-color).
+- [x] **Modes 0 / 1** 40-column text (fat 16×16 glyphs in 640×400).
 - [x] **Composite artifact color** — Reenigne/86Box old-CGA NTSC. Mode 4 320×200
   (Dragon Wars, 3D8=2Ah burst on) and mode 6 640×200. `--no-composite` = RGBI.
   Gold: `games/SCREEN.CGA` (not pushed).
@@ -92,12 +92,13 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 - [x] **XT hard disk Xebec as C:** — `320h–323h`, DMA3, IRQ5, ROS `C800:0`
   (`IBM_XEBEC_5000059`). `tdx --preset ibm-xt --hdc FILE`. Guest FDISK +
-  FORMAT (as E: then DIP mux) + **`DIR C:`** proven empty FAT12 (`ff83f30`).
-  Never `--hdc /dev/sd*`.
+  FORMAT C: as letter C: + **`DIR C:`** + copy+reboot persist + cold POST to A>
+  (iron86 0.22 PB3 SW1 mux). Never `--hdc /dev/sd*`.
 - [x] **FORMAT C: copy+reboot** — `ECHO HELLO>C:HI.TXT`, full tdx restart, `DIR C:`
   still lists `HI.TXT` (host image hash changed). Burst `tdxctl type` of a long
   line can stack-overflow; slow type worked.
-- [ ] Guest **FORMAT C:** from blank Type-1 as letter C: (FDISK was E: then DIP mux).
+- [x] Guest **FORMAT C:** from blank Type-1 as letter C: (`hdc-type1-fmt.img`,
+  FAT12 `IBM  3.3`, `FORMAT.COM` 19683). Earlier FDISK-as-E: then DIP mux is obsolete.
 - [ ] **HDD auto-size from a host dir** that does not fit any floppy (1.3MB tree → C:).
 - [ ] **FDC Write Data** DMA-from-mem (persist A:/B:). Needed for COPY, editors, save games.
 - [ ] **FDC Format / Scan / Read ID** — after Write.
@@ -160,15 +161,14 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 
 ## Suggested order
 
-1. **Cold POST** (`--no-fast-post`) to A> after 640 KB OK — ROM WP + PB3 SW1 mux; STGTST is slow (~minutes at interpreter speed). Fast-post remains the play path.
-2. **FORMAT C: copy+reboot** proof + `tests/hdc-format-c.sh`.
-3. FDC Write (saves / COPY / `AH=40`).
-4. HDD auto-size from a host dir larger than 1.44M.
-5. FlopFS xxhash3/dedup.
-6. Dir pack smallest-fit including subdirs (1.2M/1.44M).
-7. CGA 40-col / 3D9 / Hercules **only with a title in hand**.
-8. FDC Format/Scan.
-9. **Full C++/Intel-asm BIOS clone (PC/XT/AT/Pentium) — last.** `--no-bios` until then.
+1. **Docs** match iron86 0.22 / tdx 0.27 (FORMAT C: as C:, cold POST to A>).
+2. tdx/tdxview agent UX (`run` vs unpause, unique sockets, AH=4Ch title, FI colon).
+3. CGA **3D9** palette + **40-col** modes 0/1 (iron86 + tdxview).
+4. FDC Write (saves / COPY / `AH=40`).
+5. FDC Format / Scan / Read ID.
+6. Dir pack smallest-fit including subdirs (1.2M/1.44M) + HDD auto-size.
+7. Skip for now: MDA blink, Hercules, Cassette BASIC, cycle-exact 8237 HOLD unless a title needs it.
+8. **Full C++/Intel-asm BIOS clone (PC/XT/AT/Pentium) — last.** `--no-bios` until then.
 
 **Docs:** `docs/CLI.md`, `docs/HOWTO_DRAGON_WARS.md`, `docs/MILESTONE_CGA_COMPOSITE.md`, `man/*.1`. Keep this file in sync.
 

@@ -616,6 +616,7 @@ int main(int argc, char **argv)
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 400);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+    SDL_StartTextInput();
     vst.ren = ren;
     vst.tex = tex;
     vst.tdx_fd = &fd;
@@ -626,9 +627,24 @@ int main(int argc, char **argv)
         agent = tdx_agent_listen(cli.listen_path.c_str());
         if (agent == nullptr)
         {
-            std::fprintf(stderr, "tdxview: listen %s failed\n", cli.listen_path.c_str());
+            char alt[80];
+            std::snprintf(alt, sizeof(alt), "/tmp/tdxview-%d.sock", (int)getpid());
+            if (cli.listen_path == "/tmp/tdxview.sock")
+            {
+                agent = tdx_agent_listen(alt);
+                if (agent != nullptr)
+                {
+                    std::fprintf(stderr, "tdxview: %s in use; listening on %s\n",
+                                 cli.listen_path.c_str(), alt);
+                    cli.listen_path = alt;
+                }
+            }
+            if (agent == nullptr)
+            {
+                std::fprintf(stderr, "tdxview: listen %s failed\n", cli.listen_path.c_str());
+            }
         }
-        else
+        if (agent != nullptr)
         {
             std::fprintf(stderr, "tdxview: agent socket %s\n", cli.listen_path.c_str());
         }
@@ -651,6 +667,16 @@ int main(int argc, char **argv)
             {
                 quit = true;
             }
+            else if (ev.type == SDL_TEXTINPUT)
+            {
+                /* Host layout (e.g. FI Shift+; → ":") — not SDL_Keycode. */
+                const char *t = ev.text.text;
+                if ((fd >= 0) && (t != nullptr) && (t[0] >= 32) && (t[0] < 127) && (t[0] != '"') &&
+                    (t[0] != '\\'))
+                {
+                    send_key(fd, &sock_acc, static_cast<SDL_Keycode>(t[0]));
+                }
+            }
             else if (ev.type == SDL_KEYDOWN)
             {
                 if (ev.key.repeat)
@@ -663,7 +689,12 @@ int main(int argc, char **argv)
                 }
                 else if (fd >= 0)
                 {
-                    send_key(fd, &sock_acc, ev.key.keysym.sym);
+                    const SDL_Keycode k = ev.key.keysym.sym;
+                    /* Printable ASCII: SDL_TEXTINPUT (FI Shift+; is ":"). */
+                    if ((k < 32) || (k >= 127))
+                    {
+                        send_key(fd, &sock_acc, k);
+                    }
                 }
             }
         }
@@ -913,18 +944,25 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            else if (b800.size() >= 4000u)
+            else if (b800.size() >= 2000u)
             {
-                /* 80×25 text at 640×400 — full 8×16 glyphs (CPU window already
-                 * does this; 320×200 4×8 downsample was unreadable). */
+                /* Modes 0/1: 40×25 fat glyphs (16×16) in the same 640×400
+                 * window. Modes 2/3: 80×25 8×16. */
+                const int cols = ((last_mode == 0) || (last_mode == 1)) ? 40 : 80;
+                const int cell_w = (cols == 40) ? 16 : 8;
+                const size_t need = (size_t)cols * 25u * 2u;
                 int row = 0;
                 int col = 0;
-                for (row = 0; row < 25; row++)
+                if (b800.size() < need)
                 {
-                    for (col = 0; col < 80; col++)
+                    /* fall through to blank below via cols=0 */
+                }
+                for (row = 0; (b800.size() >= need) && (row < 25); row++)
+                {
+                    for (col = 0; col < cols; col++)
                     {
-                        const uint8_t ch = b800[(size_t)(row * 80 + col) * 2u];
-                        const uint8_t at = b800[(size_t)(row * 80 + col) * 2u + 1u];
+                        const uint8_t ch = b800[(size_t)(row * cols + col) * 2u];
+                        const uint8_t at = b800[(size_t)(row * cols + col) * 2u + 1u];
                         const uint32_t fg = k_vga[at & 15u];
                         const uint32_t bg = k_vga[(at >> 4) & 7u];
                         uint8_t ibm_rows[16];
@@ -965,10 +1003,19 @@ int main(int argc, char **argv)
                         for (gy = 0; gy < 16; gy++)
                         {
                             const uint8_t bits = g[gy];
-                            uint32_t *dst = pix + (row * 16 + gy) * pitch_px + col * 8;
+                            uint32_t *dst = pix + (row * 16 + gy) * pitch_px + col * cell_w;
                             for (gx = 0; gx < 8; gx++)
                             {
-                                dst[gx] = (bits & (uint8_t)(0x80 >> gx)) ? fg : bg;
+                                const uint32_t px = (bits & (uint8_t)(0x80 >> gx)) ? fg : bg;
+                                if (cell_w == 16)
+                                {
+                                    dst[gx * 2] = px;
+                                    dst[gx * 2 + 1] = px;
+                                }
+                                else
+                                {
+                                    dst[gx] = px;
+                                }
                             }
                         }
                     }

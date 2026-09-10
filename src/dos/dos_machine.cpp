@@ -1394,6 +1394,10 @@ rex_status dos_machine::step_one()
                 {
                     note_exec_from_dsdx();
                 }
+                if ((n == 0x21u) && ((iron->c.ax() >> 8) == 0x4Cu))
+                {
+                    exec_name = "COMMAND.COM";
+                }
             }
         }
         skip_int_bp = false;
