@@ -260,6 +260,32 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x00AA, "xt kbd BAT AA");
     }
     {
+        /* IRQ1: one edge until EOI. Else DOS DIR Internal stack overflow. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0x31, 0xC0, 0x8E, 0xD8, 0x8E, 0xD0, 0xBC, 0x00, 0x04, 0xB0, 0x13, 0xE6,
+            0x20, 0xB0, 0x08, 0xE6, 0x21, 0xB0, 0x09, 0xE6, 0x21, 0xB0, 0xFD, 0xE6,
+            0x21, 0xFB, 0xB9, 0x00, 0x10, 0xE2, 0xFE, 0xF4,
+            /* INT 9 at CS:0120 (COM 0x20): inc [0500], ack 61h, EOI, IRET */
+            0xFE, 0x06, 0x00, 0x05, 0xE4, 0x60, 0xE4, 0x61, 0x0C, 0x80, 0xE6, 0x61,
+            0x24, 0x7F, 0xE6, 0x61, 0xB0, 0x20, 0xE6, 0x20, 0xCF,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        p.c.mem_write16(0x24, 0x0120);
+        p.c.mem_write16(0x26, 0x1000);
+        p.type_scan(0x20);
+        run(p.c, 8000);
+        const uint8_t hits = p.c.mem_read8(0x500);
+        if (hits > 4u)
+        {
+            std::fprintf(stderr, "IRQ1 storm hits=%u\n", static_cast<unsigned>(hits));
+        }
+        expect(hits >= 1u, "irq1 delivered");
+        expect(hits <= 4u, "irq1 not nested storm");
+        expect(p.c.halted(), "irq1 test hlt");
+    }
+    {
         /* Unmasked ch0 address must move (POST ECA9 IN 00h wrap wait). */
         iron86::pc p;
         p.wire_pc_hw();

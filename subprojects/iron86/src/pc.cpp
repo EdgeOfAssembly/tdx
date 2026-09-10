@@ -1391,11 +1391,13 @@ void pc::ppi_tick()
     }
     if ((hw_.pic.imr & 0x02u) == 0)
     {
-        pic_deassert(1);
-        pic_assert(1);
-        /* Keep kbd_irq_pend until PB7 ack. F9E3 does OUT 21h,FDh then
-         * MOV [046B],0; if we fire IRQ1 on the OUT, dummy sets 046B and
-         * the MOV clears it → 301 / F1. */
+        /* One edge until INT 9 EOI. pic_deassert+assert every insn nested
+         * IRQ1 until DOS "Internal stack overflow" on DIR. */
+        if (((hw_.pic.isr & 0x02u) == 0) && ((hw_.pic.irr & 0x02u) == 0))
+        {
+            pic_deassert(1);
+            pic_assert(1);
+        }
     }
 }
 
@@ -1754,8 +1756,18 @@ void pc::after_insn()
         return;
     }
     uint8_t irq = 0;
-    while ((irq < 8u) && ((pending & static_cast<uint8_t>(1u << irq)) == 0))
+    while (irq < 8u)
     {
+        if ((pending & static_cast<uint8_t>(1u << irq)) != 0)
+        {
+            /* Fully nested: ISR bits 0..irq block this request until EOI. */
+            const uint8_t in_service =
+                static_cast<uint8_t>((1u << (irq + 1u)) - 1u);
+            if ((hw_.pic.isr & in_service) == 0)
+            {
+                break;
+            }
+        }
         irq++;
     }
     if (irq >= 8u)
