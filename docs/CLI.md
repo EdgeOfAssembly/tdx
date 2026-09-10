@@ -128,11 +128,10 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 
 ## Floppy geometry (honest)
 
-**Directory pack (virtual floppy):** non-recursive, max **32** 8.3 names.
-Fits **360K** (40/2/9) if possible, else **720K** (80/2/9). **Fails** if the
-tree needs more than 720K or more than 32 files. **No 1.2M / 1.44M packer yet.**
-**No subdirectories.** Raw floppy **writes persist** when the image was attached
-from a host file (INT 13 AH=03 and FDC Write/Format).
+**Directory pack (virtual floppy):** recursive 8.3 files flattened to the root.
+Smallest of **360K / 720K / 1.2M / 1.44M**. Duplicate 8.3 names fail.
+Larger trees: `--hdc DIR` packs a Type-1 FAT12 HDD (`DIR.img`).
+Raw floppy **writes persist** when the image was attached from a host file.
 
 **Raw image CHS:** exact size first (160K/180K/320K/360K/720K/1.2M/1.44M), else
 nearest IBM geometry. No 2.88M.

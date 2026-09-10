@@ -224,6 +224,25 @@ bool pc::attach_hdc_path(const char *path, uint32_t cylinders, uint32_t heads, u
         log_event("iron86: refuse hdc block/char device %s (host disk)\n", path);
         return false;
     }
+    if (S_ISDIR(st.st_mode))
+    {
+        std::vector<uint8_t> img;
+        const std::string outp = std::string(path) + ".img";
+        if (!hdc_pack_dir(path, cylinders, heads, spt, &img) || img.size() < 512u)
+        {
+            return false;
+        }
+        {
+            std::ofstream o(outp, std::ios::binary | std::ios::trunc);
+            if (!o)
+            {
+                return false;
+            }
+            o.write(reinterpret_cast<const char *>(img.data()),
+                    static_cast<std::streamsize>(img.size()));
+        }
+        return attach_hdc_path(outp.c_str(), cylinders, heads, spt);
+    }
     if (!S_ISREG(st.st_mode) || (st.st_size < 512))
     {
         return false;

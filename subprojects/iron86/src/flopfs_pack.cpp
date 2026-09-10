@@ -3,6 +3,7 @@
  * @brief Pack a host directory into a 360K or 720K FlopFS data disk (B:).
  */
 #include "iron86/flopfs_pack.h"
+#include "iron86/hdc.h"
 
 #include <algorithm>
 #include <cctype>
@@ -20,13 +21,10 @@ namespace
 {
 
 constexpr uint32_t k_sec = 512;
-constexpr uint32_t k_root_ents = 32;
 constexpr uint32_t k_dirent = 32;
-constexpr uint32_t k_root_secs = 2;
 constexpr uint32_t k_sb_lba = 1;
 constexpr uint32_t k_sbm_lba = 2;
 constexpr uint32_t k_root_lba = 3;
-constexpr uint32_t k_data_lba = 5;
 
 #pragma pack(push, 1)
 struct flopfs_superblock
@@ -216,23 +214,10 @@ bool read_all(const std::string &path, std::vector<uint8_t> *out)
     return static_cast<bool>(in.read(reinterpret_cast<char *>(out->data()), sz));
 }
 
-} // namespace
-
-bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
+bool collect_tree(const std::string &dir, std::vector<packed_file> *files)
 {
-    DIR *d = nullptr;
+    DIR *d = opendir(dir.c_str());
     struct dirent *ent = nullptr;
-    std::vector<packed_file> files;
-    uint32_t next = k_data_lba;
-    flopfs_superblock sb{};
-    const char *label = nullptr;
-    size_t i = 0;
-
-    if ((dir == nullptr) || (out == nullptr))
-    {
-        return false;
-    }
-    d = opendir(dir);
     if (d == nullptr)
     {
         return false;
@@ -242,18 +227,28 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         packed_file pf{};
         struct stat st{};
         std::string path;
-        if ((ent->d_name[0] == '.') || (!is_dos_83(ent->d_name)) ||
-            (!path_to_fcb(ent->d_name, pf.fcb)))
+        if ((ent->d_name[0] == '.') &&
+            ((ent->d_name[1] == '\0') || ((ent->d_name[1] == '.') && (ent->d_name[2] == '\0'))))
         {
             continue;
         }
-        path = std::string(dir) + "/" + ent->d_name;
+        path = dir + "/" + ent->d_name;
         if (stat(path.c_str(), &st) != 0)
         {
             closedir(d);
             return false;
         }
-        if (!S_ISREG(st.st_mode))
+        if (S_ISDIR(st.st_mode))
+        {
+            if (!collect_tree(path, files))
+            {
+                closedir(d);
+                return false;
+            }
+            continue;
+        }
+        if (!S_ISREG(st.st_mode) || (ent->d_name[0] == '.') || (!is_dos_83(ent->d_name)) ||
+            (!path_to_fcb(ent->d_name, pf.fcb)))
         {
             continue;
         }
@@ -265,17 +260,38 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         pf.sectors = (pf.data.empty())
                          ? 0
                          : static_cast<uint16_t>((pf.data.size() + k_sec - 1u) / k_sec);
-        files.push_back(std::move(pf));
+        files->push_back(std::move(pf));
     }
     closedir(d);
+    return true;
+}
+
+} // namespace
+
+bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
+{
+    std::vector<packed_file> files;
+    uint32_t next = 0;
+    uint32_t root_secs = 2;
+    uint32_t data_lba = 0;
+    flopfs_superblock sb{};
+    const char *label = nullptr;
+    size_t i = 0;
+    static const uint32_t k_sizes[] = {FLOPFS_SECS_360K, FLOPFS_SECS_720K, FLOPFS_SECS_1200K,
+                                       FLOPFS_SECS_1440K};
+
+    if ((dir == nullptr) || (out == nullptr))
+    {
+        return false;
+    }
+    if (!collect_tree(dir, &files))
+    {
+        return false;
+    }
 
     std::sort(files.begin(), files.end(), [](const packed_file &a, const packed_file &b) {
         return std::memcmp(a.fcb, b.fcb, 11) < 0;
     });
-    if (files.size() > k_root_ents)
-    {
-        return false;
-    }
     for (i = 1; i < files.size(); i++)
     {
         if (std::memcmp(files[i].fcb, files[i - 1u].fcb, 11) == 0)
@@ -283,6 +299,13 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
             return false;
         }
     }
+    root_secs = static_cast<uint32_t>((files.size() * k_dirent + k_sec - 1u) / k_sec);
+    if (root_secs < 2u)
+    {
+        root_secs = 2;
+    }
+    data_lba = k_root_lba + root_secs;
+    next = data_lba;
     for (i = 0; i < files.size(); i++)
     {
         if (files[i].sectors == 0)
@@ -293,12 +316,16 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         files[i].lba = next;
         next += files[i].sectors;
     }
-    uint32_t secs = FLOPFS_SECS_360K;
-    if (next > FLOPFS_SECS_360K)
+    uint32_t secs = 0;
+    for (i = 0; i < (sizeof(k_sizes) / sizeof(k_sizes[0])); i++)
     {
-        secs = FLOPFS_SECS_720K;
+        if (next <= k_sizes[i])
+        {
+            secs = k_sizes[i];
+            break;
+        }
     }
-    if (next > secs)
+    if (secs == 0)
     {
         return false;
     }
@@ -331,7 +358,7 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         }
     }
     sb.root_lba = k_root_lba;
-    sb.root_sectors = static_cast<uint16_t>(k_root_secs);
+    sb.root_sectors = static_cast<uint16_t>(root_secs);
     std::memset(sb.init_name, ' ', 11);
     if (!files.empty())
     {
@@ -357,6 +384,193 @@ bool flopfs_pack_dir(const char *dir, std::vector<uint8_t> *out)
         {
             std::memcpy(out->data() + files[i].lba * k_sec, files[i].data.data(),
                         files[i].data.size());
+        }
+    }
+    return true;
+}
+
+static void fat12_put(uint8_t *fat, uint16_t cl, uint16_t v)
+{
+    const uint32_t o = static_cast<uint32_t>(cl) + (static_cast<uint32_t>(cl) / 2u);
+    if ((cl & 1u) != 0)
+    {
+        fat[o] = static_cast<uint8_t>((fat[o] & 0x0Fu) | static_cast<uint8_t>((v << 4) & 0xF0u));
+        fat[o + 1u] = static_cast<uint8_t>(v >> 4);
+    }
+    else
+    {
+        fat[o] = static_cast<uint8_t>(v);
+        fat[o + 1u] = static_cast<uint8_t>((fat[o + 1u] & 0xF0u) | static_cast<uint8_t>((v >> 8) & 0x0Fu));
+    }
+}
+
+bool hdc_pack_dir(const char *dir, uint32_t cylinders, uint32_t heads, uint32_t spt,
+                  std::vector<uint8_t> *out)
+{
+    std::vector<packed_file> files;
+    const uint32_t cyl = (cylinders != 0) ? cylinders : k_hdc_cyl_xt;
+    const uint32_t hd = (heads != 0) ? heads : k_hdc_heads_xt;
+    const uint32_t sp = (spt != 0) ? spt : k_hdc_spt_xt;
+    const uint32_t total = cyl * hd * sp;
+    const uint32_t hidden = sp;
+    const uint32_t part = (total > hidden) ? (total - hidden) : 0;
+    const uint32_t spc = 8;
+    const uint32_t root_ents = 512;
+    const uint32_t root_secs = (root_ents * 32u) / k_sec;
+    uint32_t spf = 8;
+    uint32_t data_secs = 0;
+    uint32_t clusters = 0;
+    uint32_t i = 0;
+    uint16_t cl = 2;
+    uint8_t *fat = nullptr;
+    uint8_t *root = nullptr;
+
+    if ((dir == nullptr) || (out == nullptr) || (part < 64u))
+    {
+        return false;
+    }
+    if (!collect_tree(dir, &files))
+    {
+        return false;
+    }
+    std::sort(files.begin(), files.end(), [](const packed_file &a, const packed_file &b) {
+        return std::memcmp(a.fcb, b.fcb, 11) < 0;
+    });
+    for (i = 1; i < files.size(); i++)
+    {
+        if (std::memcmp(files[i].fcb, files[i - 1u].fcb, 11) == 0)
+        {
+            return false;
+        }
+    }
+    if (files.size() > root_ents)
+    {
+        return false;
+    }
+    for (;;)
+    {
+        data_secs = (part > (1u + 2u * spf + root_secs)) ? (part - 1u - 2u * spf - root_secs) : 0;
+        clusters = data_secs / spc;
+        if ((spf * k_sec) >= (((clusters + 2u) * 3u + 1u) / 2u))
+        {
+            break;
+        }
+        spf++;
+        if (spf > 64u)
+        {
+            return false;
+        }
+    }
+    out->assign(total * k_sec, 0);
+    (*out)[0x1BE] = 0x80;
+    (*out)[0x1C2] = 0x01;
+    {
+        const uint32_t lba = hidden;
+        (*out)[0x1C6] = static_cast<uint8_t>(lba);
+        (*out)[0x1C7] = static_cast<uint8_t>(lba >> 8);
+        (*out)[0x1C8] = static_cast<uint8_t>(lba >> 16);
+        (*out)[0x1C9] = static_cast<uint8_t>(lba >> 24);
+        (*out)[0x1CA] = static_cast<uint8_t>(part);
+        (*out)[0x1CB] = static_cast<uint8_t>(part >> 8);
+        (*out)[0x1CC] = static_cast<uint8_t>(part >> 16);
+        (*out)[0x1CD] = static_cast<uint8_t>(part >> 24);
+    }
+    (*out)[510] = 0x55;
+    (*out)[511] = 0xAA;
+    {
+        uint8_t *bs = out->data() + hidden * k_sec;
+        std::memcpy(bs + 3, "IBM  3.3", 8);
+        bs[11] = 0x00;
+        bs[12] = 0x02;
+        bs[13] = static_cast<uint8_t>(spc);
+        bs[14] = 0x01;
+        bs[15] = 0x00;
+        bs[16] = 0x02;
+        bs[17] = static_cast<uint8_t>(root_ents);
+        bs[18] = static_cast<uint8_t>(root_ents >> 8);
+        if (part < 65536u)
+        {
+            bs[19] = static_cast<uint8_t>(part);
+            bs[20] = static_cast<uint8_t>(part >> 8);
+        }
+        bs[21] = 0xF8;
+        bs[22] = static_cast<uint8_t>(spf);
+        bs[23] = static_cast<uint8_t>(spf >> 8);
+        bs[24] = static_cast<uint8_t>(sp);
+        bs[25] = static_cast<uint8_t>(sp >> 8);
+        bs[26] = static_cast<uint8_t>(hd);
+        bs[27] = static_cast<uint8_t>(hd >> 8);
+        bs[28] = static_cast<uint8_t>(hidden);
+        bs[29] = static_cast<uint8_t>(hidden >> 8);
+        bs[30] = static_cast<uint8_t>(hidden >> 16);
+        bs[31] = static_cast<uint8_t>(hidden >> 24);
+        if (part >= 65536u)
+        {
+            bs[32] = static_cast<uint8_t>(part);
+            bs[33] = static_cast<uint8_t>(part >> 8);
+            bs[34] = static_cast<uint8_t>(part >> 16);
+            bs[35] = static_cast<uint8_t>(part >> 24);
+        }
+        bs[510] = 0x55;
+        bs[511] = 0xAA;
+        fat = bs + k_sec;
+        fat12_put(fat, 0, 0xFF8);
+        fat12_put(fat, 1, 0xFFF);
+        root = fat + 2u * spf * k_sec;
+    }
+    for (i = 0; i < files.size(); i++)
+    {
+        uint32_t left = static_cast<uint32_t>(files[i].data.size());
+        uint32_t off = 0;
+        uint16_t first = 0;
+        uint16_t prev = 0;
+        if (left == 0)
+        {
+            first = 0;
+        }
+        else
+        {
+            while (left > 0u)
+            {
+                const uint32_t n = (left > spc * k_sec) ? (spc * k_sec) : left;
+                const uint32_t data0 = hidden + 1u + 2u * spf + root_secs;
+                const uint32_t lba = data0 + static_cast<uint32_t>(cl - 2u) * spc;
+                if ((lba * k_sec + n) > out->size())
+                {
+                    return false;
+                }
+                std::memcpy(out->data() + lba * k_sec, files[i].data.data() + off, n);
+                if (first == 0)
+                {
+                    first = cl;
+                }
+                if (prev != 0)
+                {
+                    fat12_put(fat, prev, cl);
+                    std::memcpy(fat + spf * k_sec, fat, spf * k_sec);
+                }
+                prev = cl;
+                cl = static_cast<uint16_t>(cl + 1u);
+                if (cl >= (clusters + 2u))
+                {
+                    return false;
+                }
+                off += n;
+                left -= n;
+            }
+            fat12_put(fat, prev, 0xFFF);
+            std::memcpy(fat + spf * k_sec, fat, spf * k_sec);
+        }
+        {
+            uint8_t *de = root + i * 32u;
+            std::memcpy(de, files[i].fcb, 11);
+            de[11] = 0x20;
+            de[26] = static_cast<uint8_t>(first);
+            de[27] = static_cast<uint8_t>(first >> 8);
+            de[28] = static_cast<uint8_t>(files[i].data.size());
+            de[29] = static_cast<uint8_t>(files[i].data.size() >> 8);
+            de[30] = static_cast<uint8_t>(files[i].data.size() >> 16);
+            de[31] = static_cast<uint8_t>(files[i].data.size() >> 24);
         }
     }
     return true;

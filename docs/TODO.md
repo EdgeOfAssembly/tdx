@@ -99,7 +99,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
   line can stack-overflow; slow type worked.
 - [x] Guest **FORMAT C:** from blank Type-1 as letter C: (`hdc-type1-fmt.img`,
   FAT12 `IBM  3.3`, `FORMAT.COM` 19683). Earlier FDISK-as-E: then DIP mux is obsolete.
-- [ ] **HDD auto-size from a host dir** that does not fit any floppy (1.3MB tree → C:).
+- [x] **HDD auto-size from a host dir** — `--hdc DIR` writes Type-1 FAT12 `DIR.img`.
 - [x] **FDC Write Data** DMA-from-mem (persist A:/B: when attached from a host file).
 - [x] **FDC Format / Scan / Read ID**.
 - [x] **720K geometry** — FlopFS packer: 360K if it fits, else 720K 80/2/9
@@ -120,12 +120,9 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
   FDC + FloppyOS `disk_read` LBA→CHS must use the **per-unit** SPT/heads, not
   drive 0’s 9/2 only.
 
-- [ ] **Directory → virtual floppy: smallest standard size that fits** —
-  measure the host tree (**recursive, subdirs included**), then pack FlopFS
-  into 360K → 720K → 1.2M → 1.44M (and 2.88M if we add it). Today: **one
-  directory, no subdirs, 32 8.3 names, 360K else 720K only.** A 1.3MB game
-  dir must become 1.44M, not fail. If even 1.44M is too small → HDD C: (item
-  above). Raise the 32-dirent cap when 1.2M/1.44M (or subdirs) need it.
+- [x] **Directory → virtual floppy: smallest standard size that fits** —
+  recursive 8.3 flatten, 360K → 720K → 1.2M → 1.44M; root grows with file
+  count. Larger trees → `--hdc DIR` FAT12 C:.
 
 ### P2 — CPU / PC
 

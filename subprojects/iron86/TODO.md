@@ -74,8 +74,8 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] **720K** FlopFS pack when a host dir does not fit 360K (`--floppy-b`)
 - [x] FDC **Write Data** DMA-from-mem (persist image)
 - [x] FDC **Format** / **Scan** / **Read ID**
-- [ ] **Dir pack: smallest floppy that fits** — recursive tree size, then
-  360K → 720K → 1.2M → 1.44M. Today: flat dir, 32 names, 360/720 only.
+- [x] **Dir pack: smallest floppy that fits** — recursive 8.3 flatten,
+  360K → 720K → 1.2M → 1.44M; root dirents grow with file count.
 
 ## Xebec HDD (5160 / `ibm-xt`)
 
@@ -90,7 +90,7 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] **FORMAT C: as letter C:** guest FDISK + FORMAT C: on blank Type-1 (`hdc-type1-fmt.img`, FAT12 `IBM  3.3`, `FORMAT.COM` 19683). Shot `re/tdx-tank/tdx-cold-dirc-20260910T230506.357.bmp` (also after cold POST).
 - [x] **Cold POST dummy-stack smash** — BIOS F000 is write-protected (real XT ROM). No more CS=`4B20` zeros after 640 KB OK.
 - [x] **Cold POST to A>** — `--no-fast-post` 5160 10JAN86: 640 KB OK, EQUIP_FLAG=402Dh, date prompt, `DIR C:` still `FORMAT.COM` 19683. SW1 mux is PB3 (`0.22`). STGTST is slow (~3 min). Fast-post remains the play path.
-- [ ] **XT HDD C:** auto-size from a host dir larger than 1.44M (or any floppy)
+- [x] **XT HDD C:** auto-size from a host dir — `--hdc DIR` packs Type-1 FAT12 (`DIR.img`)
 
 ## Bottom of queue (after those)
 

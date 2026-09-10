@@ -78,6 +78,8 @@ int main()
                 expect(root == 3, "root_lba 3");
                 expect(rsec == 2, "root_sectors 2");
                 expect(std::memcmp(img.data() + 3 * 512, "HELLO   COM", 11) == 0, "dirent 8.3");
+                expect(std::memcmp(img.data() + 3 * 512 + 32, "NOPE    COM", 11) == 0,
+                       "nested flattened");
                 expect(img[5 * 512] == 0x90, "payload LBA5");
                 expect(img[5 * 512 + 191] == 0x90, "payload 192");
             }
@@ -121,7 +123,8 @@ int main()
                 std::snprintf(name, sizeof(name), "F%02d.COM", i);
                 expect(write_file(std::filesystem::path(dir) / name, "x", 1), "write 33");
             }
-            expect(!iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 33 fails");
+            expect(iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 33 ok");
+            expect(img.size() == 368640u, "pack 33 is 360k");
             std::filesystem::remove_all(dir);
         }
     }
@@ -158,7 +161,8 @@ int main()
             std::vector<uint8_t> img;
             expect(write_file(std::filesystem::path(dir) / "HUGE.DAT", body.data(), body.size()),
                    "write 800k");
-            expect(!iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 800k fails");
+            expect(iron86::flopfs_pack_dir(dir.c_str(), &img), "pack 800k → 1.2M");
+            expect(img.size() == iron86::FLOPFS_BYTES_1200K, "pack 1.2M size");
             std::filesystem::remove_all(dir);
         }
     }
@@ -167,6 +171,23 @@ int main()
         expect(!iron86::flopfs_pack_dir("/no/such/iron86-pack-dir", &img), "missing dir");
         expect(!iron86::flopfs_pack_dir(nullptr, &img), "null dir");
         expect(!iron86::flopfs_pack_dir("/tmp", nullptr), "null out");
+    }
+    {
+        const std::string dir = make_temp_dir();
+        expect(!dir.empty(), "mkdtemp hdc");
+        if (!dir.empty())
+        {
+            std::vector<uint8_t> img;
+            expect(write_file(std::filesystem::path(dir) / "HI.TXT", "HELLO", 5), "hdc hi");
+            expect(iron86::hdc_pack_dir(dir.c_str(), 0, 0, 0, &img), "hdc pack");
+            expect(img.size() == 306u * 4u * 17u * 512u, "hdc type1 size");
+            if (img.size() > 512u)
+            {
+                expect(img[510] == 0x55 && img[511] == 0xAA, "hdc mbr");
+                expect(img[0x1C2] == 0x01, "hdc fat12 part");
+            }
+            std::filesystem::remove_all(dir);
+        }
     }
 
     if (g_fail != 0)
