@@ -193,7 +193,16 @@ bool pc::attach_hdc_path(const char *path, uint32_t cylinders, uint32_t heads, u
         return false;
     }
     struct stat st{};
-    if ((stat(path, &st) != 0) || (!S_ISREG(st.st_mode)) || (st.st_size < 512))
+    if (stat(path, &st) != 0)
+    {
+        return false;
+    }
+    if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode))
+    {
+        log_event("iron86: refuse hdc block/char device %s (host disk)\n", path);
+        return false;
+    }
+    if (!S_ISREG(st.st_mode) || (st.st_size < 512))
     {
         return false;
     }

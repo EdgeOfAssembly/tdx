@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <sys/stat.h>
+#include <unistd.h>
 
 namespace iron86
 {
@@ -59,6 +61,14 @@ bool hdc_xebec::attach(const char *path, uint32_t cylinders, uint32_t heads, uin
     if (fp == nullptr)
     {
         return false;
+    }
+    {
+        struct stat st{};
+        if ((::fstat(::fileno(fp), &st) != 0) || S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode))
+        {
+            std::fclose(fp);
+            return false;
+        }
     }
     if (std::fseek(fp, 0, SEEK_END) != 0)
     {

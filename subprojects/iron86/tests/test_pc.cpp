@@ -861,6 +861,8 @@ int main()
         expect(p.hdc_bytes() == 512u, "hdc size 512");
         expect(!p.attach_hdc_path("/no/such/hdc.img"), "hdc missing");
         expect(!p.attach_hdc_path(""), "hdc empty");
+        expect(!p.attach_hdc_path("/dev/sda"), "hdc refuse /dev/sda");
+        expect(!p.attach_hdc_path("/dev/sdb"), "hdc refuse /dev/sdb");
     }
 
     if (g_fail != 0)
