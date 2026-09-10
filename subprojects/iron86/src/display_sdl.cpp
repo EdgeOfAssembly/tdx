@@ -258,7 +258,7 @@ void display_sdl_present(cpu &c, bool mda)
     }
     if (fp == last_fp_)
     {
-        SDL_RenderPresent(ren_);
+        /* Do not Present the other backbuffer (that was the flash). */
         return;
     }
     last_fp_ = fp;
