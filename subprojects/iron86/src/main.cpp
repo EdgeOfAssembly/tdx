@@ -825,7 +825,7 @@ int main(int argc, char **argv)
                 break;
             }
             /* INT 16 AH=00 rewinds CD 16 when kbd_ is empty — 100% core at A>. */
-            if (video && p.waiting_key() && p.kbd_empty())
+            if (video && p.kbd_empty() && (p.waiting_key() || p.kbd_poll_idle()))
             {
                 struct timespec sl{};
                 struct timespec now{};

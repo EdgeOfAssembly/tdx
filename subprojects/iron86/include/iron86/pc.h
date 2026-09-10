@@ -84,6 +84,8 @@ public:
     /** @brief INT 16h AH=00 with empty buffer: IP rewound, tdx should wait. */
     bool waiting_key() const { return waiting_key_; }
     bool kbd_empty() const { return kbd_.empty(); }
+    /** @brief INT 16h AH=01 with empty buffer (COMMAND.COM poll loop). */
+    bool kbd_poll_idle() const { return kbd_poll_idle_; }
     void clear_wait_key() { waiting_key_ = false; }
 
     const std::string &tty() const { return tty_; }
@@ -267,6 +269,7 @@ private:
     uint8_t cur_x_ = 0;
     uint8_t cur_y_ = 0;
     bool waiting_key_ = false;
+    bool kbd_poll_idle_ = false;
 
     pc_hw hw_{};
     mc6845 mda_{}; /**< MDA 6845 + LPT1 (3B4/3B5/3B8/3BA, 3BC–3BE). */

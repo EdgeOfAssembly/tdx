@@ -1071,9 +1071,11 @@ bool pc::int16()
     {
         if (kbd_.empty())
         {
+            kbd_poll_idle_ = true;
             c.set_zf(true);
             return true;
         }
+        kbd_poll_idle_ = false;
         c.set_zf(false);
         uint16_t axv = kbd_.front();
         if (!kbd_scan_.empty())
