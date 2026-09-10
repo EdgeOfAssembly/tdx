@@ -821,98 +821,97 @@ int main(int argc, char **argv)
         }
         while (!p.c.halted())
         {
-            struct timespec slice0{};
-            struct timespec now{};
-            bool quit = false;
             if ((step_cap != 0ull) && (n >= step_cap))
             {
                 break;
             }
-            if (video)
+            if (video && allow_idle && p.kbd_empty() &&
+                (p.waiting_key() || p.kbd_poll_idle()))
             {
+                struct timespec sl{};
+                struct timespec now{};
+                sl.tv_sec = 0;
+                sl.tv_nsec = 1000000L;
                 if (!iron86::display_sdl_poll(p))
                 {
                     break;
                 }
-            }
-            (void)clock_gettime(CLOCK_MONOTONIC, &slice0);
-            while (!p.c.halted())
-            {
-                uint64_t slice_ns = 0;
-                if ((step_cap != 0ull) && (n >= step_cap))
+                iron86::display_sdl_present(p.c, mda);
+                if (p.kbd_empty())
                 {
-                    break;
-                }
-                if (video && allow_idle && p.kbd_empty() &&
-                    (p.waiting_key() || p.kbd_poll_idle()))
-                {
-                    break;
-                }
-                if (!p.c.step())
-                {
-                    quit = true;
-                    break;
-                }
-                n++;
-                if ((n & 8191ull) == 0ull)
-                {
-                    if ((!allow_idle) &&
-                        (b800_has_text(p.c, "new date") || b800_has_prompt(p.c)))
+                    (void)nanosleep(&sl, nullptr);
+                    (void)clock_gettime(CLOCK_MONOTONIC, &now);
+                    uint64_t dt = (static_cast<uint64_t>(now.tv_sec) -
+                                   static_cast<uint64_t>(irq0_last.tv_sec)) *
+                                      1000000000ull +
+                                  static_cast<uint64_t>(now.tv_nsec) -
+                                  static_cast<uint64_t>(irq0_last.tv_nsec);
+                    if (dt >= 55000000ull)
                     {
-                        allow_idle = true;
+                        p.wall_clock_irq0();
+                        irq0_last = now;
                     }
-                    if (until_prompt)
-                    {
-                        if ((!typed_date) && b800_has_text(p.c, "new date"))
-                        {
-                            p.type_keys("\r\r");
-                            typed_date = true;
-                        }
-                        if (b800_has_prompt(p.c))
-                        {
-                            quit = true;
-                            break;
-                        }
-                    }
-                }
-                (void)clock_gettime(CLOCK_MONOTONIC, &now);
-                slice_ns = (static_cast<uint64_t>(now.tv_sec) -
-                            static_cast<uint64_t>(slice0.tv_sec)) *
-                               1000000000ull +
-                           static_cast<uint64_t>(now.tv_nsec) -
-                           static_cast<uint64_t>(slice0.tv_nsec);
-                if (slice_ns >= 1000000ull)
-                {
-                    break;
+                    continue;
                 }
             }
-            if (quit)
+            if (!p.c.step())
             {
                 break;
             }
-            (void)clock_gettime(CLOCK_MONOTONIC, &now);
+            n++;
+            if ((n & 4095ull) == 0ull)
             {
-                uint64_t dt = (static_cast<uint64_t>(now.tv_sec) -
-                               static_cast<uint64_t>(irq0_last.tv_sec)) *
-                                  1000000000ull +
-                              static_cast<uint64_t>(now.tv_nsec) -
-                              static_cast<uint64_t>(irq0_last.tv_nsec);
+                struct timespec now{};
+                uint64_t dt = 0;
+                uint64_t pdt = 0;
+                uint64_t vdt = 0;
+                (void)clock_gettime(CLOCK_MONOTONIC, &now);
+                dt = (static_cast<uint64_t>(now.tv_sec) - static_cast<uint64_t>(irq0_last.tv_sec)) *
+                         1000000000ull +
+                     static_cast<uint64_t>(now.tv_nsec) -
+                     static_cast<uint64_t>(irq0_last.tv_nsec);
                 if (dt >= 55000000ull)
                 {
                     p.wall_clock_irq0();
                     irq0_last = now;
                 }
-            }
-            if (video)
-            {
-                iron86::display_sdl_present(p.c, mda);
-                if (allow_idle && p.kbd_empty() &&
-                    (p.waiting_key() || p.kbd_poll_idle()))
+                if (video)
                 {
-                    struct timespec sl{};
-                    sl.tv_sec = 0;
-                    sl.tv_nsec = 1000000L;
-                    (void)nanosleep(&sl, nullptr);
+                    pdt = (static_cast<uint64_t>(now.tv_sec) -
+                           static_cast<uint64_t>(video_last.tv_sec)) *
+                              1000000000ull +
+                          static_cast<uint64_t>(now.tv_nsec) -
+                          static_cast<uint64_t>(video_last.tv_nsec);
+                    if (!iron86::display_sdl_poll(p))
+                    {
+                        break;
+                    }
+                    /* ~60 Hz present; poll every 4096 insns (~0.1 ms at -O3). */
+                    if (pdt >= 16000000ull)
+                    {
+                        iron86::display_sdl_present(p.c, mda);
+                        video_last = now;
+                    }
+                }
+            }
+            if ((n & 8191ull) == 0ull)
+            {
+                if ((!allow_idle) &&
+                    (b800_has_text(p.c, "new date") || b800_has_prompt(p.c)))
+                {
+                    allow_idle = true;
+                }
+                if (until_prompt)
+                {
+                    if ((!typed_date) && b800_has_text(p.c, "new date"))
+                    {
+                        p.type_keys("\r\r");
+                        typed_date = true;
+                    }
+                    if (b800_has_prompt(p.c))
+                    {
+                        break;
+                    }
                 }
             }
         }
