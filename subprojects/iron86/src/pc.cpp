@@ -1132,6 +1132,7 @@ void pc::enable_fast_post()
     c.set_bx(0x1234);
     c.set_cs(0xF000);
     c.set_ip(0xE199);
+    c.mem_write8(0x475u, 1); /* one HDD; ROS may raise this */
     /* 10JAN86 programs DRAM-refresh DMA at E13C–E14C *before* E199.
      * Without ch0 unmasked, POST ECA9 waits forever on IN 00h. */
     hw_.dma.mode[0] = 0x58;
@@ -2113,7 +2114,14 @@ uint8_t pc::in_port(uint16_t port)
         }
         if (p == 0x62u)
         {
-            uint8_t port_c = static_cast<uint8_t>(hw_.ppi.io_nibble & 0x0Fu);
+            /* 5160: PC0–3 are SW1 low/high nibble selected by PB2 (E211–E228). */
+            const uint8_t sw = (hw_.ppi.dip != 0) ? hw_.ppi.dip : 0x2Du;
+            uint8_t nibble = sw & 0x0Fu;
+            if ((hw_.ppi.port_b & 0x04u) != 0)
+            {
+                nibble = static_cast<uint8_t>((sw >> 4) & 0x0Fu);
+            }
+            uint8_t port_c = nibble;
             if (hw_.pit.ch[2].out_pin != 0)
             {
                 port_c = static_cast<uint8_t>(port_c | 0x20u);

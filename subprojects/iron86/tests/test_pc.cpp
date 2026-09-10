@@ -154,7 +154,19 @@ int main()
         const uint8_t prog[] = {0xE4, 0x62, 0xF4}; /* IN AL,62h; HLT */
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 8);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 0x0F, "ppi io nibble f");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 0x0D, "ppi pc sw1 lo");
+    }
+    {
+        /* 5160 E211–E228: IN 62, OUT 61 AD, IN 62 → equipment 0x2D (1 FDD). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xE4, 0x62, 0x24, 0x0F, 0x8A, 0xE0, 0xB0, 0xAD, 0xE6, 0x61, 0xE4, 0x62,
+            0xB1, 0x04, 0xD2, 0xC0, 0x24, 0xF0, 0x0A, 0xC4, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 32);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "eq 2d 1 fdd");
     }
     {
         /* PIT ch1 mode 2 LSB count 0: after ticks, latch LSB is not stuck at 00. */
