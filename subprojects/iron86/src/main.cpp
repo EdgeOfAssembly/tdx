@@ -189,19 +189,39 @@ static bool mount_floppy(iron86::pc *p, uint8_t unit, const char *path)
     return true;
 }
 
-/** @brief True if B800 80×25 text contains "A>". */
-static bool b800_has_prompt(const iron86::cpu &c)
+/** @brief True if B800 80×25 text contains ASCII needle (char cells). */
+static bool b800_has_text(const iron86::cpu &c, const char *needle)
 {
+    const uint32_t cells = 80u * 25u;
+    const size_t nlen = std::strlen(needle);
     uint32_t i = 0;
-    for (; i + 1u < 80u * 25u; i++)
+    size_t j = 0;
+    if ((needle == nullptr) || (nlen == 0))
     {
-        if ((c.mem_read8(0xB8000u + i * 2u) == static_cast<uint8_t>('A')) &&
-            (c.mem_read8(0xB8000u + (i + 1u) * 2u) == static_cast<uint8_t>('>')))
+        return false;
+    }
+    for (i = 0; i + nlen <= cells; i++)
+    {
+        for (j = 0; j < nlen; j++)
+        {
+            if (c.mem_read8(0xB8000u + (i + static_cast<uint32_t>(j)) * 2u) !=
+                static_cast<uint8_t>(needle[j]))
+            {
+                break;
+            }
+        }
+        if (j == nlen)
         {
             return true;
         }
     }
     return false;
+}
+
+/** @brief True if B800 80×25 text contains "A>". */
+static bool b800_has_prompt(const iron86::cpu &c)
+{
+    return b800_has_text(c, "A>");
 }
 
 /** @brief One write(2) of 25 CGA text rows (no FILE* buffering). */
@@ -748,6 +768,7 @@ int main(int argc, char **argv)
             }
         }
         uint64_t n = 0;
+        bool typed_date = false;
         struct timespec irq0_last{};
         (void)clock_gettime(CLOCK_MONOTONIC, &irq0_last);
         while ((!p.c.halted()) && (n < 150000000ull))
@@ -772,9 +793,17 @@ int main(int argc, char **argv)
                     irq0_last = now;
                 }
             }
-            if (until_prompt && ((n & 8191ull) == 0ull) && b800_has_prompt(p.c))
+            if (until_prompt && ((n & 8191ull) == 0ull))
             {
-                break;
+                if ((!typed_date) && b800_has_text(p.c, "new date"))
+                {
+                    p.type_keys("\r\r");
+                    typed_date = true;
+                }
+                if (b800_has_prompt(p.c))
+                {
+                    break;
+                }
             }
         }
         dump_b800(p.c);
