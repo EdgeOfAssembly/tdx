@@ -1117,6 +1117,15 @@ void pc::enable_fast_post()
     c.set_bx(0x1234);
     c.set_cs(0xF000);
     c.set_ip(0xE199);
+    /* 10JAN86 programs DRAM-refresh DMA at E13C–E14C *before* E199.
+     * Without ch0 unmasked, POST ECA9 waits forever on IN 00h. */
+    hw_.dma.mode[0] = 0x58;
+    hw_.dma.curr_addr[0] = 0;
+    hw_.dma.base_addr[0] = 0;
+    hw_.dma.curr_count[0] = 0xFFFF;
+    hw_.dma.base_count[0] = 0xFFFF;
+    hw_.dma.command = 0;
+    hw_.dma.mask = 0x0E;
 }
 
 void pc::enable_audio(bool on)
