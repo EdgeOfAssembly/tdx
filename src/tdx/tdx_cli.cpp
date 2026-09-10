@@ -39,6 +39,7 @@ void tdx_print_usage(FILE *fp)
         "      --hdc-rom FILE    Xebec option ROM at C8000 (IBM 5000059)\n"
         "      --no-bios         Do not load ROM; iron86 C++ INT 10/13/16\n"
         "      --mda             MDA 80×25 (B000, DIP 0x3D). Default CGA B800\n"
+        "      --no-8087         Disable 8087 NPX (default: on)\n"
         "      --no-ui           Headless (no SDL windows)\n"
         "      --game            Also open CGA in this process (default: use tdxview)\n"
         "      --no-sock         Do not listen on the agent UNIX socket\n"
@@ -139,6 +140,10 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         else if (std::strcmp(a, "--mda") == 0)
         {
             out->mda = true;
+        }
+        else if (std::strcmp(a, "--no-8087") == 0)
+        {
+            out->no_8087 = true;
         }
         else if ((std::strcmp(a, "--floppy-a") == 0) || (std::strcmp(a, "--floppy") == 0))
         {

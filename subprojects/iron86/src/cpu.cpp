@@ -104,6 +104,10 @@ void cpu::reset()
     intr_vec_ = 0;
     q_len_ = 0;
     q_head_ = 0;
+    /* Presence is a DIP/machine switch, not FNINIT state. */
+    const bool npx_on = fpu_.enabled();
+    fpu_.reset();
+    fpu_.set_enabled(npx_on);
 }
 
 void cpu::set_prefetch_bytes(unsigned n)
@@ -1390,7 +1394,13 @@ void cpu::op_call_far()
     ip_ = off;
     cs_ = seg;
 }
-void cpu::op_wait() {} /* no 8087: WAIT is NOP */
+void cpu::op_wait()
+{
+    if (fpu_.enabled())
+    {
+        fpu_.wait();
+    }
+}
 void cpu::op_pushf() { push16(flags_); }
 void cpu::op_popf() { flags_ = pop16(); }
 void cpu::op_sahf()
@@ -1511,7 +1521,14 @@ void cpu::op_xlat()
         (ax_ & 0xFF00u) |
         mem_read8(phys(data_seg(), static_cast<uint16_t>(bx_ + static_cast<uint8_t>(ax_)))));
 }
-void cpu::op_esc() { decode_modrm(); } /* no 8087: consume ModR/M (+disp), NOP */
+void cpu::op_esc()
+{
+    decode_modrm();
+    if (fpu_.enabled())
+    {
+        fpu_.esc(*this, last_op_, mr_);
+    }
+}
 void cpu::op_loop_op() { op_loop(static_cast<uint8_t>(last_op_ - 0xE0)); }
 void cpu::op_in_i8() { ax_ = static_cast<uint16_t>((ax_ & 0xFF00u) | in8(fetch8())); }
 void cpu::op_in_i16()

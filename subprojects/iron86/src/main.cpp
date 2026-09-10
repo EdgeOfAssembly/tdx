@@ -25,7 +25,7 @@ using iron86::fd_puts;
 using iron86::fd_write;
 using iron86::log_event;
 
-static const char *k_version = "0.22";
+static const char *k_version = "0.23";
 
 static void usage(int fd)
 {
@@ -53,6 +53,7 @@ static void usage(int fd)
             "  --bios FILE          8K@FE000, 40K U19+U18, or 64K 5160@F0000\n"
             "  --no-fast-post       Cold POST (do not set RESET_FLAG=1234h)\n"
             "  --no-audio           Disable PC speaker BEL (default: on)\n"
+            "  --no-8087            Disable 8087 NPX (default: on)\n"
             "  --mda                MDA 80×25 (B000, DIP 0x3D). Default CGA\n"
             "  --floppy-a PATH      Drive 0: image or directory (pack FlopFS)\n"
             "  --floppy-b PATH      Drive 1: image or directory (pack FlopFS)\n"
@@ -390,6 +391,7 @@ int main(int argc, char **argv)
     iron86::machine_config cli{};
     bool no_fast_post = false;
     bool no_audio = false;
+    bool no_8087 = false;
     bool mda = false;
     bool until_prompt = false;
     bool lock_mem = false;
@@ -530,6 +532,11 @@ int main(int argc, char **argv)
         if (std::strcmp(a, "--no-audio") == 0)
         {
             no_audio = true;
+            continue;
+        }
+        if (std::strcmp(a, "--no-8087") == 0)
+        {
+            no_8087 = true;
             continue;
         }
         if (std::strcmp(a, "--mda") == 0)
@@ -697,6 +704,10 @@ int main(int argc, char **argv)
         {
             return 1;
         }
+        if (no_8087)
+        {
+            p.c.set_npx(false);
+        }
         p.wire_pc_hw(iron86::log_active());
         maybe_lock_mem(&p.c, &p, lock_mem);
         if (mda)
@@ -811,6 +822,10 @@ int main(int argc, char **argv)
         {
             p.type_keys(keys);
         }
+        if (no_8087)
+        {
+            p.c.set_npx(false);
+        }
         maybe_lock_mem(&p.c, &p, lock_mem);
         p.boot();
         uint64_t n = 0;
@@ -879,6 +894,10 @@ int main(int argc, char **argv)
         {
             return 1;
         }
+        if (no_8087)
+        {
+            p.c.set_npx(false);
+        }
         p.wire_pc_hw(iron86::log_active());
         maybe_lock_mem(&p.c, &p, lock_mem);
         p.c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xF4);
@@ -897,6 +916,10 @@ int main(int argc, char **argv)
     }
     iron86::cpu c;
     c.set_prefetch_bytes(prefetch_bytes);
+    if (no_8087)
+    {
+        c.set_npx(false);
+    }
     maybe_lock_mem(&c, nullptr, lock_mem);
     if ((exec_map != nullptr) && !c.open_exec_map(exec_map))
     {

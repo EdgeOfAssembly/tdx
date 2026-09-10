@@ -2,7 +2,7 @@
 
 Order-independent options (cli-design). No-args prints usage except **tdxview**
 (attaches to `/tmp/tdx.sock`). `-h`/`--help` and `-v`/`--version` on every tool.
-Version **0.27** (tdx / tdxview / tdxctl), iron86 **0.22**.
+Version **0.27** (tdx / tdxview / tdxctl), iron86 **0.23**.
 `tdxctl getip` / `setip 0FDB:A360` / `setip 0xFE199` (canonical CS:IP).
 
 Runtime floppy swap (no CPU reset): `tdxctl floppy b /path/DISK02.IMG`
@@ -34,6 +34,7 @@ tdx --floppy-a image.img --no-bios [options]
 | `--bios FILE` | IBM 5150 8K or 5160 64K. Default from `--preset` |
 | `--no-bios` | Skip ROM; iron86 C++ INT 10/13/16 (FloppyOS smoke) |
 | `--mda` | MDA 80×25 (B000). Default CGA |
+| `--no-8087` | Disable 8087 NPX (default on) |
 | `--no-ui` | Headless |
 | `--game` | Also open CGA in this process (default: use **tdxview**) |
 | `--no-sock` | Do not listen on the agent socket |
@@ -110,6 +111,7 @@ iron86 --bios BIOS.BIN [--floppy-a PATH] [--floppy-b PATH] [--keys STRING]
 | `--bios FILE` | 5150 8K or 5160 64K (default from `--preset`) |
 | `--no-fast-post` | Cold POST (no `RESET_FLAG=1234h`) |
 | `--no-audio` | Disable PC speaker BEL (default on) |
+| `--no-8087` | Disable 8087 NPX (default on) |
 | `--mda` | MDA 80×25 |
 | `--floppy-a PATH` | Drive 0: image or directory |
 | `--floppy-b PATH` | Drive 1: image or directory |
@@ -137,5 +139,5 @@ Raw floppy **writes persist** when the image was attached from a host file.
 nearest IBM geometry. No 2.88M.
 
 **HDD:** `tdx --preset ibm-xt --hdc FILE` — guest FDISK + FORMAT C: as letter C:,
-`DIR C:`, copy+reboot persist, and `--no-fast-post` cold POST to A> (iron86 0.22
+`DIR C:`, copy+reboot persist, and `--no-fast-post` cold POST to A> (iron86 0.23
 PB3 SW1 mux; STGTST ~3 min). Fast-post remains the play path. Never `--hdc /dev/sd*`.

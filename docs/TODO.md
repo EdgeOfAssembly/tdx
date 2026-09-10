@@ -30,7 +30,7 @@ Do **not** commit IBM BIOS ROM or game binaries. Always `scripts/tdx-kill.sh` be
 
 ## iron86 (BIOS + chips)
 
-**Working:** 8086 dispatch (enough for POST + Bushido), packed PPI/PIT/PIC/DMA/FDC, two 6845s (MDA `3Bx` + CGA `3Dx`), LPT stub, 360K A:+B:, dir→FlopFS pack, XT keys IRQ1, BDA `40:49` → tdxview mode, speaker `--no-audio`, DAA/WAIT/ESC NOPs.
+**Working:** 8086 dispatch (enough for POST + Bushido), packed PPI/PIT/PIC/DMA/FDC, two 6845s (MDA `3Bx` + CGA `3Dx`), LPT stub, 360K A:+B:, dir→FlopFS pack, XT keys IRQ1, BDA `40:49` → tdxview mode, speaker `--no-audio`, 8087 NPX default on (`--no-8087`), DAA + WAIT/ESC dispatch.
 
 ### BIOS policy (2026-09-06)
 
@@ -136,7 +136,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 - [ ] Cycle-exact 6845 (14.318 MHz, snow, wait states).
 - [ ] iron86 dual MDA+CGA in one guest (tdx/tdxview already is the dual-head). Last.
 - [ ] Cassette BASIC ROM map.
-- [ ] 8087 (WAIT/ESC already NOP).
+- [x] 8087 NPX default on (`--no-8087`).
 
 ---
 

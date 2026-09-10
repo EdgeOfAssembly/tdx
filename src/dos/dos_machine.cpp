@@ -1070,6 +1070,7 @@ rex_status dos_machine::load_floppy(const char *image)
         return REX_ERR_IO;
     }
     iron->boot();
+    iron->set_npx(npx_on);
     image_path = image;
     video_mode = iron->video_mode();
     entry_linear = 0x7C00;
@@ -1123,6 +1124,7 @@ rex_status dos_machine::load_bios_5150(const char *path)
         return REX_ERR_IO;
     }
     iron->wire_pc_hw();
+    iron->set_npx(npx_on);
     if (fast_post)
     {
         iron->enable_fast_post();
@@ -1149,6 +1151,7 @@ rex_status dos_machine::attach_hdc_image(const char *path)
         return REX_ERR_IO;
     }
     iron->wire_pc_hw();
+    iron->set_npx(npx_on);
     if (iron->c.rom_bios() && fast_post)
     {
         iron->enable_fast_post();
@@ -1231,6 +1234,15 @@ void dos_machine::set_mda(bool on)
         {
             video_mode = 0x07;
         }
+    }
+}
+
+void dos_machine::set_npx(bool on)
+{
+    npx_on = on;
+    if (iron)
+    {
+        iron->set_npx(on);
     }
 }
 

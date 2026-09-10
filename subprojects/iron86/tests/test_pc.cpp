@@ -139,25 +139,44 @@ int main()
         expect_eq(p.c.ax(), 0xFFFF, "dma wrap ff");
     }
     {
-        /* PPI: OUT 61h,0FCh (PB7=1 switches); IN 60h → DIP 0x2D CGA 80×25. */
+        /* PPI: OUT 61h,0FCh (PB7=1 switches); IN 60h → DIP 0x2F CGA + 8087. */
         iron86::pc p;
         p.wire_pc_hw();
         const uint8_t prog[] = {0xB0, 0xFC, 0xE6, 0x61, 0xE4, 0x60, 0xF4};
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 16);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "ppi dip 2d");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2F, "ppi dip 2f");
+        p.set_npx(false);
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "ppi dip 2d after set_npx");
+        p.set_npx(true);
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2F, "ppi dip 2f after set_npx");
     }
     {
-        /* Port C low nibble 0x0F → 64K + 15*32K = 544K (1981 BIOS max). */
+        /* --no-8087 / set_npx(false) before wire: SW1-2 clear, DIP 0x2D. */
+        iron86::pc p;
+        p.c.set_npx(false);
+        p.wire_pc_hw();
+        const uint8_t prog[] = {0xB0, 0xFC, 0xE6, 0x61, 0xE4, 0x60, 0xF4};
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "ppi dip 2d no-8087");
+        expect(!p.c.npx().enabled(), "npx off");
+    }
+    {
+        /* Port C low nibble: SW1 0x2F → 0x0F (8087 + IPL + 64K planar). */
         iron86::pc p;
         p.wire_pc_hw();
         const uint8_t prog[] = {0xE4, 0x62, 0xF4}; /* IN AL,62h; HLT */
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 8);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 0x0D, "ppi pc sw1 lo");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0x0Fu), 0x0F, "ppi pc sw1 lo");
     }
     {
-        /* 5160 E211–E228: IN 62, OUT 61 AD, IN 62 → equipment 0x2D (1 FDD). */
+        /* 5160 E211–E228: IN 62, OUT 61 AD, IN 62 → equipment 0x2F (1 FDD + 8087). */
         iron86::pc p;
         p.wire_pc_hw();
         const uint8_t prog[] = {
@@ -166,10 +185,10 @@ int main()
         };
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 32);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "eq 2d 1 fdd");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2F, "eq 2f 1 fdd");
     }
     {
-        /* 5160 C10 OUT 61h,A5h (PB3=0) then E211 mux must still be 0x2D.
+        /* 5160 C10 OUT 61h,A5h (PB3=0) then E211 mux must still be 0x2F.
          * PB2 is 1 in both A5h and ADh; muxing on PB2 yields 0x22 (no IPL). */
         iron86::pc p;
         uint8_t rom[65536];
@@ -190,7 +209,7 @@ int main()
         };
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 40);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2D, "eq 2d after C10 A5");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x2F, "eq 2f after C10 A5");
     }
     {
         /* OUT 3D9h latches color-select and BDA 40:66 (tdxview cga3d9). */
@@ -568,7 +587,7 @@ int main()
         const uint8_t prog[] = {0xB0, 0xFC, 0xE6, 0x61, 0xE4, 0x60, 0xF4};
         p.c.load_com(prog, sizeof(prog), 0x1000);
         run(p.c, 16);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6D, "ppi dip 2 fdd");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6F, "ppi dip 2 fdd");
     }
     {
         /* DOR select drive 1: post-reset Sense Int still returns ST0=C0. */
@@ -640,7 +659,7 @@ int main()
         const uint8_t dip[] = {0xB0, 0xFC, 0xE6, 0x61, 0xE4, 0x60, 0xF4};
         p.c.load_com(dip, sizeof(dip), 0x1000);
         run(p.c, 16);
-        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6D, "path B dip 6d");
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x6F, "path B dip 6f");
     }
     {
         /* 720K B: last sector cyl 79 head 1 sec 9 = LBA 1439. */

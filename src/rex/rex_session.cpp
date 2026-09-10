@@ -243,6 +243,15 @@ void rex_session_set_mda(rex_session *s, int on)
     }
 }
 
+void rex_session_set_npx(rex_session *s, int on)
+{
+    if ((s == nullptr) || (!s->dos))
+    {
+        return;
+    }
+    s->dos->set_npx(on != 0);
+}
+
 rex_status rex_session_set_exec_map(rex_session *s, const char *path)
 {
     if ((s == nullptr) || (path == nullptr) || (!s->dos))

@@ -22,19 +22,23 @@ LDFLAGS ?= $(LDFLAGS_DEBUG)
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
 all: iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_config \
-	tests/run_hdc tests/run_log
+	tests/run_hdc tests/run_log tests/run_fpu
 
 SRC := src/cpu.cpp src/ea.cpp src/pc.cpp src/crtc.cpp src/flopfs_pack.cpp src/config.cpp \
-	src/hdc.cpp src/log.cpp
+	src/hdc.cpp src/log.cpp src/fpu.cpp
 HDR := include/iron86/cpu.h include/iron86/ea.h include/iron86/pc.h include/iron86/hw.h \
 	include/iron86/crtc.h include/iron86/flopfs_pack.h include/iron86/config.h \
-	include/iron86/chs_lba.h include/iron86/hdc.h include/iron86/log.h
+	include/iron86/chs_lba.h include/iron86/hdc.h include/iron86/log.h \
+	include/iron86/fpu.h
 
 iron86: $(SRC) src/main.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) src/main.cpp -o $@ $(LDFLAGS)
 
 tests/run_tests: $(SRC) tests/test_cpu.cpp $(HDR)
-	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp src/log.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp src/log.cpp src/fpu.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
+
+tests/run_fpu: src/fpu.cpp src/cpu.cpp src/ea.cpp src/log.cpp tests/test_fpu.cpp $(HDR)
+	$(CXX) $(CXXFLAGS) src/fpu.cpp src/cpu.cpp src/ea.cpp src/log.cpp tests/test_fpu.cpp -o $@ $(LDFLAGS)
 
 tests/run_pc: $(SRC) tests/test_pc.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) tests/test_pc.cpp -o $@ $(LDFLAGS)
@@ -56,7 +60,7 @@ tests/run_log: src/log.cpp tests/test_log.cpp include/iron86/log.h
 	$(CXX) $(CXXFLAGS) src/log.cpp tests/test_log.cpp -o $@ $(LDFLAGS)
 
 test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_config tests/run_hdc \
-	tests/run_log iron86
+	tests/run_log tests/run_fpu iron86
 	./tests/run_tests
 	./tests/run_pc
 	./tests/run_crtc
@@ -64,9 +68,10 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./tests/run_config
 	./tests/run_hdc
 	./tests/run_log
+	./tests/run_fpu
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.22'
-	./iron86 --no-audio -v | grep -q 'iron86 0.22'
+	./iron86 -v | grep -q 'iron86 0.23'
+	./iron86 --no-audio -v | grep -q 'iron86 0.23'
 	./iron86 -h | grep -q -- --exec-map
 	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 -h | grep -q -- --until-prompt
@@ -84,6 +89,7 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	grep -q Usage /tmp/iron86-usage.txt
 	grep -q -- --no-fast-post /tmp/iron86-usage.txt
 	grep -q -- --no-audio /tmp/iron86-usage.txt
+	./iron86 -h | grep -q -- --no-8087
 	grep -q -- --floppy-b /tmp/iron86-usage.txt
 	./iron86 -h | grep -q -- --floppy-b
 	./iron86 -h | grep -q -- --floppy-a

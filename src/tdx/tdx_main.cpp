@@ -194,6 +194,10 @@ int main(int argc, char **argv)
     {
         rc = (int)rex_session_set_exec_map(s, cli.exec_map.c_str());
     }
+    if ((rc == (int)REX_OK) && cli.no_8087)
+    {
+        rex_session_set_npx(s, 0);
+    }
     if (rc != (int)REX_OK)
     {
         std::fprintf(stderr, "tdx: load failed: %s\n", rex_status_str((rex_status)rc));

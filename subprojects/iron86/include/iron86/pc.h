@@ -128,9 +128,15 @@ public:
 
     /**
      * @brief SW1 video bits: MDA 80×25 (0x3D family) vs CGA 80×25 (0x2D).
-     * Call after wire_pc_hw. Keeps floppy-count bits.
+     * Call after wire_pc_hw. Keeps floppy-count and 8087 bits.
      */
     void set_mda(bool on);
+
+    /**
+     * @brief Install/remove the 8087 (SW1-2 / EQUIP bit 1). Default on.
+     * CLI `--no-8087` passes false. Syncs DIP after @ref wire_pc_hw.
+     */
+    void set_npx(bool on);
 
     /**
      * @brief Host PC speaker (default on). CLI `--no-audio` passes false.
@@ -296,6 +302,7 @@ private:
     void floppy_persist(uint8_t unit);
     const std::vector<uint8_t> *floppy_media(uint8_t drv) const;
     void sync_fdd_dip();
+    void sync_npx_dip();
     void queue_scan(uint8_t sc);
     static uint8_t ascii_make(uint8_t ch);
 };

@@ -101,6 +101,7 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] **mode 6** 640×200 1bpp + composite in tdxview (Dragon Wars)
 - [x] **mode 4** 320×200 old-CGA NTSC (Reenigne/86Box); gold `games/SCREEN.CGA`
 - [x] PPI I/O nibble **0x0F = 544K** (24-APR-81 BIOS max; not 640K / not EMS)
+- [x] 8087 NPX default on (`--no-8087`)
 - [x] **`--exec-map FILE`** — 1 MiB executed-opcode map (same linear addrs as RAM)
 - [ ] MDA **blink**; exact 720×350 timing
 - [ ] **Hercules** 720×348 gfx (not MDA — HGC is MDA text + extra graphics)

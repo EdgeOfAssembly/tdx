@@ -6,6 +6,7 @@
 #define IRON86_CPU_H
 
 #include "iron86/ea.h"
+#include "iron86/fpu.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -270,6 +271,11 @@ public:
     {
         return prefetch_n_;
     }
+
+    /** @brief 8087 NPX (default on). `--no-8087` calls @ref set_npx false. */
+    fpu &npx() { return fpu_; }
+    const fpu &npx() const { return fpu_; }
+    void set_npx(bool on) { fpu_.set_enabled(on); }
 
 private:
     /**
@@ -582,6 +588,7 @@ private:
     uint16_t q_cs_ = 0;
     uint16_t q_ip_ = 0;
     uint8_t q_[k_prefetch_max]{};
+    fpu fpu_{};
 };
 
 } // namespace iron86

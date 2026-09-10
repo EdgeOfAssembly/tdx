@@ -82,6 +82,12 @@ REX_API rex_status rex_session_attach_hdc_rom(rex_session *s, const char *path);
 REX_API void rex_session_set_mda(rex_session *s, int on);
 
 /**
+ * @brief 8087 NPX (default on). 0 = `--no-8087` (ESC still consumes ModR/M).
+ * Safe no-op if the session has no iron86 PC. Syncs SW1-2 when wired.
+ */
+REX_API void rex_session_set_npx(rex_session *s, int on);
+
+/**
  * @brief 8088-style prefetch queue (iron86). Default 6; 0 = off (always RAM).
  * Clamped to 1024. Call before or after load; applied when the iron86 PC exists.
  */

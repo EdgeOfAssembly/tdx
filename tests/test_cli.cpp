@@ -183,3 +183,14 @@ TEST_CASE("mda is opt-in CGA default")
     REQUIRE(b.mda);
     REQUIRE(b.bios == "rom.bin");
 }
+
+TEST_CASE("no-8087 is opt-out; NPX default on")
+{
+    auto a = parse({"--bios", "rom.bin"});
+    REQUIRE_FALSE(a.no_8087);
+    auto b = parse({"--bios", "rom.bin", "--no-8087"});
+    REQUIRE(b.no_8087);
+    REQUIRE(b.bios == "rom.bin");
+    auto c = parse({"--no-8087", "--floppy-a", "a.img"});
+    REQUIRE(c.no_8087);
+}

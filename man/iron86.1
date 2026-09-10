@@ -1,4 +1,4 @@
-.TH IRON86 1 "2026-09-10" "iron86 0.22" "User Commands"
+.TH IRON86 1 "2026-09-11" "iron86 0.23" "User Commands"
 .SH NAME
 iron86 \- chip-level 8086 IBM PC (no DOS)
 .SH SYNOPSIS
@@ -70,6 +70,9 @@ Cold POST (do not set BDA RESET_FLAG=1234h).
 .TP
 .B \-\-no\-audio
 Disable PC speaker BEL (default on).
+.TP
+.B \-\-no\-8087
+Disable 8087 NPX (default on). SW1-2 / EQUIP bit 1 stay clear (DIP 0x2D).
 .TP
 .B \-\-mda
 MDA 80×25 (DIP 0x3D). Default CGA.

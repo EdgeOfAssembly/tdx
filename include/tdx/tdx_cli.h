@@ -36,6 +36,7 @@ struct tdx_cli
     std::string hdc_rom;   /**< Xebec option ROM at C8000. */
     std::string exec_map;  /**< 1 MiB executed-opcode map (iron86). */
     bool mda = false;      /**< SW1 MDA 80×25 (B000, mode 7). Default CGA. */
+    bool no_8087 = false;  /**< --no-8087: disable 8087 NPX (default on). */
     int scale = 2;
     unsigned prefetch_bytes = 6; /**< iron86 BIU queue; 0=off. Default 8086. */
     bool prefetch_set = false;

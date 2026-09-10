@@ -129,10 +129,31 @@ void pc::sync_fdd_dip()
     dip = static_cast<uint8_t>(dip & static_cast<uint8_t>(~0xC0u));
     if (floppy_[1].size() >= 512u)
     {
-        /* SW1 bits 6–7: 01 = 2 floppy drives (0x2D | 0x40 = 0x6D). */
+        /* SW1 bits 6–7: 01 = 2 floppy drives (0x2D | 0x40 = 0x6D; +8087 → 0x6F). */
         dip = static_cast<uint8_t>(dip | 0x40u);
     }
     hw_.ppi.dip = dip;
+}
+
+void pc::sync_npx_dip()
+{
+    uint8_t dip = hw_.ppi.dip;
+    if (dip == 0)
+    {
+        dip = 0x2D;
+    }
+    dip = static_cast<uint8_t>(dip & static_cast<uint8_t>(~0x02u));
+    if (c.npx().enabled())
+    {
+        dip = static_cast<uint8_t>(dip | 0x02u);
+    }
+    hw_.ppi.dip = dip;
+}
+
+void pc::set_npx(bool on)
+{
+    c.set_npx(on);
+    sync_npx_dip();
 }
 
 void pc::set_mda(bool on)
@@ -1127,6 +1148,7 @@ void pc::wire_pc_hw(bool trace_io)
     hw_.ppi.control = 0x99;
     hw_.ppi.dip = 0x2D; /* CGA 80×25, 64K planar, 1 FDD, IPL (not Py86 MDA 0x3D) */
     sync_fdd_dip();
+    sync_npx_dip(); /* SW1-2: 8087 when NPX enabled (default 0x2F) */
     /* Py86 ppi8255 / PCBIOS.ASM TEST.11: planar 64K (SW1 bits 3–2) plus
      * I/O-channel nibble*32K. 1981 BIOS max is 544K (nibble 0xF), not 640K
      * (SW2 bit 5 is ignored until the 27-OCT-82 BIOS). 0x6 was 256K. */
