@@ -163,24 +163,24 @@ void blit_mode4(cpu &c, uint8_t pal)
 
 void inject_key(pc &p, SDL_Keycode k)
 {
-    if (k == SDLK_RETURN)
+    /* ROM INT 16 is stolen: AH=00 reads kbd_ ASCII, not PPI scancodes.
+     * type_scan() pushes NUL and DOS ignores it at the date prompt. */
+    char s[2] = {0, 0};
+    if ((k == SDLK_RETURN) || (k == SDLK_KP_ENTER))
     {
-        p.type_scan(0x1C);
+        s[0] = '\r';
+        p.type_keys(s);
         return;
     }
     if (k == SDLK_ESCAPE)
     {
-        p.type_scan(0x01);
+        s[0] = '\x1b';
+        p.type_keys(s);
         return;
     }
     if (k == SDLK_BACKSPACE)
     {
-        p.type_scan(0x0E);
-        return;
-    }
-    if ((k >= 32) && (k < 127))
-    {
-        char s[2] = {static_cast<char>(k), 0};
+        s[0] = '\b';
         p.type_keys(s);
     }
 }
