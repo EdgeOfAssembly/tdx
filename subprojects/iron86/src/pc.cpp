@@ -819,6 +819,39 @@ bool pc::int10()
     return true;
 }
 
+static const char *int13_ah_name(uint8_t ah)
+{
+    switch (ah)
+    {
+    case 0x00:
+        return "reset";
+    case 0x01:
+        return "status";
+    case 0x02:
+        return "read";
+    case 0x03:
+        return "write";
+    case 0x04:
+        return "verify";
+    case 0x05:
+        return "format";
+    case 0x08:
+        return "params";
+    case 0x09:
+        return "init";
+    case 0x0C:
+        return "seek";
+    case 0x10:
+        return "ready";
+    case 0x15:
+        return "dasd";
+    case 0x16:
+        return "change";
+    default:
+        return "?";
+    }
+}
+
 bool pc::int13()
 {
     const uint8_t ah = static_cast<uint8_t>(c.ax() >> 8);
@@ -827,6 +860,15 @@ bool pc::int13()
     const uint8_t cl = static_cast<uint8_t>(c.cx());
     const uint8_t dh = static_cast<uint8_t>(c.dx() >> 8);
     const uint8_t dl = static_cast<uint8_t>(c.dx());
+    if (log_active())
+    {
+        const uint32_t cyl =
+            static_cast<uint32_t>(ch) | (static_cast<uint32_t>(cl & 0xC0u) << 2);
+        const uint32_t sec = static_cast<uint32_t>(cl & 0x3Fu);
+        log_trace("INT13 AH=%02X %s AL=%02X CHS=%u/%u/%u DL=%02X ES:BX=%04X:%04X%s\n", ah,
+                  int13_ah_name(ah), al, cyl, static_cast<unsigned>(dh), sec, dl, c.es(),
+                  c.bx(), ((dl & 0x80u) != 0) ? " pass" : " handled");
+    }
     if ((dl & 0x80u) != 0)
     {
         /* HDD: Xebec ROS / option ROM. Do not map C: onto A:. */

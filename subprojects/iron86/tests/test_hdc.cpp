@@ -4,6 +4,7 @@
  */
 #include "iron86/chs_lba.h"
 #include "iron86/hdc.h"
+#include "iron86/log.h"
 #include "iron86/pc.h"
 
 #include <cstdint>
@@ -382,6 +383,46 @@ int main()
         expect_eq(p.c.mem_read8(0x9001u), 4, "INT13 data1");
         expect(p.hdc().image()[1] == 4, "image persist INT13");
         (void)std::remove(t1);
+    }
+
+    {
+        /* INT 13 DL=80h is logged then passed to ROS (return false). */
+        char lpath[] = "/tmp/iron86-int13-XXXXXX";
+        const int lfd = ::mkstemp(lpath);
+        expect(lfd >= 0, "int13 mkstemp");
+        if (lfd >= 0)
+        {
+            (void)::close(lfd);
+            expect(iron86::log_open(lpath), "int13 log_open");
+            iron86::pc p;
+            p.wire_pc_hw(true);
+            p.c.set_ax(0x0800);
+            p.c.set_cx(0x0001);
+            p.c.set_dx(0x0080);
+            p.c.set_es(0x07C0);
+            p.c.set_bx(0);
+            expect(!p.bios_int(0x13), "hdd INT13 pass");
+            p.c.set_ax(0x0000);
+            p.c.set_dx(0x0000);
+            expect(p.bios_int(0x13), "fd INT13 handled");
+            iron86::log_close();
+            std::FILE *fp = std::fopen(lpath, "r");
+            expect(fp != nullptr, "int13 log read");
+            if (fp != nullptr)
+            {
+                char buf[512];
+                const size_t n = std::fread(buf, 1, sizeof(buf) - 1u, fp);
+                buf[n] = '\0';
+                std::fclose(fp);
+                expect(std::strstr(buf, "INT13") != nullptr, "INT13 tag");
+                expect(std::strstr(buf, "AH=08") != nullptr, "AH=08 params");
+                expect(std::strstr(buf, "pass") != nullptr, "hdd pass");
+                expect(std::strstr(buf, "AH=00") != nullptr, "AH=00 reset");
+                expect(std::strstr(buf, "handled") != nullptr, "fd handled");
+                expect(std::strstr(buf, "DL=80") != nullptr, "DL=80");
+            }
+            (void)::unlink(lpath);
+        }
     }
 
     {

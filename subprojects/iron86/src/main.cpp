@@ -24,7 +24,7 @@ using iron86::fd_puts;
 using iron86::fd_write;
 using iron86::log_event;
 
-static const char *k_version = "0.19";
+static const char *k_version = "0.20";
 
 static void usage(int fd)
 {
@@ -58,7 +58,7 @@ static void usage(int fd)
             "  --floppy PATH        Alias for --floppy-a\n"
             "  --hdc PATH           Raw HDD image (Xebec Type-1 306x4x17)\n"
             "  --hdc-rom FILE       Xebec option ROM at C8000 (IBM 5000059)\n"
-            "  --log FILE           Append event log (HDC/floppy/BIOS/ROS); default off\n"
+            "  --log FILE           Append event log (HDC/floppy/BIOS/ROS/INT13); default off\n"
             "  --lock-mem           mlock guest RAM + HDC image (default off)\n"
             "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
             "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"

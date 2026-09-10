@@ -1,4 +1,4 @@
-.TH IRON86 1 "2026-09-10" "iron86 0.19" "User Commands"
+.TH IRON86 1 "2026-09-10" "iron86 0.20" "User Commands"
 .SH NAME
 iron86 \- chip-level 8086 IBM PC (no DOS)
 .SH SYNOPSIS
@@ -113,6 +113,9 @@ the Xebec ports 320h–323h and 213h are traced to the file only
 (IN/OUT handlers instantiated with
 .B if constexpr
 ; the default path has no trace branches).
+INT 13h is logged the same way (AH/AL/CHS/DL/ES:BX);
+.B DL
+bit 7 still returns to the Xebec ROS (not stolen).
 .TP
 .B \-\-lock\-mem
 .BR mlock (2)

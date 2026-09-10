@@ -64,8 +64,8 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./tests/run_hdc
 	./tests/run_log
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.19'
-	./iron86 --no-audio -v | grep -q 'iron86 0.19'
+	./iron86 -v | grep -q 'iron86 0.20'
+	./iron86 --no-audio -v | grep -q 'iron86 0.20'
 	./iron86 -h | grep -q -- --exec-map
 	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 -h | grep -q -- --until-prompt
@@ -130,6 +130,13 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	grep -q 'lock-mem hdc' /tmp/iron86-lock.err
 	grep -q 'AX=2F00' /tmp/iron86-lock.err
 	! grep -q 'lock-mem ram' /tmp/iron86-hdc-smoke.err
+	rm -f /tmp/iron86-int13.log
+	./iron86 tests/fixtures/int13log.com --hdc /tmp/iron86-hdc-smoke.img \
+		--log /tmp/iron86-int13.log >/tmp/iron86-int13.out 2>/tmp/iron86-int13.err
+	grep -q 'INT13' /tmp/iron86-int13.log
+	grep -q 'AH=00' /tmp/iron86-int13.log
+	grep -q 'handled' /tmp/iron86-int13.log
+	! grep -q 'INT13' /tmp/iron86-int13.err
 
 tests: test
 
