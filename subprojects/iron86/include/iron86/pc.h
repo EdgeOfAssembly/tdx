@@ -83,6 +83,7 @@ public:
 
     /** @brief INT 16h AH=00 with empty buffer: IP rewound, tdx should wait. */
     bool waiting_key() const { return waiting_key_; }
+    bool kbd_empty() const { return kbd_.empty(); }
     void clear_wait_key() { waiting_key_ = false; }
 
     const std::string &tty() const { return tty_; }

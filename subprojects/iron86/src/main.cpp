@@ -824,6 +824,34 @@ int main(int argc, char **argv)
             {
                 break;
             }
+            /* INT 16 AH=00 rewinds CD 16 when kbd_ is empty — 100% core at A>. */
+            if (video && p.waiting_key() && p.kbd_empty())
+            {
+                struct timespec sl{};
+                struct timespec now{};
+                sl.tv_sec = 0;
+                sl.tv_nsec = 1000000L;
+                if (!iron86::display_sdl_poll(p))
+                {
+                    break;
+                }
+                iron86::display_sdl_present(p.c, mda);
+                (void)nanosleep(&sl, nullptr);
+                (void)clock_gettime(CLOCK_MONOTONIC, &now);
+                {
+                    uint64_t dt = (static_cast<uint64_t>(now.tv_sec) -
+                                   static_cast<uint64_t>(irq0_last.tv_sec)) *
+                                      1000000000ull +
+                                  static_cast<uint64_t>(now.tv_nsec) -
+                                  static_cast<uint64_t>(irq0_last.tv_nsec);
+                    if (dt >= 55000000ull)
+                    {
+                        p.wall_clock_irq0();
+                        irq0_last = now;
+                    }
+                }
+                continue;
+            }
             if (!p.c.step())
             {
                 break;
