@@ -436,6 +436,10 @@ void pc::queue_scan(uint8_t sc)
 void pc::type_scan(uint8_t make)
 {
     const uint8_t m = static_cast<uint8_t>(make & 0x7Fu);
+    /* INT 16h is stolen under ROM BIOS; PPI-only inject never unblocks AH=00. */
+    kbd_.push_back(0);
+    kbd_scan_.push_back(m);
+    waiting_key_ = false;
     queue_scan(m);
     /* INT 9 wrap (M1TP CGAGRPH) treats make+break in one poll as no key.
      * Same pump as type_keys so the hook sees the make first. */
@@ -1006,7 +1010,12 @@ bool pc::int16()
             return true;
         }
         c.set_zf(false);
-        c.set_ax(kbd_.front()); /* AL=ascii, AH=0 scan */
+        uint16_t axv = kbd_.front();
+        if (!kbd_scan_.empty())
+        {
+            axv = static_cast<uint16_t>(axv | (static_cast<uint16_t>(kbd_scan_.front()) << 8));
+        }
+        c.set_ax(axv);
         return true;
     }
     if (ah == 0x00)
@@ -1020,8 +1029,14 @@ bool pc::int16()
         waiting_key_ = false;
         const uint8_t ch = kbd_.front();
         kbd_.pop_front();
+        uint8_t scan = 0;
+        if (!kbd_scan_.empty())
+        {
+            scan = kbd_scan_.front();
+            kbd_scan_.pop_front();
+        }
         c.set_zf(false);
-        c.set_ax(ch);
+        c.set_ax(static_cast<uint16_t>(ch) | (static_cast<uint16_t>(scan) << 8));
         return true;
     }
     /* Other INT 16: no key. */

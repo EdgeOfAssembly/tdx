@@ -1150,6 +1150,14 @@ static std::string handle_line(rex_sock *sk, rex_session *s, const std::string &
         {
             rex_session_push_key(s, 0, 0x50);
         }
+        else if ((k == "F1") || (k == "f1"))
+        {
+            rex_session_push_key(s, 0, 0x3B);
+        }
+        else if ((k == "F2") || (k == "f2"))
+        {
+            rex_session_push_key(s, 0, 0x3C);
+        }
         rex_session_post_ui_cmd(s, REX_UI_START_RUN);
         resp["key"] = k;
     }

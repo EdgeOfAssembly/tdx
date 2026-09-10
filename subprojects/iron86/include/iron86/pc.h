@@ -239,6 +239,7 @@ private:
     bool hdc_rom_loaded_ = false;
     std::string tty_;
     std::deque<uint8_t> kbd_;
+    std::deque<uint8_t> kbd_scan_; /**< INT 16 AH (scancode); parallel to kbd_ */
     std::deque<uint8_t> scanq_;
     uint8_t kbd_bat_ = 0; /**< XT BAT 0xAA after clock-low reset (5160 301). */
     std::chrono::steady_clock::time_point t0_{};
