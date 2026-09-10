@@ -88,7 +88,8 @@ INT 13 AH=08 cylinder count is `size / (512 * spt * heads)`, not a hardcoded 40/
 - [x] **DIR C:** on `ibm-xt` + DOS 3.31 + Type-1 image (empty FAT12 root). Shot `re/tdx-tank/tdx-xt-dirc-20260910T212706.431.bmp`
 - [x] **FORMAT C: copy+reboot** — `ECHO HELLO>C:HI.TXT` then kill tdx, restart same image, `DIR C:` still shows `HI.TXT` 7 bytes (`b16bc2a6…` persist). Burst `tdxctl type` of a long line can still stack-overflow; type per-char or pump in `feed_ascii`.
 - [ ] **FORMAT C: as letter C:** from a blank Type-1 (guest FDISK was E: then DIP mux). Harness `tests/hdc-format-c.sh` still print-only.
-- [ ] **Cold POST** `--no-fast-post`: KB OK works; after 640 KB OK CS=`4B20` executing zeros. Fast-post is the play path
+- [x] **Cold POST dummy-stack smash** — BIOS F000 is write-protected (real XT ROM). No more CS=`4B20` zeros after 640 KB OK.
+- [ ] **Cold POST to A>** — `--no-fast-post` counts KB OK to 640 then stays in STGTST (`F000:EDxx`). Fast-post remains the play path.
 - [ ] **XT HDD C:** auto-size from a host dir larger than 1.44M (or any floppy)
 
 ## Bottom of queue (after those)

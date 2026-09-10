@@ -987,6 +987,13 @@ int main()
             expect(rom.size() == 65536u, "5160 bios 64k");
             iron86::pc p;
             expect(p.c.load_bios(rom.data(), rom.size()), "load 64k bios");
+            {
+                const uint8_t was = p.c.mem_read8(0xFE01Au);
+                p.c.mem_write8(0xFE01Au, static_cast<uint8_t>(was ^ 0xFFu));
+                expect_eq(p.c.mem_read8(0xFE01Au), was, "F000 ROM write ignored");
+                p.c.mem_write8(0x400u, 0xAAu);
+                expect_eq(p.c.mem_read8(0x400u), 0x00AA, "RAM below ROM writable");
+            }
             p.wire_pc_hw();
             /* COM: DS=0, IVT 8/9 → F000:FF23, PIC ICW, STI, CALL F9E3 copy,
              * save CX/BX/[046B], then E3E9 stuck-key IN 60h. */

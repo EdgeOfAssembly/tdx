@@ -85,13 +85,24 @@ public:
     }
     void mem_write8(uint32_t lin, uint8_t v)
     {
-        ram_[lin & 0xFFFFFu] = v;
+        const uint32_t a = lin & 0xFFFFFu;
+        if (rom_hit_(a))
+        {
+            return;
+        }
+        ram_[a] = v;
     }
     void mem_write16(uint32_t lin, uint16_t v)
     {
-        ram_[lin & 0xFFFFFu] = static_cast<uint8_t>(v);
-        ram_[(lin + 1u) & 0xFFFFFu] = static_cast<uint8_t>(v >> 8);
+        mem_write8(lin, static_cast<uint8_t>(v));
+        mem_write8(lin + 1u, static_cast<uint8_t>(v >> 8));
     }
+
+    /**
+     * @brief Mark [lo, hi) as ROM (writes ignored). Real XT dummy stack is in
+     * F000 ROM; writable RAM there smashes POST (" KB OK" / CS=4B20 zeros).
+     */
+    void add_rom_window(uint32_t lo, uint32_t hi);
 
     uint16_t ax() const { return ax_; }
     uint16_t cx() const { return cx_; }
@@ -523,6 +534,22 @@ private:
     bool halted_ = false;
     uint8_t last_op_ = 0;
     bool rom_bios_ = false;
+    uint8_t rom_n_ = 0;
+    uint32_t rom_lo_[4]{};
+    uint32_t rom_hi_[4]{};
+
+    bool rom_hit_(uint32_t a) const
+    {
+        uint8_t i = 0;
+        for (; i < rom_n_; i++)
+        {
+            if ((a >= rom_lo_[i]) && (a < rom_hi_[i]))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
     uint16_t prefetch_n_ = static_cast<uint16_t>(k_prefetch_default);
     uint16_t q_len_ = 0;
     uint16_t q_head_ = 0;

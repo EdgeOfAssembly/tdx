@@ -246,11 +246,13 @@ bool pc::load_hdc_rom(const uint8_t *data, size_t n)
     {
         bytes = 8192u;
     }
+    uint8_t *ram = c.ram();
     uint32_t i = 0;
     for (; i < bytes; i++)
     {
-        c.mem_write8(k_hdc_ros_phys + i, data[i]);
+        ram[(k_hdc_ros_phys + i) & 0xFFFFFu] = data[i];
     }
+    c.add_rom_window(k_hdc_ros_phys, k_hdc_ros_phys + bytes);
     hdc_rom_loaded_ = true;
     return true;
 }

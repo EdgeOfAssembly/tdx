@@ -266,9 +266,22 @@ bool cpu::load_bios_5150_8k(const uint8_t *data, size_t n)
     halted_ = false;
     last_op_ = 0;
     rom_bios_ = true;
+    rom_n_ = 0;
+    add_rom_window(0xFE000u, 0x100000u);
     /* Keep bios_ intercept. pc::bios_int yields INT 10/16/1A to the ROM
      * and still handles INT 13 (5150 ROM is 40-cylinder / 360K only). */
     return true;
+}
+
+void cpu::add_rom_window(uint32_t lo, uint32_t hi)
+{
+    if ((hi <= lo) || (rom_n_ >= 4u))
+    {
+        return;
+    }
+    rom_lo_[rom_n_] = lo & 0xFFFFFu;
+    rom_hi_[rom_n_] = (hi > 0x100000u) ? 0x100000u : hi;
+    rom_n_ = static_cast<uint8_t>(rom_n_ + 1u);
 }
 
 bool cpu::load_bios(const uint8_t *data, size_t n)
@@ -292,15 +305,19 @@ bool cpu::load_bios(const uint8_t *data, size_t n)
         std::memset(ram_, 0, k_mem_size);
     }
     ram_ = mem_.get();
+    rom_n_ = 0;
     if (n == 40960u)
     {
         /* 5160 08NOV82: 8K U19 at F0000 + 32K U18 at F8000. */
         std::memcpy(ram_ + 0xF0000u, data, 8192u);
         std::memcpy(ram_ + 0xF8000u, data + 8192u, 32768u);
+        add_rom_window(0xF0000u, 0xF2000u);
+        add_rom_window(0xF8000u, 0x100000u);
     }
     else
     {
         std::memcpy(ram_ + 0xF0000u, data, 65536u);
+        add_rom_window(0xF0000u, 0x100000u);
     }
     cs_ = 0xFFFF;
     ip_ = 0;
