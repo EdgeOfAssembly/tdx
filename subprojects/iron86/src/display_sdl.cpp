@@ -32,6 +32,25 @@ uint8_t cga8_[256][8]{};
 int font_ok_ = 0;
 uint32_t pix_[640 * 400];
 uint32_t last_fp_ = 0;
+bool need_present_ = true;
+
+void flip()
+{
+    SDL_Rect dst{};
+    if ((ren_ == nullptr) || (tex_ == nullptr))
+    {
+        return;
+    }
+    SDL_SetRenderDrawColor(ren_, 0, 0, 0, 255);
+    SDL_RenderClear(ren_);
+    dst.x = 0;
+    dst.w = 640 * scale_;
+    dst.h = 400 * scale_;
+    dst.y = (480 * scale_ - dst.h) / 2;
+    SDL_RenderCopy(ren_, tex_, nullptr, &dst);
+    SDL_RenderPresent(ren_);
+    need_present_ = false;
+}
 
 int load_font(const char *path)
 {
@@ -256,50 +275,40 @@ void display_sdl_present(cpu &c, bool mda)
     {
         fp = fp * 16777619u + vram[i];
     }
-    if (fp == last_fp_)
+    if (fp != last_fp_)
     {
-        /* Do not Present the other backbuffer (that was the flash). */
-        return;
+        last_fp_ = fp;
+        need_present_ = true;
+        if ((mode == 6u) || (mode == 0x06u))
+        {
+            blit_mode6(c);
+        }
+        else if ((mode == 4u) || (mode == 5u))
+        {
+            blit_mode4(c, pal);
+        }
+        else if (mode == 1u)
+        {
+            blit_text(c, 0xB8000u, 40, false);
+        }
+        else if (mode == 0u)
+        {
+            blit_text(c, 0xB8000u, 80, false);
+        }
+        else if (mda || (mode == 7u))
+        {
+            blit_text(c, 0xB0000u, 80, true);
+        }
+        else
+        {
+            blit_text(c, 0xB8000u, 80, false);
+        }
+        SDL_UpdateTexture(tex_, nullptr, pix_, 640 * 4);
     }
-    last_fp_ = fp;
-    if ((mode == 6u) || (mode == 0x06u))
+    if (need_present_)
     {
-        blit_mode6(c);
+        flip();
     }
-    else if ((mode == 4u) || (mode == 5u))
-    {
-        blit_mode4(c, pal);
-    }
-    else if (mode == 1u)
-    {
-        blit_text(c, 0xB8000u, 40, false);
-    }
-    else if (mode == 0u)
-    {
-        /* BDA 40:49 is 0 until BIOS AH=00; treat as 80×25 CGA, not mode 0. */
-        blit_text(c, 0xB8000u, 80, false);
-    }
-    else if (mda || (mode == 7u))
-    {
-        blit_text(c, 0xB0000u, 80, true);
-    }
-    else
-    {
-        blit_text(c, 0xB8000u, 80, false);
-    }
-    SDL_UpdateTexture(tex_, nullptr, pix_, 640 * 4);
-    SDL_SetRenderDrawColor(ren_, 0, 0, 0, 255);
-    SDL_RenderClear(ren_);
-    {
-        SDL_Rect dst{};
-        /* 640×400 into 640×480 letterbox (4:3). */
-        dst.x = 0;
-        dst.w = 640 * scale_;
-        dst.h = 400 * scale_;
-        dst.y = (480 * scale_ - dst.h) / 2;
-        SDL_RenderCopy(ren_, tex_, nullptr, &dst);
-    }
-    SDL_RenderPresent(ren_);
 }
 
 bool display_sdl_poll(pc &p)
@@ -310,6 +319,21 @@ bool display_sdl_poll(pc &p)
         if (ev.type == SDL_QUIT)
         {
             return false;
+        }
+        if (ev.type == SDL_WINDOWEVENT)
+        {
+            switch (ev.window.event)
+            {
+            case SDL_WINDOWEVENT_EXPOSED:
+            case SDL_WINDOWEVENT_SHOWN:
+            case SDL_WINDOWEVENT_RESTORED:
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                need_present_ = true;
+                break;
+            default:
+                break;
+            }
         }
         if (ev.type == SDL_TEXTINPUT)
         {

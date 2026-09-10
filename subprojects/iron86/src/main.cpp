@@ -852,11 +852,11 @@ int main(int argc, char **argv)
                                    static_cast<uint64_t>(video_last.tv_nsec);
                     if (vdt >= 16000000ull)
                     {
-                        iron86::display_sdl_present(p.c, mda);
                         if (!iron86::display_sdl_poll(p))
                         {
                             break;
                         }
+                        iron86::display_sdl_present(p.c, mda);
                         video_last = now;
                     }
                 }
