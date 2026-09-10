@@ -39,7 +39,9 @@ Prep / FORMAT C: notes: `tests/hdc-format-c.sh`.
 ./iron86 --bios /mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 ```
 
-Version **0.18** — `--log FILE` (append event log; default off), unbuffered
+Version **0.19** — `--log FILE` (append event log; default off), `--lock-mem`
+(mlock guest RAM + HDC image; default off), HDC port traces under `--log`
+(`if constexpr`, no extra branches without `--log`). Unbuffered
 `write(2)` diagnostics. INI (`--config`, default `iron86.ini` in cwd), `--preset ibm-pc`
 (default) / `ibm-xt` (`ibm-at`/`8286` not yet), `--hdc PATH` plumbing, floppy CHS
 auto-detect (160K/180K/320K/360K/720K/1.2M/1.44M; no 2.88M on PC/XT/AT),

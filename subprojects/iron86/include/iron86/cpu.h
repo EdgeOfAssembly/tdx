@@ -127,6 +127,12 @@ public:
     void set_zf(bool v) { set_flag(k_flag_zf, v); }
     uint8_t last_op() const { return last_op_; }
 
+    /** @brief Guest 1 MiB RAM (for mlock). */
+    uint8_t *ram() { return ram_; }
+    const uint8_t *ram() const { return ram_; }
+    /** @brief Always @ref k_mem_size. */
+    static constexpr size_t ram_size() { return k_mem_size; }
+
     /**
      * @brief Execute one instruction (prefixes included).
      * @return false if still halted with no wake-up.

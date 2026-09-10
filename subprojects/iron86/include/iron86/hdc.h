@@ -145,6 +145,12 @@ public:
         return image_;
     }
 
+    /** @brief Writable image bytes for mlock (NULL if empty). */
+    uint8_t *image_data()
+    {
+        return image_.empty() ? nullptr : image_.data();
+    }
+
     /** @brief Host path passed to @ref attach, or empty. */
     const std::string &path() const
     {

@@ -4,10 +4,12 @@
  */
 #include "iron86/log.h"
 
+#include <cerrno>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 namespace iron86
@@ -115,6 +117,45 @@ void log_event(const char *fmt, ...)
     {
         fd_write(g_log_fd, buf, w);
     }
+}
+
+void log_trace(const char *fmt, ...)
+{
+    if (g_log_fd < 0)
+    {
+        return;
+    }
+    char buf[256];
+    va_list ap;
+    va_start(ap, fmt);
+    const int n = std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    if (n <= 0)
+    {
+        return;
+    }
+    const size_t cap = sizeof(buf) - 1u;
+    const size_t w = (static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : cap;
+    fd_write(g_log_fd, buf, w);
+}
+
+bool lock_region(void *p, size_t n, const char *name)
+{
+    const char *tag = (name != nullptr) ? name : "?";
+    if ((p == nullptr) || (n == 0u))
+    {
+        return true;
+    }
+    if (::mlock(p, n) == 0)
+    {
+        char hs[32];
+        format_human_size(n, hs, sizeof(hs));
+        log_event("lock-mem %s %s ok\n", tag, hs);
+        return true;
+    }
+    const int e = errno;
+    log_event("lock-mem %s failed errno=%d\n", tag, e);
+    return false;
 }
 
 void format_human_size(uint64_t n, char *out, size_t cap)

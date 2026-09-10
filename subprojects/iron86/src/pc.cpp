@@ -9,6 +9,7 @@
 #include "iron86/chs_lba.h"
 #include "iron86/crtc.h"
 #include "iron86/flopfs_pack.h"
+#include "iron86/log.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -962,7 +963,37 @@ bool pc::int16()
     return true;
 }
 
-void pc::wire_pc_hw()
+template <bool Log>
+void pc::bind_io()
+{
+    c.set_io(
+        [this](uint16_t p) -> uint8_t {
+            const uint8_t v = in_port(p);
+            if constexpr (Log)
+            {
+                if (((p >= 0x320u) && (p <= 0x323u)) || (p == 0x213u))
+                {
+                    log_trace("IN  %03X=%02X\n", static_cast<unsigned>(p), v);
+                }
+            }
+            return v;
+        },
+        [this](uint16_t p, uint8_t v) {
+            if constexpr (Log)
+            {
+                if (((p >= 0x320u) && (p <= 0x323u)) || (p == 0x213u))
+                {
+                    log_trace("OUT %03X,%02X\n", static_cast<unsigned>(p), v);
+                }
+            }
+            out_port(p, v);
+        });
+}
+
+template void pc::bind_io<false>();
+template void pc::bind_io<true>();
+
+void pc::wire_pc_hw(bool trace_io)
 {
     hw_ = {};
     crtc_reset(&mda_, 1);
@@ -994,8 +1025,14 @@ void pc::wire_pc_hw()
         hw_.fdc.spt = static_cast<uint8_t>(spt);
         hw_.fdc.heads = static_cast<uint8_t>(heads);
     }
-    c.set_io([this](uint16_t p) { return in_port(p); },
-             [this](uint16_t p, uint8_t v) { out_port(p, v); });
+    if (trace_io)
+    {
+        bind_io<true>();
+    }
+    else
+    {
+        bind_io<false>();
+    }
     c.set_pc_hooks(
         this,
         [](void *p) { static_cast<pc *>(p)->after_insn(); },

@@ -24,7 +24,7 @@ using iron86::fd_puts;
 using iron86::fd_write;
 using iron86::log_event;
 
-static const char *k_version = "0.18";
+static const char *k_version = "0.19";
 
 static void usage(int fd)
 {
@@ -59,6 +59,7 @@ static void usage(int fd)
             "  --hdc PATH           Raw HDD image (Xebec Type-1 306x4x17)\n"
             "  --hdc-rom FILE       Xebec option ROM at C8000 (IBM 5000059)\n"
             "  --log FILE           Append event log (HDC/floppy/BIOS/ROS); default off\n"
+            "  --lock-mem           mlock guest RAM + HDC image (default off)\n"
             "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
             "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
             "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
@@ -251,6 +252,19 @@ static void emit_tty(const std::string &t)
     }
 }
 
+static void maybe_lock_mem(iron86::cpu *c, iron86::pc *p, bool want)
+{
+    if (!want || (c == nullptr))
+    {
+        return;
+    }
+    (void)iron86::lock_region(c->ram(), iron86::cpu::ram_size(), "ram");
+    if ((p != nullptr) && p->hdc().attached())
+    {
+        (void)iron86::lock_region(p->hdc().image_data(), p->hdc().image().size(), "hdc");
+    }
+}
+
 static const char *find_default_xebec_ros()
 {
     static const char *const k_cands[] = {
@@ -377,6 +391,7 @@ int main(int argc, char **argv)
     bool no_audio = false;
     bool mda = false;
     bool until_prompt = false;
+    bool lock_mem = false;
     int i = 1;
     for (i = 1; i < argc; i++)
     {
@@ -526,6 +541,11 @@ int main(int argc, char **argv)
             until_prompt = true;
             continue;
         }
+        if (std::strcmp(a, "--lock-mem") == 0)
+        {
+            lock_mem = true;
+            continue;
+        }
         t = take_path_opt(a, "--exec-map", &exec_map, &i, argc, argv);
         if (t != 0)
         {
@@ -656,7 +676,8 @@ int main(int argc, char **argv)
         {
             return 1;
         }
-        p.wire_pc_hw();
+        p.wire_pc_hw(iron86::log_active());
+        maybe_lock_mem(&p.c, &p, lock_mem);
         if (mda)
         {
             p.set_mda(true);
@@ -752,6 +773,7 @@ int main(int argc, char **argv)
         {
             p.type_keys(keys);
         }
+        maybe_lock_mem(&p.c, &p, lock_mem);
         p.boot();
         uint64_t n = 0;
         while ((!p.c.halted()) && (n < 20000000ull))
@@ -819,7 +841,8 @@ int main(int argc, char **argv)
         {
             return 1;
         }
-        p.wire_pc_hw();
+        p.wire_pc_hw(iron86::log_active());
+        maybe_lock_mem(&p.c, &p, lock_mem);
         p.c.mem_write8(iron86::cpu::phys(0xF000, 0x0000), 0xF4);
         p.c.set_ivt(0x20, 0xF000, 0x0000);
         p.c.set_ivt(0x21, 0xF000, 0x0000);
@@ -836,6 +859,7 @@ int main(int argc, char **argv)
     }
     iron86::cpu c;
     c.set_prefetch_bytes(prefetch_bytes);
+    maybe_lock_mem(&c, nullptr, lock_mem);
     if ((exec_map != nullptr) && !c.open_exec_map(exec_map))
     {
         fd_printf(STDERR_FILENO, "iron86: cannot create exec-map %s\n", exec_map);

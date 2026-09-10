@@ -82,6 +82,37 @@ int main()
         (void)::unlink(path);
     }
 
+    expect(iron86::lock_region(nullptr, 0, "empty"), "empty lock");
+    {
+        char page[4096];
+        std::memset(page, 0, sizeof(page));
+        expect(iron86::lock_region(page, sizeof(page), "test"), "mlock 4K");
+    }
+
+    {
+        char tpath[] = "/tmp/iron86-test-trace-XXXXXX";
+        const int trace_fd = ::mkstemp(tpath);
+        expect(trace_fd >= 0, "mkstemp trace");
+        if (trace_fd >= 0)
+        {
+            (void)::close(trace_fd);
+            (void)::unlink(tpath);
+            expect(iron86::log_open(tpath), "open trace");
+            iron86::log_trace("OUT 322,00\n");
+            iron86::log_close();
+            std::FILE *fp = std::fopen(tpath, "r");
+            expect(fp != nullptr, "read trace");
+            if (fp != nullptr)
+            {
+                char line[64];
+                expect(std::fgets(line, sizeof(line), fp) != nullptr, "trace fgets");
+                expect(std::strstr(line, "OUT 322") != nullptr, "OUT 322 in file");
+                std::fclose(fp);
+            }
+            (void)::unlink(tpath);
+        }
+    }
+
     if (g_fail == 0)
     {
         std::fprintf(stderr, "iron86 log tests ok\n");

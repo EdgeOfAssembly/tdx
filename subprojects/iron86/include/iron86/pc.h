@@ -105,8 +105,11 @@ public:
     /**
      * @brief Wire PPI/PIT/PIC/DMA I/O and INT intercept (Py86).
      *        Call after load_bios_5150_8k so INT 13h stays on iron86.
+     * @param[in] trace_io If true, bind the logging IN/OUT instantiation
+     *                     (HDC 320h–323h / 213h traces). False has no log
+     *                     branches in the handlers (if constexpr).
      */
-    void wire_pc_hw();
+    void wire_pc_hw(bool trace_io = false);
 
     /**
      * @brief Warm-boot POST: 40:72=BX=1234h and CS:IP=F000:E199.
@@ -251,6 +254,8 @@ private:
 
     uint8_t in_port(uint16_t port);
     void out_port(uint16_t port, uint8_t v);
+    template <bool Log>
+    void bind_io();
     void hdc_sync_irq();
     void after_insn();
     void pit_tick();

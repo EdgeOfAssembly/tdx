@@ -64,8 +64,8 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./tests/run_hdc
 	./tests/run_log
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.18'
-	./iron86 --no-audio -v | grep -q 'iron86 0.18'
+	./iron86 -v | grep -q 'iron86 0.19'
+	./iron86 --no-audio -v | grep -q 'iron86 0.19'
 	./iron86 -h | grep -q -- --exec-map
 	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 -h | grep -q -- --until-prompt
@@ -74,6 +74,7 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./iron86 -h | grep -q -- --hdc
 	./iron86 -h | grep -q -- --hdc-rom
 	./iron86 -h | grep -q -- --log
+	./iron86 -h | grep -q -- --lock-mem
 	./iron86 -h | grep -q 160K
 	./iron86 -h | grep -q 1.2M
 	./iron86 >/tmp/iron86-usage.txt
@@ -119,6 +120,16 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 		tests/fixtures/hdcprobe.com >/tmp/iron86-hdc-order.out 2>/tmp/iron86-hdc-order.err
 	grep -q 'HDC0' /tmp/iron86-hdc-order.log
 	grep -q 'AX=2F00' /tmp/iron86-hdc-order.err
+	! grep -q 'OUT 322' /tmp/iron86-hdc-smoke.err
+	grep -q 'OUT 322' /tmp/iron86-hdc.log
+	grep -q 'IN  321' /tmp/iron86-hdc.log
+	! grep -q 'OUT 322' /tmp/iron86-hdc-log.err
+	./iron86 tests/fixtures/hdcprobe.com --hdc /tmp/iron86-hdc-smoke.img --lock-mem \
+		>/tmp/iron86-lock.out 2>/tmp/iron86-lock.err
+	grep -q 'lock-mem ram' /tmp/iron86-lock.err
+	grep -q 'lock-mem hdc' /tmp/iron86-lock.err
+	grep -q 'AX=2F00' /tmp/iron86-lock.err
+	! grep -q 'lock-mem ram' /tmp/iron86-hdc-smoke.err
 
 tests: test
 

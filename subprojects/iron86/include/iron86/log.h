@@ -54,6 +54,20 @@ void fd_printf(int fd, const char *fmt, ...) __attribute__((format(printf, 2, 3)
 void log_event(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
 /**
+ * @brief Hot-path trace: log file only (never stderr). No-op if no --log.
+ */
+void log_trace(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+/**
+ * @brief mlock @p n bytes at @p p. Logs ok/fail via @ref log_event.
+ * @param[in] p    Region (NULL or n==0 is a no-op success).
+ * @param[in] n    Length in bytes.
+ * @param[in] name Tag for the log line (e.g. "ram", "hdc").
+ * @return true if mlock succeeded or there was nothing to lock.
+ */
+bool lock_region(void *p, size_t n, const char *name);
+
+/**
  * @brief 1024-based size into @p out (B, KB, MB, GB, TB).
  *
  * Integer when the value divides the unit, or when MB/GB/TB ≥ 10
