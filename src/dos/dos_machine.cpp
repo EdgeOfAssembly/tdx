@@ -1334,7 +1334,15 @@ rex_status dos_machine::step_one()
 
     if (iron)
     {
-        if (halted || iron->c.halted())
+        if (halted)
+        {
+            last_stop = REX_STOP_HALTED;
+            return REX_OK;
+        }
+        /* 5160 POST uses HLT to wait for IRQ0. That is not a guest exit. */
+        const bool bios_hlt =
+            iron->c.halted() && (iron->c.last_op() == 0xF4) && iron->c.rom_bios();
+        if (iron->c.halted() && (!bios_hlt))
         {
             halted = true;
             last_stop = REX_STOP_HALTED;
@@ -1389,6 +1397,11 @@ rex_status dos_machine::step_one()
         at_break = false;
         if (!iron->c.step())
         {
+            if (iron->c.halted() && (iron->c.last_op() == 0xF4) && iron->c.rom_bios())
+            {
+                last_stop = REX_STOP_STEP;
+                return REX_OK;
+            }
             if (iron->c.halted())
             {
                 halted = true;
@@ -1400,6 +1413,11 @@ rex_status dos_machine::step_one()
             rex_logf(REX_LOG_ERROR, "iron86 unimplemented op=%02X @ %04X:%04X", iron->c.last_op(),
                      iron->c.cs(), iron->c.ip());
             return REX_ERR_CPU;
+        }
+        if (iron->c.halted() && (iron->c.last_op() == 0xF4) && iron->c.rom_bios())
+        {
+            last_stop = REX_STOP_STEP;
+            return REX_OK;
         }
         /* tty_ can be hundreds of bytes; copying it every insn dominated step_one. */
         iron_vid_div++;

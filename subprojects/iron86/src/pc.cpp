@@ -16,10 +16,25 @@
 #include <fstream>
 #include <iterator>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 namespace iron86
 {
+
+#ifndef NDEBUG
+/** @brief PIC 20h/21h trace; compiled out of release (-DNDEBUG). */
+static void dbg_pic(const char *what, uint16_t port, uint8_t val, const pic8259 &p)
+{
+    fd_printf(STDERR_FILENO,
+              "PIC %s p=%02X v=%02X imr=%02X irr=%02X isr=%02X step=%u init=%u\n", what,
+              static_cast<unsigned>(port), val, p.imr, p.irr, p.isr,
+              static_cast<unsigned>(p.icw_step), static_cast<unsigned>(p.initialized));
+    log_trace("PIC %s p=%02X v=%02X imr=%02X irr=%02X isr=%02X step=%u init=%u\n", what,
+              static_cast<unsigned>(port), val, p.imr, p.irr, p.isr,
+              static_cast<unsigned>(p.icw_step), static_cast<unsigned>(p.initialized));
+}
+#endif
 
 static void text_fill(cpu &c, unsigned r0, unsigned c0, unsigned r1, unsigned c1, uint8_t ch,
                       uint8_t at)
@@ -1240,8 +1255,9 @@ void pc::pic_write_data(uint8_t v)
             hw_.pic.auto_eoi = static_cast<uint8_t>((v & 0x02u) != 0 ? 1 : 0);
             hw_.pic.initialized = 1;
             hw_.pic.icw_step = 0;
+            return;
         }
-        return;
+        /* icw_step==0: OCW1 even if ICW never finished (5160 TST6). */
     }
     hw_.pic.imr = v;
 }
@@ -1976,8 +1992,15 @@ uint8_t pc::in_port(uint16_t port)
     {
         if (p == 0x20u)
         {
-            return (hw_.pic.read_isr != 0) ? hw_.pic.isr : hw_.pic.irr;
+            const uint8_t v = (hw_.pic.read_isr != 0) ? hw_.pic.isr : hw_.pic.irr;
+#ifndef NDEBUG
+            dbg_pic("IN", p, v, hw_.pic);
+#endif
+            return v;
         }
+#ifndef NDEBUG
+        dbg_pic("IN", p, hw_.pic.imr, hw_.pic);
+#endif
         return hw_.pic.imr;
     }
     if ((p >= 0x40u) && (p <= 0x43u))
@@ -2117,11 +2140,17 @@ void pc::out_port(uint16_t port, uint8_t v)
     if (p == 0x20u)
     {
         pic_write_cmd(v);
+#ifndef NDEBUG
+        dbg_pic("OUT", p, v, hw_.pic);
+#endif
         return;
     }
     if (p == 0x21u)
     {
         pic_write_data(v);
+#ifndef NDEBUG
+        dbg_pic("OUT", p, v, hw_.pic);
+#endif
         return;
     }
     if ((p >= 0x40u) && (p <= 0x43u))

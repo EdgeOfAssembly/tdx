@@ -431,6 +431,26 @@ int main()
         expect_eq(c.last_op(), 0xF4, "last hlt");
     }
     {
+        /* HLT waits; pending IRQ with IF set resumes (5160 POST). */
+        iron86::cpu c;
+        const uint8_t prog[] = {0xFB, 0xF4, 0xF4};
+        c.load_com(prog, sizeof(prog), 0x1000);
+        c.mem_write16(8u * 4u, 0x0000);
+        c.mem_write16(8u * 4u + 2u, 0x2000);
+        c.mem_write8(0x20000u, 0xF4);
+        expect(c.step(), "sti");
+        expect(!c.halted(), "sti no halt");
+        c.raise_intr(8);
+        expect(c.step(), "hlt then irq");
+        expect(!c.halted(), "hlt woke");
+        expect_eq(c.cs(), 0x2000, "irq cs");
+        expect_eq(c.ip(), 0x0000, "irq ip");
+        expect(c.step(), "hlt wait no irq");
+        expect(c.halted(), "second hlt");
+        expect(c.step(), "hlt idle step");
+        expect(c.halted(), "still halted");
+    }
+    {
         /* ESC D8 /r mod=3 (D8 C0) does not halt */
         iron86::cpu c;
         const uint8_t prog[] = {0xD8, 0xC0, 0xF4};

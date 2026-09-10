@@ -1,4 +1,5 @@
 # TDX / librex — debug by default (gnu-make + linker-dynamic).
+# Release (`make release`) adds -DNDEBUG so #ifndef NDEBUG traces compile out.
 CXX := g++ -Wl,--as-needed
 CC  := gcc -Wl,--as-needed
 MAKEFLAGS += --no-print-directory

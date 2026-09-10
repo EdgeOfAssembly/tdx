@@ -3,6 +3,7 @@
  * @brief 8086 step loop — 256-entry dispatch table (Py86 `handlers[op]`).
  */
 #include "iron86/cpu.h"
+#include "iron86/log.h"
 
 #include <algorithm>
 #include <cstring>
@@ -1162,7 +1163,17 @@ bool cpu::dispatch_ready_ = false;
 
 void cpu::op_unimpl() { halted_ = true; }
 void cpu::op_nop() {}
-void cpu::op_hlt() { halted_ = true; }
+void cpu::op_hlt()
+{
+#ifndef NDEBUG
+    if (rom_bios_)
+    {
+        fd_printf(STDERR_FILENO, "HLT CS:IP=%04X:%04X flags=%04X\n", cs_, ip_, flags_);
+        log_trace("HLT CS:IP=%04X:%04X flags=%04X\n", cs_, ip_, flags_);
+    }
+#endif
+    halted_ = true;
+}
 void cpu::op_pre_es() { seg_ov_ = es_; prefix_more_ = true; }
 void cpu::op_pre_cs() { seg_ov_ = cs_; prefix_more_ = true; }
 void cpu::op_pre_ss() { seg_ov_ = ss_; prefix_more_ = true; }
@@ -1688,9 +1699,25 @@ void cpu::fill_dispatch()
 
 bool cpu::step()
 {
+    /* HLT: wait for a maskable interrupt (8086). Keep ticking after_fn
+     * (PIT/IRQ0) while halted so BIOS POST delay loops can wake. */
     if (halted_)
     {
-        return false;
+        if (after_fn_ != nullptr)
+        {
+            after_fn_(hook_ctx_);
+        }
+        else if (after_step_)
+        {
+            after_step_();
+        }
+        if (intr_pending_ && ((flags_ & k_flag_if) != 0))
+        {
+            halted_ = false;
+            intr_pending_ = false;
+            do_int(intr_vec_);
+        }
+        return true;
     }
 
     seg_ov_ = 0xFFFF;
@@ -1710,8 +1737,9 @@ bool cpu::step()
     {
         after_step_();
     }
-    if ((!halted_) && intr_pending_ && ((flags_ & k_flag_if) != 0))
+    if (intr_pending_ && ((flags_ & k_flag_if) != 0))
     {
+        halted_ = false;
         intr_pending_ = false;
         do_int(intr_vec_);
     }

@@ -1,4 +1,5 @@
 # iron86 — C++23 8086 (debug default). gcc/g++ only.
+# Release (`make release`) adds -DNDEBUG so #ifndef NDEBUG traces compile out.
 CXX := g++ -Wl,--as-needed
 MAKEFLAGS += --no-print-directory
 
@@ -33,7 +34,7 @@ iron86: $(SRC) src/main.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) src/main.cpp -o $@ $(LDFLAGS)
 
 tests/run_tests: $(SRC) tests/test_cpu.cpp $(HDR)
-	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) src/cpu.cpp src/ea.cpp src/log.cpp tests/test_cpu.cpp -o $@ $(LDFLAGS)
 
 tests/run_pc: $(SRC) tests/test_pc.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) tests/test_pc.cpp -o $@ $(LDFLAGS)

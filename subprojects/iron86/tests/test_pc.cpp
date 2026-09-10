@@ -88,6 +88,31 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x00FF, "pic imr ff");
     }
     {
+        /* 5160 10JAN86 E360–E372: OCW1 00 then FF without a new ICW. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x13, 0xE6, 0x20, 0xB0, 0x08, 0xE6, 0x21, 0xB0, 0x09, 0xE6, 0x21,
+            0xB0, 0xFF, 0xE6, 0x21, /* IMR=FF after ICW */
+            0xB0, 0x00, 0xE6, 0x21, 0xE4, 0x21, /* OUT 0; IN */
+            0xB0, 0xFF, 0xE6, 0x21, 0xE4, 0x21, /* OUT FF; IN */
+            0x04, 0x01, 0xF4,                   /* ADD AL,1  expect 0 */
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 64);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0, "pic tst6 add");
+        expect(p.c.halted(), "pic tst6 hlt");
+    }
+    {
+        /* OCW1 before ICW (icw_step==0): 5160 still does IN 21h. */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {0xB0, 0x00, 0xE6, 0x21, 0xE4, 0x21, 0xF4};
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 16);
+        expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0, "pic ocw1 no icw");
+    }
+    {
         /* DMA wrap: write FFFF to ch0 addr, read back (PCBIOS C17). */
         iron86::pc p;
         p.wire_pc_hw();
