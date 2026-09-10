@@ -804,6 +804,7 @@ int main(int argc, char **argv)
         }
         uint64_t n = 0;
         bool typed_date = false;
+        bool allow_idle = false;
         bool video = false;
         struct timespec irq0_last{};
         struct timespec video_last{};
@@ -824,8 +825,9 @@ int main(int argc, char **argv)
             {
                 break;
             }
-            /* INT 16 AH=00 rewinds CD 16 when kbd_ is empty — 100% core at A>. */
-            if (video && p.kbd_empty() && (p.waiting_key() || p.kbd_poll_idle()))
+            /* INT 16 idle only after DOS has painted (POST also peeks AH=01). */
+            if (video && allow_idle && p.kbd_empty() &&
+                (p.waiting_key() || p.kbd_poll_idle()))
             {
                 struct timespec sl{};
                 struct timespec now{};
@@ -889,16 +891,24 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            if (until_prompt && ((n & 8191ull) == 0ull))
+            if ((n & 8191ull) == 0ull)
             {
-                if ((!typed_date) && b800_has_text(p.c, "new date"))
+                if ((!allow_idle) &&
+                    (b800_has_text(p.c, "new date") || b800_has_prompt(p.c)))
                 {
-                    p.type_keys("\r\r");
-                    typed_date = true;
+                    allow_idle = true;
                 }
-                if (b800_has_prompt(p.c))
+                if (until_prompt)
                 {
-                    break;
+                    if ((!typed_date) && b800_has_text(p.c, "new date"))
+                    {
+                        p.type_keys("\r\r");
+                        typed_date = true;
+                    }
+                    if (b800_has_prompt(p.c))
+                    {
+                        break;
+                    }
                 }
             }
         }
