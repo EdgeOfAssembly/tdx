@@ -21,13 +21,13 @@ LDFLAGS ?= $(LDFLAGS_DEBUG)
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
 all: iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_config \
-	tests/run_hdc
+	tests/run_hdc tests/run_log
 
 SRC := src/cpu.cpp src/ea.cpp src/pc.cpp src/crtc.cpp src/flopfs_pack.cpp src/config.cpp \
-	src/hdc.cpp
+	src/hdc.cpp src/log.cpp
 HDR := include/iron86/cpu.h include/iron86/ea.h include/iron86/pc.h include/iron86/hw.h \
 	include/iron86/crtc.h include/iron86/flopfs_pack.h include/iron86/config.h \
-	include/iron86/chs_lba.h include/iron86/hdc.h
+	include/iron86/chs_lba.h include/iron86/hdc.h include/iron86/log.h
 
 iron86: $(SRC) src/main.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) src/main.cpp -o $@ $(LDFLAGS)
@@ -51,16 +51,21 @@ tests/run_config: src/config.cpp tests/test_config.cpp include/iron86/config.h i
 tests/run_hdc: $(SRC) tests/test_hdc.cpp $(HDR)
 	$(CXX) $(CXXFLAGS) $(SRC) tests/test_hdc.cpp -o $@ $(LDFLAGS)
 
-test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_config tests/run_hdc iron86
+tests/run_log: src/log.cpp tests/test_log.cpp include/iron86/log.h
+	$(CXX) $(CXXFLAGS) src/log.cpp tests/test_log.cpp -o $@ $(LDFLAGS)
+
+test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_config tests/run_hdc \
+	tests/run_log iron86
 	./tests/run_tests
 	./tests/run_pc
 	./tests/run_crtc
 	./tests/run_pack
 	./tests/run_config
 	./tests/run_hdc
+	./tests/run_log
 	./iron86 -h | grep -q Usage
-	./iron86 -v | grep -q 'iron86 0.17'
-	./iron86 --no-audio -v | grep -q 'iron86 0.17'
+	./iron86 -v | grep -q 'iron86 0.18'
+	./iron86 --no-audio -v | grep -q 'iron86 0.18'
 	./iron86 -h | grep -q -- --exec-map
 	./iron86 -h | grep -q -- --prefetch-bytes
 	./iron86 -h | grep -q -- --until-prompt
@@ -68,6 +73,7 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	./iron86 -h | grep -q -- --preset
 	./iron86 -h | grep -q -- --hdc
 	./iron86 -h | grep -q -- --hdc-rom
+	./iron86 -h | grep -q -- --log
 	./iron86 -h | grep -q 160K
 	./iron86 -h | grep -q 1.2M
 	./iron86 >/tmp/iron86-usage.txt
@@ -86,11 +92,33 @@ test: tests/run_tests tests/run_pc tests/run_crtc tests/run_pack tests/run_confi
 	dd if=/dev/zero of=/tmp/iron86-hdc-smoke.img bs=512 count=1 status=none
 	./iron86 tests/fixtures/hdcprobe.com --hdc /tmp/iron86-hdc-smoke.img \
 		>/tmp/iron86-hdc-smoke.out 2>/tmp/iron86-hdc-smoke.err
-	grep -q '306x4x17' /tmp/iron86-hdc-smoke.err
-	grep -q '20808 sectors' /tmp/iron86-hdc-smoke.err
+	grep -q 'HDC0' /tmp/iron86-hdc-smoke.err
+	grep -q 'CHS=306/4/17' /tmp/iron86-hdc-smoke.err
+	grep -q 'LBA=20808' /tmp/iron86-hdc-smoke.err
+	grep -q 'size=10MB' /tmp/iron86-hdc-smoke.err
+	grep -q 'BIOS_DL=80h' /tmp/iron86-hdc-smoke.err
 	grep -q 'AX=2F00' /tmp/iron86-hdc-smoke.err
 	./iron86 tests/fixtures/hdcprobe.com >/tmp/iron86-hdc-none.out 2>/tmp/iron86-hdc-none.err
 	grep -q 'AX=FFFF' /tmp/iron86-hdc-none.err
+	rm -f /tmp/iron86-hdc.log
+	./iron86 tests/fixtures/hdcprobe.com --hdc /tmp/iron86-hdc-smoke.img \
+		--log /tmp/iron86-hdc.log >/tmp/iron86-hdc-log.out 2>/tmp/iron86-hdc-log.err
+	grep -q 'HDC0' /tmp/iron86-hdc.log
+	grep -q 'CHS=306/4/17' /tmp/iron86-hdc.log
+	grep -q 'LBA=20808' /tmp/iron86-hdc.log
+	grep -q 'size=10MB' /tmp/iron86-hdc.log
+	grep -q 'BIOS_DL=80h' /tmp/iron86-hdc.log
+	grep -q 'DOS=C:' /tmp/iron86-hdc.log
+	grep -q 'HDC0' /tmp/iron86-hdc-log.err
+	./iron86 --log >/tmp/iron86-log-need.out 2>/tmp/iron86-log-need.err; test $$? -eq 2
+	grep -q 'needs FILE' /tmp/iron86-log-need.err
+	./iron86 --log /no/such/iron86-log-dir/x.log tests/fixtures/hdcprobe.com \
+		>/tmp/iron86-log-bad.out 2>/tmp/iron86-log-bad.err; test $$? -eq 1
+	grep -q 'cannot open log' /tmp/iron86-log-bad.err
+	./iron86 --log /tmp/iron86-hdc-order.log --hdc /tmp/iron86-hdc-smoke.img \
+		tests/fixtures/hdcprobe.com >/tmp/iron86-hdc-order.out 2>/tmp/iron86-hdc-order.err
+	grep -q 'HDC0' /tmp/iron86-hdc-order.log
+	grep -q 'AX=2F00' /tmp/iron86-hdc-order.err
 
 tests: test
 
@@ -131,4 +159,4 @@ bench-boot:
 
 clean:
 	rm -f iron86 tests/run_tests tests/run_pc tests/run_crtc tests/run_pack \
-		tests/run_config tests/run_hdc gmon.out
+		tests/run_config tests/run_hdc tests/run_log gmon.out

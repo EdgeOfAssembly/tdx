@@ -196,6 +196,15 @@ public:
      */
     bool load_hdc_rom_path(const char *path);
 
+    /**
+     * @brief Byte length of the mounted floppy image for @p unit (0 if empty).
+     * @param[in] unit 0 (A:) or 1 (B:).
+     */
+    size_t floppy_bytes(uint8_t unit) const
+    {
+        return (unit < 2u) ? floppy_[unit].size() : 0u;
+    }
+
     /** @brief Host path last passed to attach_hdc_path, or empty. */
     const std::string &hdc_path() const { return hdc_path_; }
 

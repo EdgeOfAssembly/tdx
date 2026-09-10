@@ -5,9 +5,9 @@
 #include "iron86/config.h"
 #include "iron86/cpu.h"
 #include "iron86/hdc.h"
+#include "iron86/log.h"
 #include "iron86/pc.h"
 
-#include <cstdarg>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -19,54 +19,12 @@
 #include <unistd.h>
 #include <vector>
 
-static const char *k_version = "0.17";
+using iron86::fd_printf;
+using iron86::fd_puts;
+using iron86::fd_write;
+using iron86::log_event;
 
-/**
- * @brief write(2) the whole buffer (stdio FILE* is lost on SIGTERM).
- * @param[in] fd Host descriptor (1 or 2).
- * @param[in] s  Bytes; may be NULL only when @p n is 0.
- * @param[in] n  Length.
- */
-static void fd_write(int fd, const char *s, size_t n)
-{
-    while (n > 0u)
-    {
-        const ssize_t w = ::write(fd, s, n);
-        if (w <= 0)
-        {
-            return;
-        }
-        s += static_cast<size_t>(w);
-        n -= static_cast<size_t>(w);
-    }
-}
-
-static void fd_puts(int fd, const char *s)
-{
-    if (s == nullptr)
-    {
-        return;
-    }
-    fd_write(fd, s, std::strlen(s));
-}
-
-static void fd_printf(int fd, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-
-static void fd_printf(int fd, const char *fmt, ...)
-{
-    char buf[1024];
-    va_list ap;
-    va_start(ap, fmt);
-    const int n = std::vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    if (n <= 0)
-    {
-        return;
-    }
-    const size_t cap = sizeof(buf) - 1u;
-    const size_t w = (static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : cap;
-    fd_write(fd, buf, w);
-}
+static const char *k_version = "0.18";
 
 static void usage(int fd)
 {
@@ -100,6 +58,7 @@ static void usage(int fd)
             "  --floppy PATH        Alias for --floppy-a\n"
             "  --hdc PATH           Raw HDD image (Xebec Type-1 306x4x17)\n"
             "  --hdc-rom FILE       Xebec option ROM at C8000 (IBM 5000059)\n"
+            "  --log FILE           Append event log (HDC/floppy/BIOS/ROS); default off\n"
             "  --keys STRING        Type STRING as INT 16h keys (default: none)\n"
             "  --until-prompt       Stop at FloppyOS/DOS A> (boot bench; default off)\n"
             "  --exec-map FILE      1 MiB executed-opcode map (same linear addrs, else 0)\n"
@@ -209,10 +168,21 @@ static bool mount_floppy(iron86::pc *p, uint8_t unit, const char *path)
     }
     if (!p->attach_floppy_path(unit, path))
     {
-        fd_printf(STDERR_FILENO, "iron86: cannot attach floppy %c: %s\n",
-                  (unit == 0) ? 'A' : 'B', path);
+        log_event("iron86: cannot attach floppy %c: %s\n", (unit == 0) ? 'A' : 'B', path);
         return false;
     }
+    const size_t nb = p->floppy_bytes(unit);
+    uint32_t spt = 0;
+    uint32_t heads = 0;
+    iron86::floppy_geom(nb, &spt, &heads);
+    const uint32_t denom = 512u * spt * heads;
+    const uint32_t cyl = (denom == 0u) ? 0u : static_cast<uint32_t>(nb / denom);
+    const uint32_t lba = static_cast<uint32_t>(nb / 512u);
+    char hs[32];
+    iron86::format_human_size(nb, hs, sizeof(hs));
+    log_event("FD%u  path=%s  CHS=%u/%u/%u  LBA=%u  size=%s  bytes=%zu  DOS=%c:\n",
+              static_cast<unsigned>(unit), path, cyl, heads, spt, lba, hs, nb,
+              (unit == 0) ? 'A' : 'B');
     return true;
 }
 
@@ -314,11 +284,27 @@ static bool mount_hdc(iron86::pc *p, const char *path, uint32_t cyl, uint32_t he
     }
     if (!p->attach_hdc_path(path, cyl, heads, spt))
     {
-        fd_printf(STDERR_FILENO, "iron86: cannot attach hdc %s\n", path);
+        log_event("iron86: cannot attach hdc %s\n", path);
         return false;
     }
-    fd_printf(STDERR_FILENO, "HDC %s  %ux%ux%u  %u sectors\n", path, cyl, heads, spt,
-                 cyl * heads * spt);
+    const uint32_t lba = cyl * heads * spt;
+    const uint64_t bytes = static_cast<uint64_t>(lba) * 512ull;
+    char hs[32];
+    iron86::format_human_size(bytes, hs, sizeof(hs));
+    const size_t file_n = p->hdc_bytes();
+    if (file_n == static_cast<size_t>(bytes))
+    {
+        log_event("HDC0  path=%s  CHS=%u/%u/%u  LBA=%u  size=%s  bytes=%llu  "
+                  "BIOS_DL=80h  DOS=C: after FDISK\n",
+                  path, cyl, heads, spt, lba, hs, static_cast<unsigned long long>(bytes));
+    }
+    else
+    {
+        log_event("HDC0  path=%s  CHS=%u/%u/%u  LBA=%u  size=%s  bytes=%llu  file=%zu  "
+                  "BIOS_DL=80h  DOS=C: after FDISK\n",
+                  path, cyl, heads, spt, lba, hs, static_cast<unsigned long long>(bytes),
+                  file_n);
+    }
     return true;
 }
 
@@ -332,30 +318,49 @@ static bool mount_hdc_rom(iron86::pc *p, const char *explicit_rom)
     {
         if (!p->load_hdc_rom_path(explicit_rom))
         {
-            fd_printf(STDERR_FILENO, "iron86: cannot load hdc-rom %s\n", explicit_rom);
+            log_event("iron86: cannot load hdc-rom %s\n", explicit_rom);
             return false;
         }
-        fd_printf(STDERR_FILENO, "Xebec ROS %s at C8000\n", explicit_rom);
+        {
+            struct stat st{};
+            char hs[32];
+            const uint64_t nb =
+                ((stat(explicit_rom, &st) == 0) && S_ISREG(st.st_mode))
+                    ? static_cast<uint64_t>(st.st_size)
+                    : 0ull;
+            iron86::format_human_size(nb, hs, sizeof(hs));
+            log_event("ROS  path=%s  size=%s  bytes=%llu  map=C8000\n", explicit_rom, hs,
+                      static_cast<unsigned long long>(nb));
+        }
         return true;
     }
     const char *ros = find_default_xebec_ros();
     if (ros == nullptr)
     {
-        fd_puts(STDERR_FILENO,
-                "iron86: warning: no Xebec ROS (set --hdc-rom or IRON86_XEBEC_ROM)\n");
+        log_event("iron86: warning: no Xebec ROS (set --hdc-rom or IRON86_XEBEC_ROM)\n");
         return true;
     }
     if (!p->load_hdc_rom_path(ros))
     {
-        fd_printf(STDERR_FILENO, "iron86: warning: failed to map Xebec ROS %s\n", ros);
+        log_event("iron86: warning: failed to map Xebec ROS %s\n", ros);
         return true;
     }
-    fd_printf(STDERR_FILENO, "Xebec ROS %s at C8000\n", ros);
+    {
+        struct stat st{};
+        char hs[32];
+        const uint64_t nb =
+            ((stat(ros, &st) == 0) && S_ISREG(st.st_mode)) ? static_cast<uint64_t>(st.st_size)
+                                                           : 0ull;
+        iron86::format_human_size(nb, hs, sizeof(hs));
+        log_event("ROS  path=%s  size=%s  bytes=%llu  map=C8000\n", ros, hs,
+                  static_cast<unsigned long long>(nb));
+    }
     return true;
 }
 
 int main(int argc, char **argv)
 {
+    iron86::log_init_stdio();
     if (argc <= 1)
     {
         usage(STDOUT_FILENO);
@@ -366,6 +371,7 @@ int main(int argc, char **argv)
     const char *exec_map = nullptr;
     const char *config_path = nullptr;
     const char *hdc_rom = nullptr;
+    const char *log_path = nullptr;
     iron86::machine_config cli{};
     bool no_fast_post = false;
     bool no_audio = false;
@@ -455,6 +461,16 @@ int main(int argc, char **argv)
                 return 2;
             }
             cli.floppy_a = opt;
+            continue;
+        }
+        t = take_path_opt(a, "--log", &log_path, &i, argc, argv);
+        if (t != 0)
+        {
+            if (t < 0)
+            {
+                fd_puts(STDERR_FILENO, "iron86: --log needs FILE\n");
+                return 2;
+            }
             continue;
         }
         t = take_path_opt(a, "--hdc-rom", &opt, &i, argc, argv);
@@ -554,6 +570,16 @@ int main(int argc, char **argv)
         path = a;
     }
 
+    if (log_path != nullptr)
+    {
+        if (!iron86::log_open(log_path))
+        {
+            fd_printf(STDERR_FILENO, "iron86: cannot open log %s\n", log_path);
+            return 1;
+        }
+        (void)std::atexit(iron86::log_close);
+    }
+
     iron86::machine_config cfg{};
     {
         std::string err;
@@ -648,20 +674,25 @@ int main(int argc, char **argv)
                 p.feed_ascii(static_cast<uint8_t>(*k));
             }
         }
-        if (rom.size() == 65536u)
         {
-            fd_printf(STDERR_FILENO, "5160 64K BIOS %zu bytes at F0000, reset FFFF:0000%s\n",
-                         rom.size(), no_fast_post ? "" : " fast-post");
-        }
-        else if (rom.size() == 40960u)
-        {
-            fd_printf(STDERR_FILENO, "5160 40K BIOS (U19+U18) at F0000/F8000%s\n",
-                         no_fast_post ? "" : " fast-post");
-        }
-        else
-        {
-            fd_printf(STDERR_FILENO, "5150 8K BIOS %zu bytes at FE000, reset FFFF:0000%s\n",
-                         rom.size(), no_fast_post ? "" : " fast-post");
+            char hs[32];
+            iron86::format_human_size(rom.size(), hs, sizeof(hs));
+            const char *fast = no_fast_post ? "" : " fast-post";
+            if (rom.size() == 65536u)
+            {
+                log_event("BIOS  path=%s  size=%s  bytes=%zu  map=F0000  5160 64K%s\n", bios, hs,
+                          rom.size(), fast);
+            }
+            else if (rom.size() == 40960u)
+            {
+                log_event("BIOS  path=%s  size=%s  bytes=%zu  map=F0000/F8000  5160 40K%s\n",
+                          bios, hs, rom.size(), fast);
+            }
+            else
+            {
+                log_event("BIOS  path=%s  size=%s  bytes=%zu  map=FE000  5150 8K%s\n", bios, hs,
+                          rom.size(), fast);
+            }
         }
         uint64_t n = 0;
         while ((!p.c.halted()) && (n < 150000000ull))
