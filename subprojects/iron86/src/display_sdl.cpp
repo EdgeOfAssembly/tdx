@@ -31,6 +31,7 @@ int scale_ = 2;
 uint8_t cga8_[256][8]{};
 int font_ok_ = 0;
 uint32_t pix_[640 * 400];
+uint32_t last_fp_ = 0;
 
 int load_font(const char *path)
 {
@@ -75,6 +76,7 @@ uint8_t glyph_row(uint8_t ch, int row)
 
 void blit_text(cpu &c, uint32_t base, int cols, bool mda)
 {
+    const uint8_t *vram = c.ram() + (base & 0xFFFFFu);
     const int cell_w = (cols == 40) ? 16 : 8;
     int row = 0;
     int col = 0;
@@ -82,9 +84,8 @@ void blit_text(cpu &c, uint32_t base, int cols, bool mda)
     {
         for (col = 0; col < cols; col++)
         {
-            const uint32_t off = base + static_cast<uint32_t>((row * cols + col) * 2);
-            const uint8_t ch = c.mem_read8(off);
-            const uint8_t at = c.mem_read8(off + 1u);
+            const uint8_t ch = vram[(row * cols + col) * 2];
+            const uint8_t at = vram[(row * cols + col) * 2 + 1];
             const uint32_t fg = mda ? (((at & 8u) != 0) ? k_mda_hi : k_mda_fg) : k_vga[at & 15u];
             const uint32_t bg = mda ? k_mda_bg : k_vga[(at >> 4) & 7u];
             int gy = 0;
@@ -113,6 +114,7 @@ void blit_text(cpu &c, uint32_t base, int cols, bool mda)
 
 void blit_mode6(cpu &c)
 {
+    const uint8_t *vram = c.ram() + 0xB8000u;
     int y = 0;
     int x = 0;
     for (y = 0; y < 200; y++)
@@ -121,7 +123,7 @@ void blit_mode6(cpu &c)
         const uint32_t row = bank + static_cast<uint32_t>((y / 2) * 80);
         for (x = 0; x < 640; x++)
         {
-            const uint8_t b = c.mem_read8(0xB8000u + row + static_cast<uint32_t>(x / 8));
+            const uint8_t b = vram[row + static_cast<uint32_t>(x / 8)];
             const uint8_t bit = static_cast<uint8_t>(0x80u >> (x & 7));
             const uint32_t px = ((b & bit) != 0) ? 0xFFFFFFFF : 0xFF000000;
             pix_[(y * 2) * 640 + x] = px;
@@ -141,6 +143,7 @@ void blit_mode4(cpu &c, uint8_t pal)
                                              : k_vga[static_cast<unsigned>(4 + intense)];
     const uint32_t p3 = k_vga[static_cast<unsigned>(7 + intense)];
     const uint32_t pal4[4] = {bg, p1, p2, p3};
+    const uint8_t *vram = c.ram() + 0xB8000u;
     int y = 0;
     int x = 0;
     for (y = 0; y < 200; y++)
@@ -149,7 +152,7 @@ void blit_mode4(cpu &c, uint8_t pal)
         const uint32_t row = bank + static_cast<uint32_t>((y / 2) * 80);
         for (x = 0; x < 320; x++)
         {
-            const uint8_t b = c.mem_read8(0xB8000u + row + static_cast<uint32_t>(x / 4));
+            const uint8_t b = vram[row + static_cast<uint32_t>(x / 4)];
             const int sh = 6 - ((x & 3) * 2);
             const uint8_t idx = static_cast<uint8_t>((b >> sh) & 3u);
             const uint32_t px = pal4[idx];
@@ -198,6 +201,8 @@ bool display_sdl_open(int scale)
         scale = 8;
     }
     scale_ = scale;
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
     {
         std::fprintf(stderr, "iron86: SDL_Init: %s\n", SDL_GetError());
@@ -216,6 +221,8 @@ bool display_sdl_open(int scale)
         SDL_Quit();
         return false;
     }
+    /* Accelerated + vsync off. Software Present was sluggish; vsync-on GPU
+     * Present can poll-block if the window is unmapped. */
     ren_ = SDL_CreateRenderer(win_, -1, SDL_RENDERER_ACCELERATED);
     if (ren_ == nullptr)
     {
@@ -223,7 +230,12 @@ bool display_sdl_open(int scale)
         display_sdl_close();
         return false;
     }
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+    /* Vsync Present can block forever if the window is unmapped/obscured
+     * (do_sys_poll); then the CPU never reaches the date prompt. */
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    (void)SDL_RenderSetVSync(ren_, 0);
+#endif
+    (void)SDL_GL_SetSwapInterval(0);
     tex_ = SDL_CreateTexture(ren_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 400);
     SDL_StartTextInput();
     return tex_ != nullptr;
@@ -233,10 +245,23 @@ void display_sdl_present(cpu &c, bool mda)
 {
     const uint8_t mode = c.mem_read8(0x449u);
     const uint8_t pal = c.mem_read8(0x466u);
+    const uint8_t *vram = c.ram() + ((mda || (mode == 7u)) ? 0xB0000u : 0xB8000u);
+    uint32_t fp = static_cast<uint32_t>(mode) | (static_cast<uint32_t>(pal) << 8);
+    unsigned i = 0;
     if (tex_ == nullptr)
     {
         return;
     }
+    for (i = 0; i < 4000u; i++)
+    {
+        fp = fp * 16777619u + vram[i];
+    }
+    if (fp == last_fp_)
+    {
+        SDL_RenderPresent(ren_);
+        return;
+    }
+    last_fp_ = fp;
     if ((mode == 6u) || (mode == 0x06u))
     {
         blit_mode6(c);
@@ -245,9 +270,14 @@ void display_sdl_present(cpu &c, bool mda)
     {
         blit_mode4(c, pal);
     }
-    else if ((mode == 0u) || (mode == 1u))
+    else if (mode == 1u)
     {
         blit_text(c, 0xB8000u, 40, false);
+    }
+    else if (mode == 0u)
+    {
+        /* BDA 40:49 is 0 until BIOS AH=00; treat as 80×25 CGA, not mode 0. */
+        blit_text(c, 0xB8000u, 80, false);
     }
     else if (mda || (mode == 7u))
     {
