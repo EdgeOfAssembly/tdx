@@ -248,6 +248,22 @@ int main()
         expect_eq(static_cast<uint16_t>(p.c.ax() & 0xFFu), 0x00AA, "xt kbd BAT AA");
     }
     {
+        /* Unmasked ch0 address must move (POST ECA9 IN 00h wrap wait). */
+        iron86::pc p;
+        p.wire_pc_hw();
+        const uint8_t prog[] = {
+            0xB0, 0x00, 0xE6, 0x0C, /* clear flip-flop */
+            0xB0, 0x00, 0xE6, 0x00, 0xE6, 0x00, /* addr 0 */
+            0xB0, 0x00, 0xE6, 0x0A,             /* unmask ch0 */
+            0xB9, 0x10, 0x00, 0xE2, 0xFE,       /* delay */
+            0xB0, 0x00, 0xE6, 0x0C, 0xE4, 0x00, 0xF4,
+        };
+        p.c.load_com(prog, sizeof(prog), 0x1000);
+        run(p.c, 64);
+        expect(p.c.halted(), "dma tick hlt");
+        expect((p.c.ax() & 0xFFu) != 0, "dma ch0 addr moved");
+    }
+    {
         /* PIT ch2 mode 3 + OUT 61h bits 0+1 → one rising-edge beep. */
         iron86::pc p;
         p.wire_pc_hw();

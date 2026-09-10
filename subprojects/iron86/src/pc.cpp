@@ -1072,6 +1072,7 @@ void pc::wire_pc_hw(bool trace_io)
      * (SW2 bit 5 is ignored until the 27-OCT-82 BIOS). 0x6 was 256K. */
     hw_.ppi.io_nibble = 0x0F;
     hw_.pic.imr = 0xFF;
+    hw_.dma.mask = 0x0F; /* 8237 reset: all channels masked */
     hw_.pit.ch[0].gate = 1; /* PC: ch0 GATE tied high */
     hw_.pic.vector_base = 8;
     hw_.pic.read_isr = 1;
@@ -1613,6 +1614,34 @@ void pc::dma_out(uint16_t port, uint8_t v)
     }
 }
 
+void pc::dma_tick()
+{
+    /* IBM PC DRAM refresh is 8237 ch0 auto-init. 5160 POST ECA9 waits for
+     * IN 00h (ch0 current address) to change; without this it spins forever. */
+    if ((hw_.dma.mask & 1u) != 0)
+    {
+        return;
+    }
+    if ((hw_.dma.command & 0x04u) != 0)
+    {
+        return;
+    }
+    hw_.dma.curr_addr[0] = static_cast<uint16_t>(hw_.dma.curr_addr[0] + 1u);
+    if (hw_.dma.curr_count[0] == 0)
+    {
+        hw_.dma.status = static_cast<uint8_t>(hw_.dma.status | 1u);
+        if ((hw_.dma.mode[0] & 0x10u) != 0)
+        {
+            hw_.dma.curr_addr[0] = hw_.dma.base_addr[0];
+            hw_.dma.curr_count[0] = hw_.dma.base_count[0];
+        }
+    }
+    else
+    {
+        hw_.dma.curr_count[0] = static_cast<uint16_t>(hw_.dma.curr_count[0] - 1u);
+    }
+}
+
 uint8_t pc::dma_in(uint16_t port)
 {
     const uint16_t p = static_cast<uint16_t>(port & 0x0Fu);
@@ -1662,6 +1691,7 @@ void pc::after_insn()
     {
         pit_tick();
     }
+    dma_tick();
     /* Skip when scanq empty, no IRQ1 pending, and speaker GATE+DATA off. */
     if ((!scanq_.empty()) || (hw_.ppi.kbd_irq_pend != 0) || ((hw_.ppi.port_b & 0x03u) != 0))
     {

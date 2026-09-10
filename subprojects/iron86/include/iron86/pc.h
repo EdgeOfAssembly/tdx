@@ -269,6 +269,8 @@ private:
     void pic_write_data(uint8_t v);
     uint8_t dma_in(uint16_t port);
     void dma_out(uint16_t port, uint8_t v);
+    /** @brief Advance ch0 (DRAM refresh / 5160 POST wrap wait on IN 00h). */
+    void dma_tick();
     void pit_write(uint16_t port, uint8_t v);
     uint8_t pit_read(uint16_t port);
     void fdc_write_dor(uint8_t v);
