@@ -96,6 +96,11 @@ public:
     /** @brief BIOS ring 40:1A==40:1C (ROM INT 16) or C++ kbd_ empty. */
     bool kbd_hw_idle() const
     {
+        if ((!scanq_.empty()) || (hw_.ppi.kbd_irq_pend != 0) || (kbd_break_delay_ != 0) ||
+            (kbd_irq_delay_ != 0))
+        {
+            return false;
+        }
         if (c.rom_bios() && (!steal_int16_))
         {
             return c.mem_read16(0x41Au) == c.mem_read16(0x41Cu);
