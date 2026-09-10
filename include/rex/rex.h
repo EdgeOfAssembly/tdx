@@ -67,8 +67,16 @@ REX_API rex_status rex_session_load_floppy(rex_session *s, const char *image);
  */
 REX_API rex_status rex_session_load_floppy_uc(rex_session *s, const char *image);
 
-/** @brief Load IBM 5150 8K BIOS on iron86; CS=FFFF IP=0000. */
+/** @brief Load IBM BIOS on iron86 (8K 5150 or 40K/64K 5160); CS=FFFF IP=0000. */
 REX_API rex_status rex_session_load_bios(rex_session *s, const char *path);
+
+/**
+ * @brief Attach a raw HDD image (Xebec). Regular files only — never block devices.
+ */
+REX_API rex_status rex_session_attach_hdc(rex_session *s, const char *path);
+
+/** @brief Map Xebec option ROM at C8000. NULL = default IBM 5000059 path. */
+REX_API rex_status rex_session_attach_hdc_rom(rex_session *s, const char *path);
 
 /** @brief After --bios: MDA 80×25 DIP (BIOS mode 7, B000). Default CGA. */
 REX_API void rex_session_set_mda(rex_session *s, int on);

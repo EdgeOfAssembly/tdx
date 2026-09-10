@@ -1,4 +1,4 @@
-.TH TDX 1 "2026-09-08" "tdx 0.24" "User Commands"
+.TH TDX 1 "2026-09-10" "tdx 0.25" "User Commands"
 .SH NAME
 tdx \- native Linux debugger for DOS EXE/COM (Turbo Debugger X)
 .SH SYNOPSIS
@@ -49,7 +49,18 @@ Drive B: (same rules). Directory pack uses 360K if it fits, else 720K.
 Boot the same image on Unicorn (not the iron86 BIOS path).
 .TP
 .BI \-\-bios " FILE"
-Load IBM 5150 8K BIOS on iron86 at F000:E000 / reset FFFF:0000.
+Load IBM BIOS on iron86 (8K 5150 at FE000, or 40K/64K 5160 at F0000).
+Reset FFFF:0000.
+.TP
+.BI \-\-hdc " PATH"
+Raw HDD image for the Xebec XT adapter (Type-1 306×4×17).
+Must be a regular file — block devices (\fI/dev/sda\fP) are refused.
+Requires
+.BR \-\-bios
+(5160 64K scans the option ROM).
+.TP
+.BI \-\-hdc\-rom " FILE"
+Xebec option ROM at C8000 (IBM 5000059). Default path if omitted.
 .TP
 .B \-\-mda
 MDA 80×25 (B000). Default is CGA (B800).

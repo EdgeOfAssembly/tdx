@@ -48,7 +48,7 @@ TEST_CASE("options and input may be interleaved")
 
 TEST_CASE("version string matches header")
 {
-    REQUIRE(std::string(TDX_VERSION_STRING) == "0.24");
+    REQUIRE(std::string(TDX_VERSION_STRING) == "0.25");
 }
 
 TEST_CASE("prefetch-bytes default 4; 0 is off")
@@ -132,6 +132,18 @@ TEST_CASE("in-process game window is opt-in")
     REQUIRE_FALSE(a.game);
     auto b = parse({"--game", "game.exe"});
     REQUIRE(b.game);
+}
+
+TEST_CASE("hdc is opt-in and order-independent")
+{
+    auto a = parse({"--bios", "rom.bin"});
+    REQUIRE(a.hdc.empty());
+    auto b = parse({"--bios", "rom.bin", "--hdc", "disk.img", "--hdc-rom", "ros.bin"});
+    REQUIRE(b.hdc == "disk.img");
+    REQUIRE(b.hdc_rom == "ros.bin");
+    auto c = parse({"--hdc=disk.img", "--bios=rom.bin", "--no-ui"});
+    REQUIRE(c.hdc == "disk.img");
+    REQUIRE(c.bios == "rom.bin");
 }
 
 TEST_CASE("mda is opt-in CGA default")

@@ -35,6 +35,8 @@ struct rex_session
     unsigned prefetch_bytes = 4;
     std::string floppy_a;
     std::string floppy_b;
+    std::string hdc;
+    std::string hdc_rom;
     std::string guest;
     int ui_cmd = 0;
     uint32_t run_delay_ms = 0;
@@ -256,6 +258,30 @@ rex_status rex_session_attach_floppy_b(rex_session *s, const char *image)
     return s->dos->attach_floppy_image_b(image);
 }
 
+rex_status rex_session_attach_hdc(rex_session *s, const char *path)
+{
+    if ((s == nullptr) || (path == nullptr) || (!s->dos))
+    {
+        return REX_ERR_ARG;
+    }
+    s->hdc = path;
+    refresh_guest(s);
+    return s->dos->attach_hdc_image(path);
+}
+
+rex_status rex_session_attach_hdc_rom(rex_session *s, const char *path)
+{
+    if ((s == nullptr) || (!s->dos))
+    {
+        return REX_ERR_ARG;
+    }
+    if ((path != nullptr) && (path[0] != '\0'))
+    {
+        s->hdc_rom = path;
+    }
+    return s->dos->attach_hdc_rom((path != nullptr) && (path[0] != '\0') ? path : nullptr);
+}
+
 rex_status rex_session_reset(rex_session *s)
 {
     if ((s == nullptr) || s->load_path.empty() || (!s->dos))
@@ -286,6 +312,19 @@ rex_status rex_session_reset(rex_session *s)
     if (!s->floppy_b.empty())
     {
         st = s->dos->attach_floppy_image_b(s->floppy_b.c_str());
+        if (st != REX_OK)
+        {
+            return st;
+        }
+    }
+    if (!s->hdc.empty())
+    {
+        st = s->dos->attach_hdc_image(s->hdc.c_str());
+        if (st != REX_OK)
+        {
+            return st;
+        }
+        st = s->dos->attach_hdc_rom(s->hdc_rom.empty() ? nullptr : s->hdc_rom.c_str());
         if (st != REX_OK)
         {
             return st;

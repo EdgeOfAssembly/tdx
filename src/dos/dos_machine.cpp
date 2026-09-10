@@ -4,6 +4,7 @@
  */
 
 #include "dos/dos_machine.h"
+#include "iron86/hdc.h"
 #include "iron86/pc.h"
 #include "dos/ibm_bda.h"
 
@@ -21,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <sys/stat.h>
 #include <deque>
 #include <fstream>
 #include <vector>
@@ -1071,7 +1073,7 @@ rex_status dos_machine::load_bios_5150(const char *path)
         iron = std::make_unique<iron86::pc>();
     }
     iron->c.set_prefetch_bytes(prefetch_bytes);
-    if (!iron->c.load_bios_5150_8k(rom.data(), rom.size()))
+    if (!iron->c.load_bios(rom.data(), rom.size()))
     {
         return REX_ERR_IO;
     }
@@ -1082,7 +1084,63 @@ rex_status dos_machine::load_bios_5150(const char *path)
     entry_linear = 0xFFFF0u;
     halted = false;
     con_out.clear();
-    rex_logf(REX_LOG_INFO, "iron86 BIOS %s FE000 reset FFFF:0000 fast-post", path);
+    rex_logf(REX_LOG_INFO, "iron86 BIOS %s %zu bytes reset FFFF:0000 fast-post", path,
+             rom.size());
+    return REX_OK;
+}
+
+rex_status dos_machine::attach_hdc_image(const char *path)
+{
+    if ((path == nullptr) || (!iron))
+    {
+        return REX_ERR_ARG;
+    }
+    if (!iron->attach_hdc_path(path))
+    {
+        rex_logf(REX_LOG_ERROR, "iron86 hdc attach failed %s (block devices refused)", path);
+        return REX_ERR_IO;
+    }
+    iron->wire_pc_hw();
+    if (iron->c.rom_bios())
+    {
+        iron->enable_fast_post();
+    }
+    rex_logf(REX_LOG_INFO, "iron86 HDC %s %ux%ux%u", path, iron->hdc().cylinders(),
+             iron->hdc().heads(), iron->hdc().spt());
+    return REX_OK;
+}
+
+rex_status dos_machine::attach_hdc_rom(const char *path)
+{
+    const char *ros = path;
+    struct stat st{};
+    if (!iron)
+    {
+        return REX_ERR_ARG;
+    }
+    if ((ros == nullptr) || (ros[0] == '\0'))
+    {
+        const char *env = std::getenv("IRON86_XEBEC_ROM");
+        if ((env != nullptr) && (env[0] != '\0') && (stat(env, &st) == 0) && S_ISREG(st.st_mode))
+        {
+            ros = env;
+        }
+        else if ((stat(iron86::k_hdc_ros_default, &st) == 0) && S_ISREG(st.st_mode))
+        {
+            ros = iron86::k_hdc_ros_default;
+        }
+        else
+        {
+            rex_logf(REX_LOG_INFO, "iron86: no Xebec ROS (set --hdc-rom or IRON86_XEBEC_ROM)");
+            return REX_OK;
+        }
+    }
+    if (!iron->load_hdc_rom_path(ros))
+    {
+        rex_logf(REX_LOG_INFO, "iron86: failed to map Xebec ROS %s", ros);
+        return REX_OK;
+    }
+    rex_logf(REX_LOG_INFO, "iron86 Xebec ROS %s at C8000", ros);
     return REX_OK;
 }
 

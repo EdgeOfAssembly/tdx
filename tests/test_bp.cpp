@@ -136,9 +136,9 @@ TEST_CASE("BPM once auto-clears after the first guest write")
     rex_session_destroy(s);
 }
 
-TEST_CASE("rex_version is 0.24")
+TEST_CASE("rex_version is 0.25")
 {
-    REQUIRE(std::string(rex_version()) == "0.24");
+    REQUIRE(std::string(rex_version()) == "0.25");
 }
 
 TEST_CASE("guest label is EXE basename")

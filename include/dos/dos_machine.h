@@ -172,8 +172,15 @@ struct dos_machine
     rex_status load_floppy(const char *image);
     /** @brief Same image on Unicorn (INT 13h from floppy_img). EXE path unchanged. */
     rex_status load_floppy_uc(const char *image);
-    /** @brief IBM 5150 8K BIOS at FE000, reset FFFF:0000 (Py86). iron86 only. */
+    /** @brief IBM BIOS on iron86 (8K 5150, 40K/64K 5160). Reset FFFF:0000. */
     rex_status load_bios_5150(const char *path);
+    /**
+     * @brief Attach a raw HDD image to the Xebec adapter (regular file only).
+     * Re-wires PC I/O and reapplies fast-post.
+     */
+    rex_status attach_hdc_image(const char *path);
+    /** @brief Map Xebec ROS at C8000. NULL path uses the default IBM 5000059 dump. */
+    rex_status attach_hdc_rom(const char *path);
     /** @brief After BIOS load: MDA 80×25 DIP (0x3D family) vs CGA (0x2D). */
     void set_mda(bool on);
     /** @brief mmap a 1 MiB executed-opcode map (iron86). */

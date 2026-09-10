@@ -89,6 +89,11 @@ int main(int argc, char **argv)
         tdx_print_usage(stderr);
         return 2;
     }
+    if (!cli.hdc.empty() && cli.bios.empty())
+    {
+        std::fputs("tdx: --hdc needs --bios (5160 64K to scan Xebec ROS)\n", stderr);
+        return 2;
+    }
     if (cli.verbose)
     {
         rex_log_set_level(REX_LOG_DEBUG);
@@ -118,6 +123,15 @@ int main(int argc, char **argv)
         if ((rc == (int)REX_OK) && (!cli.floppy_b.empty()))
         {
             rc = (int)rex_session_attach_floppy_b(s, cli.floppy_b.c_str());
+        }
+        if ((rc == (int)REX_OK) && (!cli.hdc.empty()))
+        {
+            rc = (int)rex_session_attach_hdc(s, cli.hdc.c_str());
+            if (rc == (int)REX_OK)
+            {
+                rc = (int)rex_session_attach_hdc_rom(
+                    s, cli.hdc_rom.empty() ? nullptr : cli.hdc_rom.c_str());
+            }
         }
         if ((rc == (int)REX_OK) && cli.mda)
         {

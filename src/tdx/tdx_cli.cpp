@@ -19,7 +19,7 @@ void tdx_print_usage(FILE *fp)
         "Usage: tdx [options] [file.exe|file.com]\n"
         "       tdx --floppy-a image.img [options]\n"
         "       tdx --uc-floppy image.img [options]\n"
-        "       tdx --bios BIOS.BIN [--floppy-a A] [--floppy-b B] [options]\n"
+        "       tdx --bios BIOS.BIN [--floppy-a A] [--floppy-b B] [--hdc IMG] [options]\n"
         "\n"
         "  Turbo Debugger X — native Linux debugger for DOS EXE/COM\n"
         "  (librex core; Unicorn 8086 default; --floppy-a uses iron86).\n"
@@ -32,7 +32,9 @@ void tdx_print_usage(FILE *fp)
         "      --floppy PATH     Alias for --floppy-a\n"
         "      --floppy-b PATH   B: image or host dir (FlopFS 360K, or 720K if needed)\n"
         "      --uc-floppy IMAGE Same boot on Unicorn (vs iron86 --floppy-a)\n"
-        "      --bios FILE       IBM 5150 8K BIOS (default with --floppy-a)\n"
+        "      --bios FILE       IBM 5150 8K or 5160 40K/64K BIOS (default with --floppy-a)\n"
+        "      --hdc PATH        Raw HDD image (Xebec Type-1). Regular file only\n"
+        "      --hdc-rom FILE    Xebec option ROM at C8000 (IBM 5000059)\n"
         "      --no-bios         Do not load ROM; iron86 C++ INT 10/13/16\n"
         "      --mda             MDA 80×25 (B000, DIP 0x3D). Default CGA B800\n"
         "      --no-ui           Headless (no SDL windows)\n"
@@ -191,6 +193,32 @@ bool tdx_cli_parse(int argc, char **argv, tdx_cli *out)
         else if (std::strncmp(a, "--bios=", 7) == 0)
         {
             out->bios = a + 7;
+        }
+        else if (std::strcmp(a, "--hdc") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->hdc = argv[++i];
+        }
+        else if (std::strncmp(a, "--hdc=", 6) == 0)
+        {
+            out->hdc = a + 6;
+        }
+        else if (std::strcmp(a, "--hdc-rom") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                out->usage_error = true;
+                return false;
+            }
+            out->hdc_rom = argv[++i];
+        }
+        else if (std::strncmp(a, "--hdc-rom=", 10) == 0)
+        {
+            out->hdc_rom = a + 10;
         }
         else if (std::strcmp(a, "--no-bios") == 0)
         {
