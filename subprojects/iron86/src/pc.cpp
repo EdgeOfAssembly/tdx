@@ -471,6 +471,8 @@ static bool ascii_needs_shift(uint8_t ch)
 
 void pc::queue_scan(uint8_t sc)
 {
+    log_trace("KBD queue_scan %02X q=%zu pend=%u\n", sc, scanq_.size(),
+              static_cast<unsigned>(hw_.ppi.kbd_irq_pend));
     if (hw_.ppi.kbd_ready != 0)
     {
         scanq_.push_back(sc);
@@ -506,6 +508,8 @@ void pc::type_scan(uint8_t make)
 
 void pc::queue_ascii(uint8_t ch)
 {
+    log_trace("KBD queue_ascii %02X rom=%d steal=%d\n", ch, c.rom_bios() ? 1 : 0,
+              steal_int16_ ? 1 : 0);
     waiting_key_ = false;
     kbd_poll_idle_ = false;
     if (c.rom_bios() && (!steal_int16_))
@@ -687,7 +691,15 @@ bool pc::bios_int(uint8_t vector)
         }
         if (vector == 0x16)
         {
-            return int16();
+            if (steal_int16_)
+            {
+                log_trace("INT16 steal AH=%02X\n", static_cast<unsigned>(c.ax() >> 8));
+                return int16();
+            }
+            log_trace("INT16 passthru AH=%02X buf %04X/%04X\n",
+                      static_cast<unsigned>(c.ax() >> 8), c.mem_read16(0x41Au),
+                      c.mem_read16(0x41Cu));
+            return false;
         }
         if (vector == 0x10)
         {
@@ -742,8 +754,12 @@ bool pc::bios_int(uint8_t vector)
          * (FloppyOS) or --steal-int16. tdxctl/SDL inject XT scancodes. */
         if ((!c.rom_bios()) || steal_int16_)
         {
+            log_trace("INT16 steal AH=%02X\n", static_cast<unsigned>(c.ax() >> 8));
             return int16();
         }
+        log_trace("INT16 passthru AH=%02X buf %04X/%04X\n",
+                  static_cast<unsigned>(c.ax() >> 8), c.mem_read16(0x41Au),
+                  c.mem_read16(0x41Cu));
         return false;
     }
     if (vector == 0x1A)
@@ -1261,6 +1277,9 @@ void pc::enable_fast_post()
     hw_.dma.base_count[0] = 0xFFFF;
     hw_.dma.command = 0;
     hw_.dma.mask = 0x0E;
+    /* Keyboard ring (INT 9/16). Fast-post may skip POST that sets these. */
+    c.mem_write16(0x41Au, 0x1E);
+    c.mem_write16(0x41Cu, 0x1E);
 }
 
 void pc::enable_audio(bool on)
@@ -1511,6 +1530,7 @@ void pc::ppi_tick()
          * IRQ1 until DOS "Internal stack overflow" on DIR. */
         if (((hw_.pic.isr & 0x02u) == 0) && ((hw_.pic.irr & 0x02u) == 0))
         {
+            log_trace("KBD IRQ1 assert data=%02X\n", hw_.ppi.kbd_data);
             pic_deassert(1);
             pic_assert(1);
         }
@@ -2460,15 +2480,8 @@ uint8_t pc::in_port(uint16_t port)
              * IN 60h then pulses PB7 (OR 80h / OUT 61h / restore) to ack.
              * Clearing ready on the read broke wrap-INT9 games (M1TP
              * CGAGRPH: IN 60h, then CALL FAR the ROM handler). */
-#ifndef NDEBUG
-            if (c.rom_bios())
-            {
-                fd_printf(STDERR_FILENO, "KBD IN 60=%02X ready=%u\n", hw_.ppi.kbd_data,
-                          static_cast<unsigned>(hw_.ppi.kbd_ready));
-                log_trace("KBD IN 60=%02X ready=%u\n", hw_.ppi.kbd_data,
-                          static_cast<unsigned>(hw_.ppi.kbd_ready));
-            }
-#endif
+            log_trace("KBD IN 60=%02X ready=%u\n", hw_.ppi.kbd_data,
+                      static_cast<unsigned>(hw_.ppi.kbd_ready));
             return hw_.ppi.kbd_data;
         }
         if (p == 0x61u)
