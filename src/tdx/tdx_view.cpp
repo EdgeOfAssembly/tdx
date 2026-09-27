@@ -235,6 +235,29 @@ int connect_sock(const std::string &path)
     return fd;
 }
 
+/**
+ * @brief SDL renderer for the CGA window.
+ *
+ * Default is the software driver. NVIDIA GL on Xmux (Xvfb + GLX) dies in
+ * @c SDL_RenderCopy / @c free inside libnvidia-glcore. CGA is 320×200;
+ * software blit is enough. Overrides env @c SDL_RENDER_DRIVER=opengl.
+ */
+SDL_Renderer *create_cga_renderer(SDL_Window *win)
+{
+    /* Workstation env sets SDL_RENDER_DRIVER=opengl and
+     * SDL_FRAMEBUFFER_ACCELERATION=opengl. Default SDL_SetHint does not
+     * override the environment; NVIDIA GL then dies in SDL_RenderCopy. */
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "software", SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0", SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, "0", SDL_HINT_OVERRIDE);
+    SDL_Renderer *r = SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE);
+    if (r == nullptr)
+    {
+        r = SDL_CreateRenderer(win, -1, 0);
+    }
+    return r;
+}
+
 bool send_line(int fd, const std::string &line)
 {
     const std::string msg = line + "\n";
@@ -598,6 +621,8 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "software", SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0", SDL_HINT_OVERRIDE);
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
     {
         std::fprintf(stderr, "tdxview: SDL_Init: %s\n", SDL_GetError());
@@ -613,8 +638,23 @@ int main(int argc, char **argv)
                                SDL_WINDOW_RESIZABLE);
     }
     (void)tdx_ibm_font_load_5788005(nullptr);
-    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    ren = create_cga_renderer(win);
+    if (ren == nullptr)
+    {
+        std::fprintf(stderr, "tdxview: SDL_CreateRenderer: %s\n", SDL_GetError());
+        SDL_DestroyWindow(win);
+        SDL_Quit();
+        return 1;
+    }
     tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 400);
+    if (tex == nullptr)
+    {
+        std::fprintf(stderr, "tdxview: SDL_CreateTexture: %s\n", SDL_GetError());
+        SDL_DestroyRenderer(ren);
+        SDL_DestroyWindow(win);
+        SDL_Quit();
+        return 1;
+    }
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_StartTextInput();
     vst.ren = ren;
