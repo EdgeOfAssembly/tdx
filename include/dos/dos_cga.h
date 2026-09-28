@@ -82,6 +82,15 @@ int dos_cga_composite_argb320(const uint8_t *vram, uint32_t *argb, size_t n_pixe
                               uint8_t cga3d8, uint8_t cga3d9);
 
 /**
+ * @brief Mode 4/5 composite at NTSC hdot width (640×200).
+ *
+ * Same VRAM as @c dos_cga_composite_argb320, but keeps the 640-dot line
+ * instead of averaging pairs to 320 (that chops the picture in half).
+ */
+int dos_cga_composite_argb320_640(const uint8_t *vram, uint32_t *argb, size_t n_pixels,
+                                  uint8_t cga3d8, uint8_t cga3d9);
+
+/**
  * @brief Map CGA color-select (port 3D9h / BDA 0040:0066) to four ARGB colors.
  *
  * Index 0 is the background (bits 0–3). Bit 4 is palette intensity, bit 5

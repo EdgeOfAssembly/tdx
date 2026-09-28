@@ -826,10 +826,14 @@ int main(int argc, char **argv)
             const bool hires = (last_mode == 0x06);
             const bool gfx = (last_mode == 0x04) || (last_mode == 0x05) || hires ||
                              (last_mode == 0x13);
-            const uint8_t kind = hires ? 3u : (gfx ? 1u : (mda ? 2u : 0u));
+            const bool burst = ((cga3d8 & 0x02u) != 0) && ((cga3d8 & 0x04u) == 0);
+            const bool composite_on = (!cli.no_composite) && burst && gfx;
+            /* Composite is 640 NTSC hdots; folding to 320 chopped LSL1 in half. */
+            const uint8_t kind = (hires || composite_on) ? 3u : (gfx ? 1u : (mda ? 2u : 0u));
             if (kind != tex_kind)
             {
-                const int tw = hires ? DOS_CGA_HIRES_WIDTH : (gfx ? DOS_CGA_WIDTH : (mda ? 720 : 640));
+                const int tw = (hires || composite_on) ? DOS_CGA_HIRES_WIDTH
+                                                       : (gfx ? DOS_CGA_WIDTH : (mda ? 720 : 640));
                 const int th = (gfx || hires) ? DOS_CGA_HEIGHT : (mda ? 350 : 400);
                 SDL_DestroyTexture(tex);
                 tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
@@ -933,18 +937,18 @@ int main(int argc, char **argv)
             else if ((!cli.no_composite) && ((cga3d8 & 0x02u) != 0) && ((cga3d8 & 0x04u) == 0) &&
                      ((cga3d8 & 0x10u) == 0) && (vram.size() >= (size_t)DOS_CGA_VRAM))
             {
-                if (comp.size() != (size_t)DOS_CGA_PIXELS)
+                if (comp.size() != (size_t)DOS_CGA_HIRES_PIXELS)
                 {
-                    comp.assign((size_t)DOS_CGA_PIXELS, 0);
+                    comp.assign((size_t)DOS_CGA_HIRES_PIXELS, 0);
                 }
-                if (dos_cga_composite_argb320(vram.data(), comp.data(), comp.size(), cga3d8,
-                                              palreg) == 0)
+                if (dos_cga_composite_argb320_640(vram.data(), comp.data(), comp.size(), cga3d8,
+                                                  palreg) == 0)
                 {
                     for (y = 0; y < DOS_CGA_HEIGHT; y++)
                     {
                         uint32_t *dst = pix + y * pitch_px;
-                        std::memcpy(dst, comp.data() + (size_t)y * (size_t)DOS_CGA_WIDTH,
-                                    (size_t)DOS_CGA_WIDTH * sizeof(uint32_t));
+                        std::memcpy(dst, comp.data() + (size_t)y * (size_t)DOS_CGA_HIRES_WIDTH,
+                                    (size_t)DOS_CGA_HIRES_WIDTH * sizeof(uint32_t));
                     }
                 }
             }

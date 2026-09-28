@@ -360,3 +360,42 @@ REX_C_DEF int dos_cga_composite_argb320(const uint8_t *vram, uint32_t *argb, siz
     }
     return 0;
 }
+
+REX_C_DEF int dos_cga_composite_argb320_640(const uint8_t *vram, uint32_t *argb, size_t n_pixels,
+                                            uint8_t cga3d8, uint8_t cga3d9)
+{
+    uint8_t pal[4];
+    uint8_t rgbi[640];
+    uint32_t line[640];
+    int y = 0;
+    int x = 0;
+
+    if ((vram == NULL) || (argb == NULL) || (n_pixels < (size_t)DOS_CGA_HIRES_PIXELS))
+    {
+        return -1;
+    }
+    if (cga3d8 == 0)
+    {
+        cga3d8 = 0x2A;
+    }
+    if (cga3d9 == 0)
+    {
+        cga3d9 = 0x30;
+    }
+    cga_rgbi4(cga3d9, pal);
+    cga_comp_setup(cga3d8, cga3d9);
+    for (y = 0; y < DOS_CGA_HEIGHT; y++)
+    {
+        const uint8_t *src = vram + ((y & 1) ? 0x2000 : 0) + (size_t)(y / 2) * 80u;
+        for (x = 0; x < DOS_CGA_WIDTH; x++)
+        {
+            const int shift = 6 - 2 * (x % 4);
+            const uint8_t pix = (uint8_t)((src[x / 4] >> shift) & 3u);
+            rgbi[x * 2] = pal[pix];
+            rgbi[x * 2 + 1] = pal[pix];
+        }
+        cga_comp_line(rgbi, 640, (uint8_t)(cga3d9 & 0x0Fu), line);
+        memcpy(argb + (size_t)y * 640u, line, 640u * sizeof(uint32_t));
+    }
+    return 0;
+}

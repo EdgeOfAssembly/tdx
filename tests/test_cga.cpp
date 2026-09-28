@@ -108,3 +108,30 @@ TEST_CASE("mode 4 composite Dragon Wars gold dump is blue dragon red warrior")
     REQUIRE(warrior[0] > warrior[2]); /* R > B */
     REQUIRE(dos_cga_composite_argb320(nullptr, argb.data(), argb.size(), 0x2A, 0x30) == -1);
 }
+
+TEST_CASE("mode-4 composite 640-wide keeps full NTSC line")
+{
+    std::vector<uint8_t> vram((size_t)DOS_CGA_VRAM, 0);
+    /* Right-half pixels non-zero so a 320-wide crop would miss them. */
+    for (int y = 0; y < 100; y++)
+    {
+        uint8_t *even = vram.data() + (size_t)y * 80u;
+        even[60] = 0xFFu;
+        even[70] = 0xAAu;
+    }
+    std::vector<uint32_t> wide((size_t)DOS_CGA_HIRES_PIXELS, 0);
+    REQUIRE(dos_cga_composite_argb320_640(vram.data(), wide.data(), wide.size(), 0x2A, 0x30) == 0);
+    unsigned right = 0;
+    for (int y = 0; y < 100; y++)
+    {
+        for (int x = 400; x < 640; x++)
+        {
+            if ((wide[(size_t)y * 640u + (size_t)x] & 0x00FFFFFFu) != 0)
+            {
+                right++;
+            }
+        }
+    }
+    REQUIRE(right > 0);
+    REQUIRE(dos_cga_composite_argb320_640(nullptr, wide.data(), wide.size(), 0x2A, 0x30) == -1);
+}
