@@ -1,9 +1,0 @@
---- Page 1 ---
-Next, pick an alternate track area on the disk.    The alternate track area
-usually resides at the highest numbered disk tracks.    The area should be of
-sufficient size to allow one alternate track per 50 to 100 tracks on the drive.
-Each defective track in the list created in steps 2 and 3 is reassigned to the
-alternate track area by using the Assign Aiternate Track command.    If any
-tracks in the alternate area are defective, skip over them and use the next
-available track.
-Page -83-

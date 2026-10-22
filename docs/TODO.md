@@ -148,7 +148,7 @@ tdx (CPU) + tdxview (user screen) is the dual-head setup. A second **iron86** MD
 - [ ] **FCB write / create / find** (AH=16/17/11–13/15/22).
 - [x] **AH=42 LSEEK** — Dragon Wars `DATA1` (SET then 3F). HELLO.COM SEEK OK.
 - [ ] **Handle API** AH=3C/40/41 (create/write/unlink). 3D/3E/3F/42 exist. `AH=40` needed for `dragon -s` persist.
-- [ ] **FlopFS v0.5 integrity** — XXH3-64 on `size>0` files; dirs not hashed; **size-0 skip hash**; pack-time dedup (hardlink-like); refcount before free. Spec: `subprojects/floppyos/docs/flopfs-spec.md`.
+- [ ] **FlopFS v0.5 integrity** — XXH3-64 on `size>0` files; dirs not hashed; **size-0 skip hash**; pack-time dedup (hardlink-like); refcount before free. Spec: `/mnt/FloppyOS/docs/flopfs-spec.md`.
 - [ ] Remaining **double-push** clones if any path besides `fill_dta` still unbalanced (`run_init_com` was fixed).
 - [ ] **FAT12/16/32/exFAT** foreign volumes — **bottom of queue**. Primary FS stays FlopFS. Py86 never shipped `fat12.py`.
 - [ ] COPY, batch, timestamps, subdirs, compression.

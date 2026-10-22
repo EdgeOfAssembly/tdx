@@ -1,5 +1,17 @@
 # TDX / librex — agent notes
 
+## Three-repo layout
+
+| Tree | Path | Role |
+|------|------|------|
+| **tdx** | `/mnt/tdx` (symlink `/mnt/TurboDebugger` → same) | Debugger + librex + Unicorn DOS backend |
+| **iron86** | `/mnt/iron86` | C++23 8086+PC machine; built into tdx via `IRON86_ROOT` |
+| **FloppyOS** | `/mnt/FloppyOS` | Guest OS / FlopFS; independent of the tdx build |
+
+Build needs a checkout of iron86. Default `IRON86_ROOT=/mnt/iron86`; override with
+`make IRON86_ROOT=/path/to/iron86`. `make check-iron86` fails fast if
+`$(IRON86_ROOT)/include/iron86/pc.h` is missing.
+
 - Language: C++23 (g++) + C23 for `mz_parse.c` / `dos_cga.c`. Allman braces.
 - Public ABI: `include/rex/rex.h` (C). Do not break it casually.
 - Tests: `make -s test` (Catch2). Formal: `make -s verify` (CBMC on MZ parser).

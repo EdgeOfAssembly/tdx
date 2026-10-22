@@ -1,6 +1,0 @@
-# Type-1 blank is 10 MiB of zeros; recreate with:
-#   dd if=/dev/zero of=hdc-type1-blank.img bs=512 count=20808
-*.img
-# Concatenated IBM BIOS dumps (copyrighted; local only).
-*.bin
-

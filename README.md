@@ -15,13 +15,23 @@ memory, symbols, agent socket. First backend: **DOS MZ EXE / .COM** on Unicorn
 
 ## Build
 
+Sibling checkouts (three-repo layout):
+
+| Repo | Default path |
+|------|----------------|
+| **tdx** | `/mnt/tdx` (also `/mnt/TurboDebugger` → `/mnt/tdx`) |
+| **iron86** | `/mnt/iron86` — required to compile tdx |
+| **FloppyOS** | `/mnt/FloppyOS` — guest images / FlopFS (not linked into tdx) |
+
 ```text
-make -s V=0 -j$(nproc)
+# iron86 must be present (override path if needed):
+make -s V=0 -j$(nproc)                    # IRON86_ROOT defaults to /mnt/iron86
+make -s IRON86_ROOT=/path/to/iron86 all   # alternate checkout
 make -s test
 make -s verify    # CBMC on the MZ parser after tests
 ```
 
-Needs: gcc/g++, SDL2, capstone, unicorn, Catch2 (`source ~/.local/share/test-frameworks/env.sh`), nasm, optional CBMC and Ghidra 12.
+Needs: gcc/g++, SDL2, capstone, unicorn, Catch2 (`source ~/.local/share/test-frameworks/env.sh`), nasm, optional CBMC and Ghidra 12, plus an **iron86** tree at `IRON86_ROOT`.
 
 ## Run
 

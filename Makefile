@@ -13,8 +13,11 @@ PKG_UC  := $(shell pkg-config --cflags --libs unicorn)
 CATCH_CFLAGS := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --cflags catch2-with-main)
 CATCH_LIBS   := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --libs catch2-with-main)
 
+# Sibling checkout of iron86 (no longer vendored under subprojects/).
+IRON86_ROOT ?= /mnt/iron86
+
 CXXFLAGS_COMMON := -std=gnu++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
-	-fno-omit-frame-pointer -Iinclude -Isubprojects/iron86/include
+	-fno-omit-frame-pointer -Iinclude -I$(IRON86_ROOT)/include
 CFLAGS_COMMON := -std=gnu23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
 	-fno-omit-frame-pointer -Iinclude
 
@@ -38,11 +41,11 @@ CFLAGS   := $(CFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined
 
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
-IRON86_SRC := subprojects/iron86/src/cpu.cpp subprojects/iron86/src/ea.cpp \
-	subprojects/iron86/src/pc.cpp subprojects/iron86/src/crtc.cpp \
-	subprojects/iron86/src/flopfs_pack.cpp subprojects/iron86/src/hdc.cpp \
-	subprojects/iron86/src/log.cpp subprojects/iron86/src/config.cpp \
-	subprojects/iron86/src/fpu.cpp
+IRON86_SRC := $(IRON86_ROOT)/src/cpu.cpp $(IRON86_ROOT)/src/ea.cpp \
+	$(IRON86_ROOT)/src/pc.cpp $(IRON86_ROOT)/src/crtc.cpp \
+	$(IRON86_ROOT)/src/flopfs_pack.cpp $(IRON86_ROOT)/src/hdc.cpp \
+	$(IRON86_ROOT)/src/log.cpp $(IRON86_ROOT)/src/config.cpp \
+	$(IRON86_ROOT)/src/fpu.cpp
 REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp \
 	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c \
 	$(IRON86_SRC)
@@ -56,9 +59,18 @@ TEST_SRCS := tests/test_mz.cpp tests/test_cga.cpp tests/test_step.cpp tests/test
 
 PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python; else echo python3; fi)
 
-.PHONY: all clean test tests verify fixtures release profile install
+.PHONY: all clean test tests verify fixtures release profile install check-iron86
 
-all: tdx tdxview
+# Fail fast if the sibling iron86 tree is missing (override with IRON86_ROOT=…).
+check-iron86:
+	@test -f "$(IRON86_ROOT)/include/iron86/pc.h" || { \
+		echo "error: iron86 not found at IRON86_ROOT=$(IRON86_ROOT)" >&2; \
+		echo "  expected: \$$(IRON86_ROOT)/include/iron86/pc.h" >&2; \
+		echo "  clone/checkout iron86 and set IRON86_ROOT (default /mnt/iron86)" >&2; \
+		exit 1; \
+	}
+
+all: check-iron86 tdx tdxview
 
 # One-gulp builds: feed every source to g++ in a single invocation so the whole
 # program is always compiled and linked from the same snapshot of the tree.
@@ -67,14 +79,14 @@ all: tdx tdxview
 # The .c sources are compiled as C++ here (their public functions use the
 # REX_C_DEF dual-linkage macro); they are still plain C23 for CBMC `verify`.
 
-tdx: $(REX_SRC) $(TDX_SRC)
+tdx: check-iron86 $(REX_SRC) $(TDX_SRC)
 	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TDX_SRC) \
 		$(SDL_LIBS) $(PKG_CS) $(PKG_UC)
 
 tdxview: $(VIEW_SRC)
 	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(LDFLAGS) -o $@ $(VIEW_SRC) $(SDL_LIBS)
 
-tests/run_tests: $(REX_SRC) $(TEST_SRCS) src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp fixtures
+tests/run_tests: check-iron86 $(REX_SRC) $(TEST_SRCS) src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp fixtures
 	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TEST_SRCS) \
 		src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_ibm_font.cpp \
 		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC)

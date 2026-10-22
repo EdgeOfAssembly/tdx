@@ -1,8 +1,0 @@
-/iron86
-/tests/run_tests
-/tests/run_pc
-/tests/run_crtc
-/tests/run_pack
-/tests/run_config
-*.o
-run_hdc
