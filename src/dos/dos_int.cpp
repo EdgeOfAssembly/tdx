@@ -1,6 +1,6 @@
 /**
  * @file dos_int.cpp
- * @brief Tiny DOS 5 / CGA BIOS interrupt handlers (Unicorn path; iron86 has its own).
+ * @brief Tiny DOS 5 / CGA BIOS interrupt handlers (host iron86 EXE/COM and Unicorn).
  */
 
 #include "dos/dos_machine.h"

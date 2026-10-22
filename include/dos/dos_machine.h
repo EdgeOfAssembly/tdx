@@ -71,7 +71,18 @@ struct dos_machine
     uc_engine *uc = nullptr;
     uint8_t *ram = nullptr;
     size_t ram_size = 0;
-    std::unique_ptr<iron86::pc> iron; /**< Non-null: iron86 floppy boot (Unicorn unused). */
+    /**
+     * True only for the Unicorn aligned_alloc buffer. iron86 owns its RAM;
+     * the destructor must not free() that pointer.
+     */
+    bool ram_owned = false;
+    /** Positional EXE/COM on iron86. Floppy and BIOS leave this false. */
+    bool host_dos = false;
+    /** Next iron86 do_int is a PIC IRQ; the DOS hook must not swallow it. */
+    bool hw_intr_dispatch = false;
+    /** Insn about to retire is STI / POP SS / MOV SS (one-insn IF inhibit). */
+    bool host_arm_inhibit = false;
+    std::unique_ptr<iron86::pc> iron; /**< iron86 PC (host DOS, floppy, or BIOS). */
     std::vector<uint8_t> floppy_img;  /**< Host 360K image for Unicorn INT 13h. */
 
     std::string image_path;

@@ -20,10 +20,10 @@ into tdx via `-liron86` (no sibling `IRON86_SRC` embed). Development tree:
 `/mnt/FloppyOS`; its image, when installed, is
 `/usr/local/share/iron86/disks/floppyos.img` (not the default guest).
 
-**Unicorn (deprecated, not the supported path):** still linked for positional
-MZ EXE / `.COM` loads (`USE_UNICORN=1` default; do not flip it off). LGPL,
-embeddable 16-bit step. Build with `USE_UNICORN=0` to omit the dependency;
-those APIs return `REX_ERR_NOSYS`.
+**Unicorn (deprecated, not the supported path):** still linked for
+`--uc-floppy` only (`USE_UNICORN=1` default; do not flip it off). Positional
+MZ EXE / `.COM` loads use iron86. Build with `USE_UNICORN=0` to omit the
+dependency; `--uc-floppy` then returns `REX_ERR_NOSYS`.
 Capstone 6 disassembles. SDL2 draws a TD-like text UI (not BGI — TD is text
 mode; the *guest* may be CGA).
 

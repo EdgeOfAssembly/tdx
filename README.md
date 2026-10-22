@@ -4,9 +4,9 @@ Native **x86_64 Linux** debugger with a Borland Turbo Debugger–like CPU view.
 It is **not** a source port of `TD.EXE` (Borland never shipped TD sources here).
 The reusable core is **librex**: load a target, breakpoints, step, step-over,
 memory, symbols, agent socket. **Supported path:** iron86 (`--floppy-a` /
-`--bios`) with `/usr/local/share/iron86/disks/msdos331.img`. Positional MZ
-EXE/COM still links Unicorn (`USE_UNICORN=1` stays the default) but that path
-is **deprecated and not the supported path**. Capstone disassembles.
+`--bios`, and positional MZ EXE/COM) with
+`/usr/local/share/iron86/disks/msdos331.img`. Unicorn stays linked
+(`USE_UNICORN=1`) only for deprecated `--uc-floppy`. Capstone disassembles.
 
 | Name | What |
 |------|------|
@@ -54,8 +54,8 @@ tdx -v
 tdx --floppy-a /usr/local/share/iron86/disks/msdos331.img
 ```
 
-Unicorn positional EXE/COM still runs while `USE_UNICORN=1` (the default) but
-is **deprecated and not the supported path**:
+Positional EXE/COM runs on iron86 (not Unicorn). Unicorn remains only for
+deprecated `--uc-floppy`:
 
 ```text
 tdx tests/fixtures/tiny.com --no-ui --no-sock

@@ -1,6 +1,6 @@
 /**
  * @file test_floppy.cpp
- * @brief Opt-in iron86 floppy boot inside rex_session (Unicorn path untouched).
+ * @brief iron86 floppy boot inside rex_session (positional EXE/COM is also iron86).
  */
 #include "rex/rex.h"
 

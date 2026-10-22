@@ -19,11 +19,12 @@ iron86 tree: `cd /mnt/iron86 && sudo make install`. Headers land in
 - Language: C++23 (g++) + C23 for `mz_parse.c` / `dos_cga.c`. Allman braces.
 - Public ABI: `include/rex/rex.h` (C). Do not break it casually.
 - Tests: `make -s test` (Catch2). Formal: `make -s verify` (CBMC on MZ parser).
-- Emulator: **iron86** is the supported backend (`--floppy-a` / `--bios`) with
-  guest `/usr/local/share/iron86/disks/msdos331.img`. Unicorn stays linked for
-  positional MZ EXE/COM (`USE_UNICORN=1` default) but is **deprecated and not
-  the supported path**. Do not flip `USE_UNICORN` to 0. `make USE_UNICORN=0`
-  only builds a tree that omits the Unicorn dependency.
+- Emulator: **iron86** is the supported backend (`--floppy-a` / `--bios` and
+  positional MZ EXE/COM) with guest
+  `/usr/local/share/iron86/disks/msdos331.img`. Unicorn stays linked
+  (`USE_UNICORN=1` default) only for deprecated `--uc-floppy`. Do not flip
+  `USE_UNICORN` to 0. `make USE_UNICORN=0` only builds a tree that omits the
+  Unicorn dependency.
 - Makefile now emits/includes `-MMD -MP` header deps: editing anything under
   `include/` correctly rebuilds dependents. (A stale `.o` after a header edit
   once silently produced an ABI-mismatched `rex_insn` and crashed tdx.)

@@ -36,18 +36,26 @@ constexpr uint64_t k_ram = static_cast<uint64_t>(DOS_RAM_SIZE);
 void iron_vcr_write(uint32_t lin, uint8_t oldv, uint8_t newv, void *user)
 {
     auto *m = static_cast<dos_machine *>(user);
-    if ((m == nullptr) || (!m->vcr_rec) || (oldv == newv))
+    if (m == nullptr)
     {
         return;
     }
-    vcr_delta d{};
-    d.lin = lin;
-    d.oldv = oldv;
-    d.newv = newv;
-    m->vcr_pending.push_back(d);
+    /* One byte per hook call. CPU word stores invoke this twice. */
+    if ((m->vcr_rec) && (oldv != newv))
+    {
+        vcr_delta d{};
+        d.lin = lin;
+        d.oldv = oldv;
+        d.newv = newv;
+        m->vcr_pending.push_back(d);
+    }
     if (((lin >= 0xB8000u) && (lin < 0xC0000u)) || ((lin >= 0xB0000u) && (lin < 0xB8000u)))
     {
         m->video_dirty = true;
+    }
+    if (m->host_dos)
+    {
+        m->note_write(lin, 1);
     }
 }
 
@@ -137,6 +145,291 @@ bool insn_text_match(const char *text, const std::string &needle)
         return true;
     }
     return false;
+}
+
+/** PIT 40-43, PIC 20/21, CGA status toggle, color-select. Shared with Unicorn. */
+uint8_t dos_port_in(dos_machine *m, uint16_t port)
+{
+    if (m != nullptr)
+    {
+        if ((port >= 0x40u) && (port <= 0x43u))
+        {
+            return m->pit.read(port);
+        }
+        if (port == 0x20u)
+        {
+            return m->pic.read_command();
+        }
+        if (port == 0x21u)
+        {
+            return m->pic.read_data();
+        }
+        /* CGA CRT status 03DAh: bit0 display-enable, bit3 vertical retrace.
+         * Toggle every IN so "wait for retrace / wait for display" loops
+         * complete in two reads (0xFF stuck high hangs those loops). */
+        if ((port == 0x3DAu) || (port == 0x3BAu))
+        {
+            m->cga_3da ^= 0x09u;
+            return m->cga_3da;
+        }
+    }
+    return 0xFFu;
+}
+
+void dos_port_out(dos_machine *m, uint16_t port, uint8_t value)
+{
+    if (m == nullptr)
+    {
+        return;
+    }
+    if (port == 0x3D9u)
+    {
+        m->cga_3d9 = value;
+        if (m->ram != nullptr)
+        {
+            ibm_bda *bda = ibm_bda_at(m->ram);
+            if (bda != nullptr)
+            {
+                bda->crt_palette = value;
+            }
+        }
+        m->video_dirty = true;
+    }
+    else if ((port == 0x3D8u) || (port == 0x3D4u))
+    {
+        m->video_dirty = true;
+    }
+    else if ((port >= 0x40u) && (port <= 0x43u))
+    {
+        m->pit.write(port, value);
+    }
+    else if (port == 0x20u)
+    {
+        m->pic.write_command(value);
+    }
+    else if (port == 0x21u)
+    {
+        m->pic.write_data(value);
+    }
+}
+
+/**
+ * INT 08h / INT 1Ch stubs at F000:0000 plus IVT slots.
+ * No ROM window on a fresh iron86 pc, so the stores stick. Do not load_bios.
+ */
+void plant_dos_timer_ivt(uint8_t *ram)
+{
+    const uint16_t seg = 0xF000; /* BIOS ROM hole, not conventional RAM */
+    uint8_t *p = nullptr;
+    size_t i = 0;
+    uint16_t off08 = 0;
+    uint16_t off1c = 0;
+    if (ram == nullptr)
+    {
+        return;
+    }
+    p = ram + ((uint32_t)seg << 4);
+    /* ---- INT 08h (IF stays 0 until IRET; DS must be 0000 for BDA) ---- */
+    p[i++] = 0x50;                                     /* push ax */
+    p[i++] = 0x1E;                                     /* push ds */
+    p[i++] = 0x33; p[i++] = 0xC0;                      /* xor ax,ax */
+    p[i++] = 0x8E; p[i++] = 0xD8;                      /* mov ds,ax */
+    p[i++] = 0xFF; p[i++] = 0x06; p[i++] = 0x6C; p[i++] = 0x04; /* inc word [046C] */
+    p[i++] = 0x75; p[i++] = 0x04;                      /* jnz +4 */
+    p[i++] = 0xFF; p[i++] = 0x06; p[i++] = 0x6E; p[i++] = 0x04; /* inc word [046E] */
+    p[i++] = 0x1F;                                     /* pop ds */
+    p[i++] = 0x58;                                     /* pop ax */
+    p[i++] = 0xCD; p[i++] = 0x1C;                      /* int 1Ch */
+    p[i++] = 0xB0; p[i++] = 0x20;                      /* mov al,20h */
+    p[i++] = 0xE6; p[i++] = 0x20;                      /* out 20h,al (EOI) */
+    p[i++] = 0xCF;                                     /* iret */
+    off08 = 0;
+    off1c = (uint16_t)i;                               /* ---- INT 1Ch ---- */
+    p[i++] = 0xCF;                                     /* iret */
+    ram[0x08u * 4 + 0] = (uint8_t)(off08);
+    ram[0x08u * 4 + 1] = (uint8_t)(off08 >> 8);
+    ram[0x08u * 4 + 2] = (uint8_t)(seg);
+    ram[0x08u * 4 + 3] = (uint8_t)(seg >> 8);
+    ram[0x1Cu * 4 + 0] = (uint8_t)(off1c);
+    ram[0x1Cu * 4 + 1] = (uint8_t)(off1c >> 8);
+    ram[0x1Cu * 4 + 2] = (uint8_t)(seg);
+    ram[0x1Cu * 4 + 3] = (uint8_t)(seg >> 8);
+}
+
+void plant_dos_bda(dos_machine *m)
+{
+    ibm_bda *bda = nullptr;
+    if ((m == nullptr) || (m->ram == nullptr))
+    {
+        return;
+    }
+    bda = ibm_bda_at(m->ram);
+    if (bda != nullptr)
+    {
+        bda->mem_kb = 640;
+        bda->video_mode = 0x03;
+        bda->video_cols = 80;
+        bda->crt_palette = 0x30;
+    }
+    m->cga_3d9 = 0x30;
+    m->video_mode = 0x03;
+}
+
+/** Forget an iron86 alias before the PC is destroyed. Never free() its RAM. */
+void drop_iron(dos_machine *m)
+{
+    if (m == nullptr)
+    {
+        return;
+    }
+    if (!m->ram_owned)
+    {
+        m->ram = nullptr;
+        m->ram_size = 0;
+    }
+    m->iron.reset();
+    m->host_dos = false;
+    m->hw_intr_dispatch = false;
+    m->host_arm_inhibit = false;
+}
+
+/** Deliver one latched PIC IRQ through iron86 (IVT), not the DOS swallow hook. */
+void host_raise_irq(dos_machine *m)
+{
+    uint8_t v = 0;
+    uint32_t iv = 0;
+    uint16_t off = 0;
+    uint16_t seg = 0;
+    if ((m == nullptr) || (!m->iron) || (m->ram == nullptr) || (m->halted))
+    {
+        return;
+    }
+    if ((m->intr_depth != 0u) || (!m->pic.pending()))
+    {
+        return;
+    }
+    if ((m->reg16(UC_X86_REG_FLAGS) & 0x0200u) == 0u)
+    {
+        return;
+    }
+    v = m->pic.peek_vector();
+    if (v == 0xFFu)
+    {
+        return;
+    }
+    iv = (uint32_t)v * 4u;
+    off = (uint16_t)(m->ram[iv] | ((uint16_t)m->ram[iv + 1u] << 8));
+    seg = (uint16_t)(m->ram[iv + 2u] | ((uint16_t)m->ram[iv + 3u] << 8));
+    /* Null IVT would vector to 0000:0000. Hold the IRQ until the guest hooks it. */
+    if ((seg == 0u) && (off == 0u))
+    {
+        return;
+    }
+    if (m->pic.ack_vector() == 0xFFu)
+    {
+        return;
+    }
+    m->hw_intr_dispatch = true;
+    m->intr_depth++;
+    m->iron->c.raise_intr(v);
+}
+
+/**
+ * After each host insn: PIT cadence, STI inhibit, then raise_intr.
+ * iron86 delivers the latch at the end of this step when IF=1, which is the
+ * boundary before the next instruction. STI sets host_arm_inhibit so the IRQ
+ * waits until the following insn has retired.
+ */
+void host_after_insn(dos_machine *m)
+{
+    if ((m == nullptr) || (!m->host_dos))
+    {
+        return;
+    }
+    m->tick_pit(1);
+    if ((m->iron != nullptr) && (m->iron->c.last_op() == 0xCFu) && (m->intr_depth != 0u))
+    {
+        m->intr_depth--;
+    }
+    if (m->host_arm_inhibit)
+    {
+        m->host_arm_inhibit = false;
+        m->intr_inhibit = 1u;
+        return;
+    }
+    if (m->intr_inhibit != 0u)
+    {
+        m->intr_inhibit--;
+    }
+    host_raise_irq(m);
+}
+
+void build_psp(uint8_t *psp, uint16_t mem_end_para, uint16_t env_seg)
+{
+    assert(psp != nullptr);
+    std::memset(psp, 0, 256);
+    psp[0] = 0xCD;
+    psp[1] = 0x20;
+    psp[2] = (uint8_t)(mem_end_para & 0xFFu);
+    psp[3] = (uint8_t)(mem_end_para >> 8);
+    psp[0x2C] = (uint8_t)(env_seg & 0xFFu);
+    psp[0x2D] = (uint8_t)(env_seg >> 8);
+    psp[0x80] = 0; /* empty command tail */
+    psp[0x81] = 0x0D;
+}
+
+void build_env(uint8_t *env)
+{
+    static const char k_env[] = "PATH=C:\\";
+    assert(env != nullptr);
+    std::memset(env, 0, 256);
+    std::memcpy(env, k_env, sizeof(k_env)); /* includes NUL */
+    env[sizeof(k_env)] = 0;
+    env[sizeof(k_env) + 1] = 1;
+    env[sizeof(k_env) + 2] = 0;
+    std::memcpy(env + sizeof(k_env) + 3, "C:\\TDX.COM", 11);
+}
+
+/** iron86 PC for positional EXE/COM. Does not open Unicorn and does not load a ROM. */
+rex_status init_host_iron(dos_machine *m)
+{
+    if (m == nullptr)
+    {
+        return REX_ERR_ARG;
+    }
+    m->iron = std::make_unique<iron86::pc>();
+    m->ram = m->iron->c.ram();
+    m->ram_size = iron86::cpu::ram_size();
+    m->ram_owned = false;
+    m->host_dos = true;
+    /* Host DOS has no BIOS prefetch queue; execute flat RAM. */
+    m->prefetch_bytes = 0;
+    m->iron->c.set_prefetch_bytes(0);
+    plant_dos_bda(m);
+    m->blank_regen();
+    plant_dos_timer_ivt(m->ram);
+    bind_iron_vcr(m);
+    m->iron->c.set_bios([m](iron86::cpu &, uint8_t vector) -> bool {
+        if (m->hw_intr_dispatch)
+        {
+            m->hw_intr_dispatch = false;
+            return false;
+        }
+        m->handle_intr(vector);
+        return true;
+    });
+    m->iron->c.set_io(
+        [m](uint16_t port) -> uint8_t { return dos_port_in(m, port); },
+        [m](uint16_t port, uint8_t value) { dos_port_out(m, port, value); });
+    m->iron->c.set_after_step([m]() { host_after_insn(m); });
+    m->pic.pc_boot_state();
+    m->pit.pc_boot_state();
+    m->pit_ticks_acc = 0;
+    m->intr_inhibit = 0;
+    m->intr_depth = 0;
+    m->hw_intr_dispatch = false;
+    m->host_arm_inhibit = false;
+    return REX_OK;
 }
 
 #if USE_UNICORN
@@ -280,106 +573,18 @@ bool on_unmapped(uc_engine *uc, uc_mem_type type, uint64_t address, int size, in
 
 uint32_t on_in(uc_engine *uc, uint32_t port, int size, void *user)
 {
-    dos_machine *m = static_cast<dos_machine *>(user);
     (void)uc;
     (void)size;
-    if (m != nullptr)
-    {
-        if ((port >= 0x40u) && (port <= 0x43u))
-        {
-            return m->pit.read(port);
-        }
-        if (port == 0x20u)
-        {
-            return m->pic.read_command();
-        }
-        if (port == 0x21u)
-        {
-            return m->pic.read_data();
-        }
-        /* CGA CRT status 03DAh: bit0 display-enable, bit3 vertical retrace.
-         * Toggle every IN so "wait for retrace / wait for display" loops
-         * complete in two reads (0xFF stuck high hangs those loops). */
-        if ((port == 0x3DAu) || (port == 0x3BAu))
-        {
-            m->cga_3da ^= 0x09u;
-            return m->cga_3da;
-        }
-    }
-    return 0xFFu;
+    return dos_port_in(static_cast<dos_machine *>(user), (uint16_t)port);
 }
 
 void on_out(uc_engine *uc, uint32_t port, int size, uint32_t value, void *user)
 {
-    dos_machine *m = static_cast<dos_machine *>(user);
     (void)uc;
     (void)size;
-    if (m == nullptr)
-    {
-        (void)value;
-        return;
-    }
-    if (port == 0x3D9u)
-    {
-        m->cga_3d9 = (uint8_t)value;
-        if (m->ram != nullptr)
-        {
-            {
-                ibm_bda *bda = ibm_bda_at(m->ram);
-                if (bda != nullptr)
-                {
-                    bda->crt_palette = (uint8_t)value;
-                }
-            }
-        }
-        m->video_dirty = true;
-    }
-    else if ((port == 0x3D8u) || (port == 0x3D4u))
-    {
-        m->video_dirty = true;
-    }
-    else if ((port >= 0x40u) && (port <= 0x43u))
-    {
-        m->pit.write(port, (uint8_t)value);
-    }
-    else if (port == 0x20u)
-    {
-        m->pic.write_command((uint8_t)value);
-    }
-    else if (port == 0x21u)
-    {
-        m->pic.write_data((uint8_t)value);
-    }
+    dos_port_out(static_cast<dos_machine *>(user), (uint16_t)port, (uint8_t)value);
 }
 
-#endif /* USE_UNICORN */
-
-#if USE_UNICORN
-void build_psp(uint8_t *psp, uint16_t mem_end_para, uint16_t env_seg)
-{
-    assert(psp != nullptr);
-    std::memset(psp, 0, 256);
-    psp[0] = 0xCD;
-    psp[1] = 0x20;
-    psp[2] = (uint8_t)(mem_end_para & 0xFFu);
-    psp[3] = (uint8_t)(mem_end_para >> 8);
-    psp[0x2C] = (uint8_t)(env_seg & 0xFFu);
-    psp[0x2D] = (uint8_t)(env_seg >> 8);
-    psp[0x80] = 0; /* empty command tail */
-    psp[0x81] = 0x0D;
-}
-
-void build_env(uint8_t *env)
-{
-    static const char k_env[] = "PATH=C:\\";
-    assert(env != nullptr);
-    std::memset(env, 0, 256);
-    std::memcpy(env, k_env, sizeof(k_env)); /* includes NUL */
-    env[sizeof(k_env)] = 0;
-    env[sizeof(k_env) + 1] = 1;
-    env[sizeof(k_env) + 2] = 0;
-    std::memcpy(env + sizeof(k_env) + 3, "C:\\TDX.COM", 11);
-}
 #endif /* USE_UNICORN */
 } // namespace
 
@@ -393,11 +598,13 @@ dos_machine::~dos_machine()
         uc = nullptr;
     }
 #endif
-    if (ram != nullptr)
+    /* iron86 frees its own RAM when `iron` is destroyed. */
+    if ((ram_owned) && (ram != nullptr))
     {
         std::free(ram);
-        ram = nullptr;
     }
+    ram = nullptr;
+    ram_owned = false;
     for (i = 0; i < DOS_MAX_FILES; i++)
     {
         close_handle(i);
@@ -622,6 +829,7 @@ rex_status dos_machine::init_cpu()
     uc_hook hh = 0;
     uint8_t *aligned = nullptr;
 
+    drop_iron(this);
     if (uc != nullptr)
     {
         uc_close(uc);
@@ -632,6 +840,7 @@ rex_status dos_machine::init_cpu()
         std::free(ram);
         ram = nullptr;
     }
+    ram_owned = false;
     ram_size = (size_t)k_ram;
     aligned = static_cast<uint8_t *>(aligned_alloc(4096, ram_size));
     if (aligned == nullptr)
@@ -639,6 +848,7 @@ rex_status dos_machine::init_cpu()
         return REX_ERR_MEM;
     }
     ram = aligned;
+    ram_owned = true;
     std::memset(ram, 0, ram_size);
 
     e = uc_open(UC_ARCH_X86, UC_MODE_16, &uc);
@@ -654,65 +864,11 @@ rex_status dos_machine::init_cpu()
         return REX_ERR_MEM;
     }
 
-    {
-        ibm_bda *bda = ibm_bda_at(ram);
-        if (bda != nullptr)
-        {
-            bda->mem_kb = 640;
-            bda->video_mode = 0x03;
-            bda->video_cols = 80;
-            bda->crt_palette = 0x30;
-        }
-    }
-    cga_3d9 = 0x30;
-    video_mode = 0x03;
+    plant_dos_bda(this);
     blank_regen();
-
-    /* Plant a minimal BIOS default INT 08h (timer tick) + INT 1Ch (user tick)
-     * handler, as a real BIOS ROM would. tdx skips POST, so without this the
-     * IVT is all zeros and a hardware IRQ would vector to 0000:0000. The stub
-     * lives in the BIOS ROM hole at F000:0000 (linear 0xF0000). 9FC0:0000 is
-     * EBDA / top of conventional RAM — Bushido reuses that region.
-     *
-     * INT 08h handler:
-     *   inc dword [0040:006C]     ; 18.2 Hz tick dword
-     *   (rollover sets 0070h)
-     *   int 1Ch                    ; chain the user tick
-     *   mov al,20h ; out 20h,al    ; non-specific EOI to the 8259 PIC
-     *   iret
-     * INT 1Ch handler: iret
-     */
-    {
-        const uint16_t seg = 0xF000;             /* BIOS ROM hole, not conventional RAM */
-        uint8_t *p = ram + ((uint32_t)seg << 4);
-        size_t i = 0;
-        /* ---- INT 08h (IF stays 0 until IRET; DS must be 0000 for BDA) ---- */
-        p[i++] = 0x50;                           /* push ax */
-        p[i++] = 0x1E;                           /* push ds */
-        p[i++] = 0x33; p[i++] = 0xC0;            /* xor ax,ax */
-        p[i++] = 0x8E; p[i++] = 0xD8;            /* mov ds,ax */
-        p[i++] = 0xFF; p[i++] = 0x06; p[i++] = 0x6C; p[i++] = 0x04; /* inc word [046C] */
-        p[i++] = 0x75; p[i++] = 0x04;            /* jnz +4 */
-        p[i++] = 0xFF; p[i++] = 0x06; p[i++] = 0x6E; p[i++] = 0x04; /* inc word [046E] */
-        p[i++] = 0x1F;                           /* pop ds */
-        p[i++] = 0x58;                           /* pop ax */
-        p[i++] = 0xCD; p[i++] = 0x1C;            /* int 1Ch */
-        p[i++] = 0xB0; p[i++] = 0x20;            /* mov al,20h */
-        p[i++] = 0xE6; p[i++] = 0x20;            /* out 20h,al (EOI) */
-        p[i++] = 0xCF;                           /* iret */
-        const uint16_t off08 = 0;
-        const uint16_t off1c = (uint16_t)i;      /* ---- INT 1Ch ---- */
-        p[i++] = 0xCF;                           /* iret */
-        /* IVT[08] -> seg:off08, IVT[1C] -> seg:off1c */
-        ram[0x08u * 4 + 0] = (uint8_t)(off08);
-        ram[0x08u * 4 + 1] = (uint8_t)(off08 >> 8);
-        ram[0x08u * 4 + 2] = (uint8_t)(seg);
-        ram[0x08u * 4 + 3] = (uint8_t)(seg >> 8);
-        ram[0x1Cu * 4 + 0] = (uint8_t)(off1c);
-        ram[0x1Cu * 4 + 1] = (uint8_t)(off1c >> 8);
-        ram[0x1Cu * 4 + 2] = (uint8_t)(seg);
-        ram[0x1Cu * 4 + 3] = (uint8_t)(seg >> 8);
-    }
+    /* tdx skips POST. Without a stub the IVT is zeros and IRQ0 lands at 0000:0000.
+     * F000:0000 is the BIOS hole; 9FC0:0000 is EBDA (Bushido reuses it). */
+    plant_dos_timer_ivt(ram);
 
     e = uc_hook_add(uc, &hh, UC_HOOK_INTR, (void *)on_intr, this, 1, 0);
     hh_intr = hh;
@@ -739,14 +895,6 @@ rex_status dos_machine::init_cpu()
 
 rex_status dos_machine::load_path(const char *path, const char *cwd)
 {
-#if !USE_UNICORN
-    (void)path;
-    (void)cwd;
-    rex_logf(REX_LOG_ERROR,
-             "Unicorn disabled (USE_UNICORN=0); positional EXE/COM needs USE_UNICORN=1 "
-             "(or use --floppy-a / --bios with iron86)");
-    return REX_ERR_NOSYS;
-#else
     std::ifstream in;
     std::vector<uint8_t> file;
     mz_info info{};
@@ -773,7 +921,23 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
         wait_key = false;
         stop_req = false;
     }
-    if (init_cpu() != REX_OK)
+    /* Positional EXE/COM is iron86. Unicorn stays for --uc-floppy only. */
+    drop_iron(this);
+#if USE_UNICORN
+    if (uc != nullptr)
+    {
+        uc_close(uc);
+        uc = nullptr;
+    }
+#endif
+    if (ram != nullptr)
+    {
+        std::free(ram);
+        ram = nullptr;
+    }
+    ram_owned = false;
+    ram_size = 0;
+    if (init_host_iron(this) != REX_OK)
     {
         return REX_ERR_CPU;
     }
@@ -918,7 +1082,6 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     rebuild_decode();
     vcr_seed();
     return REX_OK;
-#endif /* USE_UNICORN */
 }
 
 void dos_machine::blank_regen(void)
@@ -1103,6 +1266,9 @@ rex_status dos_machine::load_floppy(const char *image)
         return REX_ERR_IO;
     }
     std::fclose(fp);
+    /* New PC: do not keep a host-DOS swallow-all INT hook. */
+    drop_iron(this);
+    host_dos = false;
     iron = std::make_unique<iron86::pc>();
     bind_iron_vcr(this);
     iron->c.set_prefetch_bytes(prefetch_bytes);
@@ -1166,6 +1332,10 @@ rex_status dos_machine::load_bios_5150(const char *path)
         return REX_ERR_IO;
     }
     iron->wire_pc_hw();
+    /* BIOS owns INT 10/13/16. Do not leave the host DOS swallow hook installed. */
+    host_dos = false;
+    hw_intr_dispatch = false;
+    host_arm_inhibit = false;
     iron->set_npx(npx_on);
     if (fast_post)
     {
@@ -1257,7 +1427,7 @@ rex_status dos_machine::set_exec_map(const char *path)
         iron = std::make_unique<iron86::pc>();
         bind_iron_vcr(this);
     }
-    iron->c.set_prefetch_bytes(prefetch_bytes);
+    iron->c.set_prefetch_bytes(host_dos ? 0u : prefetch_bytes);
     if (!iron->c.open_exec_map(path))
     {
         return REX_ERR_IO;
@@ -1331,7 +1501,7 @@ rex_status dos_machine::load_floppy_uc(const char *image)
     {
         return REX_ERR_ARG;
     }
-    iron.reset();
+    /* init_cpu drops iron before freeing RAM so a host alias is not free()'d. */
     st = init_cpu();
     if (st != REX_OK)
     {
@@ -1467,6 +1637,18 @@ rex_status dos_machine::step_one()
             last_stop = REX_STOP_BREAK;
             return REX_OK;
         }
+        /* Host DOS has no Unicorn CODE hook. Range / insn-text BPs stop here. */
+        if ((host_dos) && (!skip_bp) && ((!insn_bps.empty()) || (!range_bps.empty())) &&
+            (hit_insn_bp(lin) || hit_range_bp(lin)))
+        {
+            at_break = true;
+            skip_bp = true;
+            last_stop = REX_STOP_BREAK;
+            return REX_OK;
+        }
+        /* BIOS INT 10 is not handle_intr. Host DOS breaks inside the swallow hook,
+         * which rewinds IP by 2 — so do not also stop before the CD nn. */
+        if (!host_dos)
         {
             const uint32_t at = iron86::cpu::phys(iron->c.cs(), iron->c.ip());
             const uint8_t op = iron->c.mem_read8(at);
@@ -1506,8 +1688,20 @@ rex_status dos_machine::step_one()
                 }
             }
         }
-        skip_int_bp = false;
+        if (!host_dos)
+        {
+            skip_int_bp = false;
+        }
         at_break = false;
+        if (host_dos)
+        {
+            const uint32_t at = iron86::cpu::phys(iron->c.cs(), iron->c.ip());
+            const uint8_t op = iron->c.mem_read8(at);
+            const uint8_t modrm = iron->c.mem_read8(at + 1u);
+            /* 8086 samples INTR after the insn that follows STI / POP SS / MOV SS. */
+            host_arm_inhibit = (op == 0xFBu) || (op == 0x17u) ||
+                               ((op == 0x8Eu) && (((modrm >> 3) & 7u) == 2u));
+        }
         if (!iron->c.step())
         {
             if (iron->c.halted() && (iron->c.last_op() == 0xF4) && iron->c.rom_bios())
@@ -1519,7 +1713,10 @@ rex_status dos_machine::step_one()
             {
                 halted = true;
                 last_stop = REX_STOP_HALTED;
-                con_out = iron->tty();
+                if (!host_dos)
+                {
+                    con_out = iron->tty();
+                }
                 return REX_OK;
             }
             last_stop = REX_STOP_FAULT;
@@ -1530,6 +1727,39 @@ rex_status dos_machine::step_one()
         if (iron->c.halted() && (iron->c.last_op() == 0xF4) && iron->c.rom_bios())
         {
             last_stop = REX_STOP_STEP;
+            return REX_OK;
+        }
+        if (host_dos)
+        {
+            /* INT 20 / AH=4Ch and BPM / BPINT set these inside step(). Do not
+             * replace them with STEP, and do not copy iron tty over con_out
+             * or resample BDA video mode (INT 10 sets video_mode itself). */
+            if (!at_break)
+            {
+                skip_bp = false;
+            }
+            if (halted)
+            {
+                last_stop = REX_STOP_HALTED;
+                return REX_OK;
+            }
+            if (wait_key)
+            {
+                last_stop = REX_STOP_WAIT_KEY;
+                return REX_OK;
+            }
+            if (at_break)
+            {
+                last_stop = REX_STOP_BREAK;
+                return REX_OK;
+            }
+            last_stop = REX_STOP_STEP;
+            if ((!bps.empty()) && (bps.find(linear_ip()) != bps.end()))
+            {
+                at_break = true;
+                skip_bp = true;
+                last_stop = REX_STOP_BREAK;
+            }
             return REX_OK;
         }
         /* tty_ can be hundreds of bytes; copying it every insn dominated step_one. */
@@ -2244,7 +2474,7 @@ rex_status dos_machine::vcr_forward(bool step_into)
 
 void dos_machine::pit_poll(void)
 {
-    if (iron)
+    if ((iron) && (!host_dos))
     {
         struct timespec now{};
         uint64_t ns = 0;
