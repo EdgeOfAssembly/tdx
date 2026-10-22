@@ -3,9 +3,10 @@
 Native **x86_64 Linux** debugger with a Borland Turbo Debugger–like CPU view.
 It is **not** a source port of `TD.EXE` (Borland never shipped TD sources here).
 The reusable core is **librex**: load a target, breakpoints, step, step-over,
-memory, symbols, agent socket. Recommended backend: **iron86** (`--floppy-a` /
-`--bios`). Positional MZ EXE/COM still uses Unicorn (deprecated). Capstone
-disassembles.
+memory, symbols, agent socket. **Supported path:** iron86 (`--floppy-a` /
+`--bios`) with `/usr/local/share/iron86/disks/msdos331.img`. Positional MZ
+EXE/COM still links Unicorn (`USE_UNICORN=1` stays the default) but that path
+is **deprecated and not the supported path**. Capstone disassembles.
 
 | Name | What |
 |------|------|
@@ -23,6 +24,7 @@ Three-repo layout (tdx links **system libiron86**, not sibling sources):
 | **tdx** | `/mnt/tdx` (also `/mnt/TurboDebugger` → `/mnt/tdx`) |
 | **iron86** | `/mnt/iron86` — `sudo make install` → `/usr/local` |
 | **FloppyOS** | `/mnt/FloppyOS` — guest images / FlopFS (not linked into tdx) |
+| **share data** | `/usr/local/share/iron86` — BIOS, default guest `disks/msdos331.img`, optional `disks/floppyos.img` |
 
 ```text
 # Once: install libiron86 (pkg-config iron86.pc under /usr/local/lib/pkgconfig)
@@ -32,26 +34,42 @@ cd /mnt/tdx
 make -s V=0 -j$(nproc)          # links -liron86 via pkg-config
 make -s test
 make -s verify                  # CBMC on the MZ parser after tests
-make -s USE_UNICORN=0 tdx       # optional: no Unicorn dependency
+make -s USE_UNICORN=0 tdx       # omit Unicorn; do not change the default
 ```
 
 Needs: gcc/g++, SDL2, capstone, **system libiron86**, Catch2
-(`source ~/.local/share/test-frameworks/env.sh`), nasm, optional unicorn
-(default `USE_UNICORN=1`), optional CBMC and Ghidra 12. The Makefile prepends
-`/usr/local/lib/pkgconfig` to `PKG_CONFIG_PATH`.
+(`source ~/.local/share/test-frameworks/env.sh`), nasm, Unicorn (still linked;
+`USE_UNICORN=1` default — deprecated, not the supported path), optional CBMC
+and Ghidra 12. The Makefile prepends `/usr/local/lib/pkgconfig` to
+`PKG_CONFIG_PATH`. Do not flip `USE_UNICORN` to 0 as the product default.
 
 ## Run
+
+Supported guest is MS-DOS 3.31 on iron86. With `--floppy-a` and no `--bios`,
+tdx asks iron86 for the default ROM (share tree, then in-tree fallbacks):
 
 ```text
 tdx -h
 tdx -v
+tdx --floppy-a /usr/local/share/iron86/disks/msdos331.img
+```
+
+Unicorn positional EXE/COM still runs while `USE_UNICORN=1` (the default) but
+is **deprecated and not the supported path**:
+
+```text
 tdx tests/fixtures/tiny.com --no-ui --no-sock
 tdx /mnt/bushido/bushido/BUSHIDO.EXE --cwd /mnt/bushido/bushido
-tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b /mnt/bushido/bushido
-tdx --bios BIOS.BIN --floppy-a floppyos.img --floppy-b games/DRGNWARS   # 720K FlopFS if needed
+```
+
+FloppyOS is not the default guest. When installed, its image is
+`/usr/local/share/iron86/disks/floppyos.img` (dev build:
+`/mnt/FloppyOS/build/floppyos.img`):
+
+```text
+tdx --floppy-a /usr/local/share/iron86/disks/floppyos.img --floppy-b /mnt/bushido/bushido
+tdx --floppy-a /usr/local/share/iron86/disks/floppyos.img --floppy-b games/DRGNWARS
 # CLI: docs/CLI.md · man/tdx.1 tdxview.1 tdxctl.1 iron86.1
-# Dragon Wars demo: docs/HOWTO_DRAGON_WARS.md
-# CLI: docs/CLI.md  man: man/tdx.1 tdxview.1 tdxctl.1 iron86.1
 # Dragon Wars demo: docs/HOWTO_DRAGON_WARS.md
 tdxview --sock /tmp/tdx.sock          # second process: CGA window
 ```

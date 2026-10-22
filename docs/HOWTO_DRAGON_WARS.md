@@ -13,7 +13,7 @@ Do **not** put tdx/tdxview under Xmux. One pair only.
 |------|------|
 | Repo | `/mnt/TurboDebugger` |
 | BIOS (local, **not** on GitHub) | `Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN` |
-| FloppyOS A: | `subprojects/floppyos/build/floppyos.img` |
+| FloppyOS A: | `/usr/local/share/iron86/disks/floppyos.img`, else `/mnt/FloppyOS/build/floppyos.img` |
 | Game dir B: | `games/DRGNWARS` |
 | Gold VRAM dump | `games/SCREEN.CGA` |
 | Gold screenshot | `dragon_wars.png` (repo root, not committed) |
@@ -27,7 +27,9 @@ If the BIOS path is missing, the same 8K file may live under
 cd /mnt/TurboDebugger
 source ~/.local/share/test-frameworks/env.sh
 make -s tdx tdxview
-make -s -C subprojects/floppyos image
+make -s -C /mnt/FloppyOS image
+# FloppyOS install copies build/floppyos.img to
+# /usr/local/share/iron86/disks/floppyos.img
 ```
 
 ## Start (host display)
@@ -39,8 +41,11 @@ cd /mnt/TurboDebugger
 BIOS=Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 test -f "$BIOS" || BIOS=/mnt/RetroCodeMess/Py86/ROM/IBM/PC/5150/BIOS_IBM5150_24APR81_5700051_U33.BIN
 
+FLOPPY=/usr/local/share/iron86/disks/floppyos.img
+test -f "$FLOPPY" || FLOPPY=/mnt/FloppyOS/build/floppyos.img
+
 ./tdx --bios "$BIOS" \
-  --floppy-a subprojects/floppyos/build/floppyos.img \
+  --floppy-a "$FLOPPY" \
   --floppy-b games/DRGNWARS \
   --sock /tmp/tdx.sock &
 

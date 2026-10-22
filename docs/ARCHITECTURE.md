@@ -12,14 +12,18 @@
 
 `tdx` is the only emulator. `tdxview` is a framebuffer client (polls `{"cmd":"cga"}`).
 
-**Recommended emulator — iron86:** C++23 8086 + IBM PC machine, installed as
+**Supported emulator — iron86:** C++23 8086 + IBM PC machine, installed as
 **system libiron86** (`pkg-config iron86`). Use `--floppy-a` / `--bios`. Linked
 into tdx via `-liron86` (no sibling `IRON86_SRC` embed). Development tree:
-`/mnt/iron86`. Guest OS is FloppyOS (`/mnt/FloppyOS`) / MS-DOS.
+`/mnt/iron86`. Default guest is MS-DOS 3.31 at
+`/usr/local/share/iron86/disks/msdos331.img`. FloppyOS stays at
+`/mnt/FloppyOS`; its image, when installed, is
+`/usr/local/share/iron86/disks/floppyos.img` (not the default guest).
 
-**Unicorn (deprecated / not recommended):** still used for positional MZ EXE /
-`.COM` loads (`USE_UNICORN=1` default). LGPL, embeddable 16-bit step. Build with
-`USE_UNICORN=0` to omit the dependency; those APIs return `REX_ERR_NOSYS`.
+**Unicorn (deprecated, not the supported path):** still linked for positional
+MZ EXE / `.COM` loads (`USE_UNICORN=1` default; do not flip it off). LGPL,
+embeddable 16-bit step. Build with `USE_UNICORN=0` to omit the dependency;
+those APIs return `REX_ERR_NOSYS`.
 Capstone 6 disassembles. SDL2 draws a TD-like text UI (not BGI — TD is text
 mode; the *guest* may be CGA).
 
@@ -49,7 +53,8 @@ exits.
 
 **Layers (CPU is not DOS):** `tdx`/`tdxview` are the debugger and CGA viewer
 (session + UNIX sockets). The machine backend is CPU + platform hardware
-(iron86 preferred; Unicorn optional for lone EXE). `rex.h` stays arch-agnostic.
+(iron86 is the supported path; Unicorn stays linked but is deprecated for a
+lone EXE). `rex.h` stays arch-agnostic.
 FCB / INT 21 is an **OS personality** (`dos_int.cpp`), not a CPU feature.
 Long term the hardware emulator should boot IBM DOS, MS-DOS, or FloppyOS;
 an optional thin host DOS shim can still load a lone EXE. Do not put FCB

@@ -10,15 +10,46 @@
 #include <fstream>
 #include <string>
 
+namespace
+{
+
+const char k_floppy_share[] = "/usr/local/share/iron86/disks/floppyos.img";
+const char k_floppy_dev[] = "/mnt/FloppyOS/build/floppyos.img";
+const char k_floppy_skip[] =
+    "FloppyOS image not found at /usr/local/share/iron86/disks/floppyos.img "
+    "or /mnt/FloppyOS/build/floppyos.img";
+
+bool image_readable(const char *path)
+{
+    std::ifstream in(path, std::ios::binary);
+    return static_cast<bool>(in);
+}
+
+/**
+ * @brief Prefer the installed share image, then the FloppyOS build tree.
+ * @return Readable path, or nullptr when neither image is present.
+ */
+const char *find_floppyos_image()
+{
+    if (image_readable(k_floppy_share))
+    {
+        return k_floppy_share;
+    }
+    if (image_readable(k_floppy_dev))
+    {
+        return k_floppy_dev;
+    }
+    return nullptr;
+}
+
+}  // namespace
+
 TEST_CASE("iron86 floppy boot reaches FloppyOS banner")
 {
-    const char *img = "subprojects/floppyos/build/floppyos.img";
+    const char *img = find_floppyos_image();
+    if (img == nullptr)
     {
-        std::ifstream in(img, std::ios::binary);
-        if (!in)
-        {
-            SKIP("FloppyOS image not built");
-        }
+        SKIP(k_floppy_skip);
     }
     rex_session *s = rex_session_create();
     REQUIRE(s != nullptr);
@@ -37,13 +68,10 @@ TEST_CASE("iron86 floppy boot reaches FloppyOS banner")
 
 TEST_CASE("attach floppy B after A")
 {
-    const char *img = "subprojects/floppyos/build/floppyos.img";
+    const char *img = find_floppyos_image();
+    if (img == nullptr)
     {
-        std::ifstream in(img, std::ios::binary);
-        if (!in)
-        {
-            SKIP("FloppyOS image not built");
-        }
+        SKIP(k_floppy_skip);
     }
     rex_session *s = rex_session_create();
     REQUIRE(s != nullptr);
@@ -82,15 +110,12 @@ TEST_CASE("VCR back restores iron86 BIOS CS:IP")
 
 TEST_CASE("BIOS 40:6C advances while COMMAND waits for a key")
 {
-    const char *img = "subprojects/floppyos/build/floppyos.img";
+    const char *img = find_floppyos_image();
     const char *rom = "/mnt/TurboDebugger/Py86/ROM/IBM/PC/5150/"
                       "BIOS_IBM5150_24APR81_5700051_U33.BIN";
+    if (img == nullptr)
     {
-        std::ifstream in(img, std::ios::binary);
-        if (!in)
-        {
-            SKIP("FloppyOS image not built");
-        }
+        SKIP(k_floppy_skip);
     }
     {
         std::ifstream in(rom, std::ios::binary);
@@ -143,14 +168,11 @@ TEST_CASE("BIOS 40:6C advances while COMMAND waits for a key")
 
 TEST_CASE("attach floppy B packs a host directory")
 {
-    const char *img = "subprojects/floppyos/build/floppyos.img";
+    const char *img = find_floppyos_image();
     const char *dir = "/mnt/bushido/bushido";
+    if (img == nullptr)
     {
-        std::ifstream in(img, std::ios::binary);
-        if (!in)
-        {
-            SKIP("FloppyOS image not built");
-        }
+        SKIP(k_floppy_skip);
     }
     {
         std::ifstream exe(std::string(dir) + "/BUSHIDO.EXE", std::ios::binary);

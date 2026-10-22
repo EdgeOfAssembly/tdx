@@ -1,5 +1,13 @@
 # TDX / iron86 / tdxview — implementation roadmap
 
+> **Paths (2026-10-23):** iron86 and FloppyOS are separate trees
+> (`/mnt/iron86`, `/mnt/FloppyOS`), not `subprojects/`. Installed data is
+> `/usr/local/share/iron86/`. The supported tdx path is iron86 plus
+> `/usr/local/share/iron86/disks/msdos331.img`. Unicorn stays linked
+> (`USE_UNICORN` default unchanged) but is deprecated and not the supported
+> path. Sections below are a historical plan and still name old
+> `subprojects/` paths.
+
 **Date:** 2026-09-10  
 **Tree:** `/mnt/TurboDebugger`  
 **Constraint:** docs first, then easiest → hardest. No 286, no BIOS clone, no `--no-bios` expansion, no FloppyOS AH=3C/40 except FDC-write proof, no Game-MD5, no MDA blink / Hercules / cassette BASIC.
