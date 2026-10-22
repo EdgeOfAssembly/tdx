@@ -4,17 +4,23 @@
 
 | Tree | Path | Role |
 |------|------|------|
-| **tdx** | `/mnt/tdx` (symlink `/mnt/TurboDebugger` → same) | Debugger + librex + Unicorn DOS backend |
-| **iron86** | `/mnt/iron86` | C++23 8086+PC machine; built into tdx via `IRON86_ROOT` |
+| **tdx** | `/mnt/tdx` (symlink `/mnt/TurboDebugger` → same) | Debugger + librex; links system **libiron86** |
+| **iron86** | `/mnt/iron86` | C++23 8086+PC machine; install with `sudo make install` |
 | **FloppyOS** | `/mnt/FloppyOS` | Guest OS / FlopFS; independent of the tdx build |
 
-Build needs a checkout of iron86. Default `IRON86_ROOT=/mnt/iron86`; override with
-`make IRON86_ROOT=/path/to/iron86`. `make check-iron86` fails fast if
-`$(IRON86_ROOT)/include/iron86/pc.h` is missing.
+Build requires **system libiron86** (`pkg-config --exists iron86`). Install from the
+iron86 tree: `cd /mnt/iron86 && sudo make install`. Headers land in
+`/usr/local/include/iron86/`, libs in `/usr/local/lib/`, and
+`/usr/local/lib/pkgconfig/iron86.pc`. The tdx Makefile prepends
+`/usr/local/lib/pkgconfig` to `PKG_CONFIG_PATH` (Gentoo’s default path omits it).
+`make check-iron86` fails fast if pkg-config cannot find iron86.
 
 - Language: C++23 (g++) + C23 for `mz_parse.c` / `dos_cga.c`. Allman braces.
 - Public ABI: `include/rex/rex.h` (C). Do not break it casually.
 - Tests: `make -s test` (Catch2). Formal: `make -s verify` (CBMC on MZ parser).
+- Emulator: **iron86** is the recommended backend (`--floppy-a` / `--bios`).
+  Unicorn remains for positional MZ EXE/COM (`USE_UNICORN=1` default); deprecated.
+  `make USE_UNICORN=0` builds without linking Unicorn.
 - Makefile now emits/includes `-MMD -MP` header deps: editing anything under
   `include/` correctly rebuilds dependents. (A stale `.o` after a header edit
   once silently produced an ABI-mismatched `rex_insn` and crashed tdx.)

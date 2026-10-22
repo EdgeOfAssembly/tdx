@@ -1,6 +1,6 @@
 /**
  * @file dos_machine.cpp
- * @brief Unicorn 8086 real-mode CPU, MZ/COM load, step/run, breakpoints.
+ * @brief iron86 + optional Unicorn 8086 CPU, MZ/COM load, step/run, breakpoints.
  */
 
 #include "dos/dos_machine.h"
@@ -10,9 +10,6 @@
 
 #include "rex/rex_disasm.h"
 #include "rex/rex_log.h"
-
-#include <unicorn/unicorn.h>
-#include <unicorn/x86.h>
 
 #include <cassert>
 #include <cctype>
@@ -142,6 +139,7 @@ bool insn_text_match(const char *text, const std::string &needle)
     return false;
 }
 
+#if USE_UNICORN
 void on_intr(uc_engine *uc, uint32_t intno, void *user)
 {
     dos_machine *m = static_cast<dos_machine *>(user);
@@ -160,7 +158,7 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
     m->code_ring_i++;
     if (m->stop_req)
     {
-        uc_emu_stop(uc);
+        dos_uc_stop(uc);
         m->last_stop = REX_STOP_REQUEST;
         return;
     }
@@ -179,7 +177,7 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
     else if ((m->intr_depth == 0u) && (m->pic.pending()) &&
              ((m->reg16(UC_X86_REG_FLAGS) & 0x0200u) != 0u))
     {
-        uc_emu_stop(uc);
+        dos_uc_stop(uc);
         return;
     }
     /* Track STI/POP-SS/MOV-SS inhibit for the *next* instruction, and IRET that
@@ -223,7 +221,7 @@ void on_code(uc_engine *uc, uint64_t address, uint32_t size, void *user)
         m->at_break = true;
         m->skip_bp = true; /* next continue executes this insn */
         m->last_stop = REX_STOP_BREAK;
-        uc_emu_stop(uc);
+        dos_uc_stop(uc);
     }
 }
 
@@ -275,7 +273,7 @@ bool on_unmapped(uc_engine *uc, uc_mem_type type, uint64_t address, int size, in
         /* Fault, not program exit — keep last_stop as FAULT so the UI does
          * not paint "terminated" (that string is INT 20 / AH=4C only). */
         m->last_stop = REX_STOP_FAULT;
-        uc_emu_stop(uc);
+        dos_uc_stop(uc);
     }
     return false;
 }
@@ -354,6 +352,9 @@ void on_out(uc_engine *uc, uint32_t port, int size, uint32_t value, void *user)
     }
 }
 
+#endif /* USE_UNICORN */
+
+#if USE_UNICORN
 void build_psp(uint8_t *psp, uint16_t mem_end_para, uint16_t env_seg)
 {
     assert(psp != nullptr);
@@ -379,16 +380,19 @@ void build_env(uint8_t *env)
     env[sizeof(k_env) + 2] = 0;
     std::memcpy(env + sizeof(k_env) + 3, "C:\\TDX.COM", 11);
 }
+#endif /* USE_UNICORN */
 } // namespace
 
 dos_machine::~dos_machine()
 {
     int i = 0;
+#if USE_UNICORN
     if (uc != nullptr)
     {
         uc_close(uc);
         uc = nullptr;
     }
+#endif
     if (ram != nullptr)
     {
         std::free(ram);
@@ -402,7 +406,6 @@ dos_machine::~dos_machine()
 
 uint16_t dos_machine::reg16(int uc_reg) const
 {
-    uint16_t v = 0;
     if (iron)
     {
         switch (uc_reg)
@@ -439,9 +442,18 @@ uint16_t dos_machine::reg16(int uc_reg) const
             return 0;
         }
     }
-    assert(uc != nullptr);
-    uc_reg_read(uc, uc_reg, &v);
-    return v;
+#if USE_UNICORN
+    {
+        uint16_t v = 0;
+        assert(uc != nullptr);
+        uc_reg_read(uc, uc_reg, &v);
+        return v;
+    }
+#else
+    (void)uc_reg;
+    assert(false && "Unicorn register read without USE_UNICORN");
+    return 0;
+#endif
 }
 
 void dos_machine::set_reg16(int uc_reg, uint16_t v)
@@ -496,6 +508,7 @@ void dos_machine::set_reg16(int uc_reg, uint16_t v)
             return;
         }
     }
+#if USE_UNICORN
     assert(uc != nullptr);
     uc_reg_write(uc, uc_reg, &v);
     /* Unicorn 16-bit stores a linear EIP; keep it in sync with CS:IP. */
@@ -506,18 +519,30 @@ void dos_machine::set_reg16(int uc_reg, uint16_t v)
         uint32_t eip = ((uint32_t)cs << 4) + (uint32_t)ip;
         uc_reg_write(uc, UC_X86_REG_EIP, &eip);
     }
+#else
+    (void)uc_reg;
+    (void)v;
+    assert(false && "Unicorn register write without USE_UNICORN");
+#endif
 }
 
 uint32_t dos_machine::eip32(void) const
 {
-    uint32_t eip = 0;
     if (iron)
     {
         return iron86::cpu::phys(iron->c.cs(), iron->c.ip());
     }
-    assert(uc != nullptr);
-    uc_reg_read(uc, UC_X86_REG_EIP, &eip);
-    return eip;
+#if USE_UNICORN
+    {
+        uint32_t eip = 0;
+        assert(uc != nullptr);
+        uc_reg_read(uc, UC_X86_REG_EIP, &eip);
+        return eip;
+    }
+#else
+    assert(false && "Unicorn EIP read without USE_UNICORN");
+    return 0;
+#endif
 }
 
 void dos_machine::sync_ip_from_eip(void)
@@ -526,6 +551,7 @@ void dos_machine::sync_ip_from_eip(void)
     {
         return;
     }
+#if USE_UNICORN
     const uint32_t eip = eip32();
     const uint16_t cs = reg16(UC_X86_REG_CS);
     const uint32_t base = (uint32_t)cs << 4;
@@ -543,6 +569,7 @@ void dos_machine::sync_ip_from_eip(void)
     }
     uc_reg_write(uc, UC_X86_REG_IP, &ip);
     uc_reg_write(uc, UC_X86_REG_EIP, &lin);
+#endif
 }
 
 void dos_machine::set_cf(bool carry)
@@ -586,6 +613,11 @@ uint8_t *dos_machine::ptr_segoff(uint16_t seg, uint16_t off)
 
 rex_status dos_machine::init_cpu()
 {
+#if !USE_UNICORN
+    rex_logf(REX_LOG_ERROR,
+             "Unicorn disabled (USE_UNICORN=0); use --floppy-a / --bios (iron86)");
+    return REX_ERR_NOSYS;
+#else
     uc_err e = UC_ERR_OK;
     uc_hook hh = 0;
     uint8_t *aligned = nullptr;
@@ -702,10 +734,19 @@ rex_status dos_machine::init_cpu()
     pit_ticks_acc = 0;
     intr_inhibit = 0;
     return REX_OK;
+#endif /* USE_UNICORN */
 }
 
 rex_status dos_machine::load_path(const char *path, const char *cwd)
 {
+#if !USE_UNICORN
+    (void)path;
+    (void)cwd;
+    rex_logf(REX_LOG_ERROR,
+             "Unicorn disabled (USE_UNICORN=0); positional EXE/COM needs USE_UNICORN=1 "
+             "(or use --floppy-a / --bios with iron86)");
+    return REX_ERR_NOSYS;
+#else
     std::ifstream in;
     std::vector<uint8_t> file;
     mz_info info{};
@@ -877,6 +918,7 @@ rex_status dos_machine::load_path(const char *path, const char *cwd)
     rebuild_decode();
     vcr_seed();
     return REX_OK;
+#endif /* USE_UNICORN */
 }
 
 void dos_machine::blank_regen(void)
@@ -1276,6 +1318,12 @@ rex_status dos_machine::attach_floppy_image_b(const char *image)
 
 rex_status dos_machine::load_floppy_uc(const char *image)
 {
+#if !USE_UNICORN
+    (void)image;
+    rex_logf(REX_LOG_ERROR,
+             "Unicorn disabled (USE_UNICORN=0); use --floppy-a (iron86)");
+    return REX_ERR_NOSYS;
+#else
     std::FILE *fp = nullptr;
     long sz = 0;
     rex_status st = REX_OK;
@@ -1332,6 +1380,7 @@ rex_status dos_machine::load_floppy_uc(const char *image)
     con_out.clear();
     rex_logf(REX_LOG_INFO, "unicorn floppy %s entry 0000:7C00", image);
     return REX_OK;
+#endif /* USE_UNICORN */
 }
 
 void dos_machine::note_exec_from_dsdx()
@@ -1391,7 +1440,6 @@ void dos_machine::note_exec_from_dsdx()
 rex_status dos_machine::step_one()
 {
     const uint64_t lin = linear_ip();
-    uc_err e = UC_ERR_OK;
 
     if (iron)
     {
@@ -1518,6 +1566,7 @@ rex_status dos_machine::step_one()
         return REX_OK;
     }
 
+#if USE_UNICORN
     if (halted)
     {
         last_stop = REX_STOP_HALTED;
@@ -1541,6 +1590,7 @@ rex_status dos_machine::step_one()
         last_stop = REX_STOP_STEP;
         return REX_OK;
     }
+    uc_err e = UC_ERR_OK;
     e = uc_emu_start(uc, lin, 0, 0, 1);
     sync_ip_from_eip();
     if (!at_break)
@@ -1576,6 +1626,12 @@ rex_status dos_machine::step_one()
         last_stop = REX_STOP_BREAK;
     }
     return REX_OK;
+#else
+    (void)lin;
+    rex_logf(REX_LOG_ERROR,
+             "Unicorn disabled (USE_UNICORN=0); MZ EXE step needs USE_UNICORN=1");
+    return REX_ERR_NOSYS;
+#endif
 }
 
 rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, bool until_valid)
@@ -1631,6 +1687,7 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         return REX_OK;
     }
 
+#if USE_UNICORN
     if (halted)
     {
         last_stop = REX_STOP_HALTED;
@@ -1747,6 +1804,16 @@ rex_status dos_machine::run_until(uint64_t until_linear, uint64_t max_insns, boo
         last_stop = REX_STOP_TIMEOUT;
     }
     return REX_OK;
+#else
+    (void)until_linear;
+    (void)max_insns;
+    (void)until_valid;
+    (void)left;
+    (void)until;
+    rex_logf(REX_LOG_ERROR,
+             "Unicorn disabled (USE_UNICORN=0); MZ EXE run needs USE_UNICORN=1");
+    return REX_ERR_NOSYS;
+#endif
 }
 
 void dos_machine::push_key(uint8_t ascii, uint8_t scan)
@@ -1918,10 +1985,7 @@ void dos_machine::note_write(uint64_t lin, int size)
     }
     at_break = true;
     last_stop = REX_STOP_BREAK;
-    if (uc != nullptr)
-    {
-        uc_emu_stop(uc);
-    }
+    dos_uc_stop(uc);
     rex_logf(REX_LOG_INFO, "BPM write @ 0x%llx len=%d CS:IP=%04X:%04X",
              (unsigned long long)lin, size, reg16(UC_X86_REG_CS), reg16(UC_X86_REG_IP));
 }

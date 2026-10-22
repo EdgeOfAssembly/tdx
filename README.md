@@ -3,8 +3,9 @@
 Native **x86_64 Linux** debugger with a Borland Turbo Debugger–like CPU view.
 It is **not** a source port of `TD.EXE` (Borland never shipped TD sources here).
 The reusable core is **librex**: load a target, breakpoints, step, step-over,
-memory, symbols, agent socket. First backend: **DOS MZ EXE / .COM** on Unicorn
-8086 + Capstone.
+memory, symbols, agent socket. Recommended backend: **iron86** (`--floppy-a` /
+`--bios`). Positional MZ EXE/COM still uses Unicorn (deprecated). Capstone
+disassembles.
 
 | Name | What |
 |------|------|
@@ -15,23 +16,29 @@ memory, symbols, agent socket. First backend: **DOS MZ EXE / .COM** on Unicorn
 
 ## Build
 
-Sibling checkouts (three-repo layout):
+Three-repo layout (tdx links **system libiron86**, not sibling sources):
 
 | Repo | Default path |
 |------|----------------|
 | **tdx** | `/mnt/tdx` (also `/mnt/TurboDebugger` → `/mnt/tdx`) |
-| **iron86** | `/mnt/iron86` — required to compile tdx |
+| **iron86** | `/mnt/iron86` — `sudo make install` → `/usr/local` |
 | **FloppyOS** | `/mnt/FloppyOS` — guest images / FlopFS (not linked into tdx) |
 
 ```text
-# iron86 must be present (override path if needed):
-make -s V=0 -j$(nproc)                    # IRON86_ROOT defaults to /mnt/iron86
-make -s IRON86_ROOT=/path/to/iron86 all   # alternate checkout
+# Once: install libiron86 (pkg-config iron86.pc under /usr/local/lib/pkgconfig)
+cd /mnt/iron86 && sudo make install
+
+cd /mnt/tdx
+make -s V=0 -j$(nproc)          # links -liron86 via pkg-config
 make -s test
-make -s verify    # CBMC on the MZ parser after tests
+make -s verify                  # CBMC on the MZ parser after tests
+make -s USE_UNICORN=0 tdx       # optional: no Unicorn dependency
 ```
 
-Needs: gcc/g++, SDL2, capstone, unicorn, Catch2 (`source ~/.local/share/test-frameworks/env.sh`), nasm, optional CBMC and Ghidra 12, plus an **iron86** tree at `IRON86_ROOT`.
+Needs: gcc/g++, SDL2, capstone, **system libiron86**, Catch2
+(`source ~/.local/share/test-frameworks/env.sh`), nasm, optional unicorn
+(default `USE_UNICORN=1`), optional CBMC and Ghidra 12. The Makefile prepends
+`/usr/local/lib/pkgconfig` to `PKG_CONFIG_PATH`.
 
 ## Run
 
@@ -119,7 +126,7 @@ Local `BORLANDC/` is a Borland C++ 3.1 reference tree (copyrighted; **not** in g
 
 ```text
 include/rex/     C ABI (stable)
-include/dos/     MZ + CGA + Unicorn machine
+include/dos/     MZ + CGA + iron86 / Unicorn machine
 include/tdx/     CLI / UI
 src/             implementations (keep files under 5k LOC)
 tests/           Catch2 + nasm COM fixtures

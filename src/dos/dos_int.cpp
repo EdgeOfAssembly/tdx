@@ -1,6 +1,6 @@
 /**
  * @file dos_int.cpp
- * @brief Tiny DOS 5 / CGA BIOS interrupt handlers for the Unicorn machine.
+ * @brief Tiny DOS 5 / CGA BIOS interrupt handlers (Unicorn path; iron86 has its own).
  */
 
 #include "dos/dos_machine.h"
@@ -8,9 +8,6 @@
 #include "dos/ibm_bda.h"
 
 #include "rex/rex_log.h"
-
-#include <unicorn/unicorn.h>
-#include <unicorn/x86.h>
 
 #include <cassert>
 #include <cctype>
@@ -94,7 +91,7 @@ static void rewind_software_int(dos_machine *m, uint16_t nbytes)
 {
     const uint16_t ip = m->reg16(UC_X86_REG_IP);
     m->set_reg16(UC_X86_REG_IP, (uint16_t)(ip - nbytes));
-    uc_emu_stop(m->uc);
+    dos_uc_stop(m->uc);
 }
 
 static void fcb_to_name(const uint8_t *fcb, char *out, size_t n)
@@ -367,7 +364,7 @@ static void handle_int21(dos_machine *m)
         m->halted = true;
         m->exit_code = 0;
         m->last_stop = REX_STOP_HALTED;
-        uc_emu_stop(m->uc);
+        dos_uc_stop(m->uc);
         break;
     case 0x02:
     {
@@ -976,7 +973,7 @@ static void handle_int21(dos_machine *m)
         m->exit_code = (int)al;
         m->last_stop = REX_STOP_HALTED;
         m->exec_name = "COMMAND.COM";
-        uc_emu_stop(m->uc);
+        dos_uc_stop(m->uc);
         rex_logf(REX_LOG_INFO, "DOS exit %d", m->exit_code);
         break;
     case 0x4D:
@@ -1282,7 +1279,7 @@ void dos_machine::handle_intr(uint32_t intno)
             {
                 it->second--;
             }
-            uc_emu_stop(uc);
+            dos_uc_stop(uc);
             rex_logf(REX_LOG_INFO, "BPINT %02X AX=%04X @ %04X:%04X", (unsigned)intno,
                      reg16(UC_X86_REG_AX), reg16(UC_X86_REG_CS), (uint16_t)(ip - 2u));
             return;
@@ -1423,7 +1420,7 @@ void dos_machine::handle_intr(uint32_t intno)
         halted = true;
         exit_code = 0;
         last_stop = REX_STOP_HALTED;
-        uc_emu_stop(uc);
+        dos_uc_stop(uc);
         break;
     case 0x21:
         handle_int21(this);

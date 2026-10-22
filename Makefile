@@ -4,20 +4,27 @@ CXX := g++ -Wl,--as-needed
 CC  := gcc -Wl,--as-needed
 MAKEFLAGS += --no-print-directory
 
-export PKG_CONFIG_PATH ?= $(HOME)/.local/share/pkgconfig:$(HOME)/.local/lib64/pkgconfig:$(HOME)/.local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+# Gentoo default pkg-config path omits /usr/local/lib/pkgconfig (system iron86).
+export PKG_CONFIG_PATH := /usr/local/lib/pkgconfig:$(HOME)/.local/share/pkgconfig:$(HOME)/.local/lib64/pkgconfig:$(HOME)/.local/lib/pkgconfig:$(PKG_CONFIG_PATH)
 
 SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
 SDL_LIBS   := $(shell pkg-config --libs sdl2)
 PKG_CS  := $(shell pkg-config --cflags --libs capstone)
-PKG_UC  := $(shell pkg-config --cflags --libs unicorn)
+# System libiron86 (headers + -liron86). Prefer shared; ASan-matched .so is installed.
+PKG_IRON86 := $(shell pkg-config --cflags --libs iron86)
 CATCH_CFLAGS := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --cflags catch2-with-main)
 CATCH_LIBS   := $(shell . $(HOME)/.local/share/test-frameworks/env.sh >/dev/null 2>&1; pkg-config --libs catch2-with-main)
 
-# Sibling checkout of iron86 (no longer vendored under subprojects/).
-IRON86_ROOT ?= /mnt/iron86
+# Unicorn MZ EXE path (default on for Phase A). USE_UNICORN=0: no unicorn link/headers.
+USE_UNICORN ?= 1
+ifeq ($(USE_UNICORN),1)
+PKG_UC := $(shell pkg-config --cflags --libs unicorn)
+else
+PKG_UC :=
+endif
 
 CXXFLAGS_COMMON := -std=gnu++23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
-	-fno-omit-frame-pointer -Iinclude -I$(IRON86_ROOT)/include
+	-fno-omit-frame-pointer -Iinclude -DUSE_UNICORN=$(USE_UNICORN)
 CFLAGS_COMMON := -std=gnu23 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
 	-fno-omit-frame-pointer -Iinclude
 
@@ -41,14 +48,8 @@ CFLAGS   := $(CFLAGS_COMMON) -g3 -O0 -fsanitize=address,undefined
 
 BUILD_FLAGS := -s V=0 -j$(shell nproc 2>/dev/null || echo 1)
 
-IRON86_SRC := $(IRON86_ROOT)/src/cpu.cpp $(IRON86_ROOT)/src/ea.cpp \
-	$(IRON86_ROOT)/src/pc.cpp $(IRON86_ROOT)/src/crtc.cpp \
-	$(IRON86_ROOT)/src/flopfs_pack.cpp $(IRON86_ROOT)/src/hdc.cpp \
-	$(IRON86_ROOT)/src/log.cpp $(IRON86_ROOT)/src/config.cpp \
-	$(IRON86_ROOT)/src/fpu.cpp
 REX_SRC := src/rex/rex_log.cpp src/rex/rex_disasm.cpp src/rex/rex_session.cpp src/rex/rex_sock.cpp \
-	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c \
-	$(IRON86_SRC)
+	src/dos/dos_machine.cpp src/dos/dos_int.cpp src/dos/mz_parse.c src/dos/dos_cga.c
 TDX_SRC := src/tdx/tdx_cli.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_ui.cpp \
 	src/tdx/tdx_main.cpp src/tdx/tdx_shot.cpp
 VIEW_SRC := src/tdx/tdx_view.cpp src/tdx/tdx_font.cpp src/tdx/tdx_ibm_font.cpp src/tdx/tdx_shot.cpp \
@@ -61,12 +62,13 @@ PY := $(shell if [ -x /mnt/python/bin/python ]; then echo /mnt/python/bin/python
 
 .PHONY: all clean test tests verify fixtures release profile install check-iron86
 
-# Fail fast if the sibling iron86 tree is missing (override with IRON86_ROOT=…).
+# Fail fast if system libiron86 / pkg-config is missing.
 check-iron86:
-	@test -f "$(IRON86_ROOT)/include/iron86/pc.h" || { \
-		echo "error: iron86 not found at IRON86_ROOT=$(IRON86_ROOT)" >&2; \
-		echo "  expected: \$$(IRON86_ROOT)/include/iron86/pc.h" >&2; \
-		echo "  clone/checkout iron86 and set IRON86_ROOT (default /mnt/iron86)" >&2; \
+	@pkg-config --exists iron86 || { \
+		echo "error: pkg-config cannot find iron86" >&2; \
+		echo "  install: cd /mnt/iron86 && sudo make install" >&2; \
+		echo "  ensure PKG_CONFIG_PATH includes /usr/local/lib/pkgconfig" >&2; \
+		echo "  (Makefile prepends it; export if invoking pkg-config by hand)" >&2; \
 		exit 1; \
 	}
 
@@ -81,7 +83,7 @@ all: check-iron86 tdx tdxview
 
 tdx: check-iron86 $(REX_SRC) $(TDX_SRC)
 	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TDX_SRC) \
-		$(SDL_LIBS) $(PKG_CS) $(PKG_UC)
+		$(SDL_LIBS) $(PKG_CS) $(PKG_UC) $(PKG_IRON86)
 
 tdxview: $(VIEW_SRC)
 	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) $(LDFLAGS) -o $@ $(VIEW_SRC) $(SDL_LIBS)
@@ -89,7 +91,7 @@ tdxview: $(VIEW_SRC)
 tests/run_tests: check-iron86 $(REX_SRC) $(TEST_SRCS) src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp fixtures
 	$(CXX) $(CXXFLAGS) $(CATCH_CFLAGS) $(LDFLAGS) -o $@ $(REX_SRC) $(TEST_SRCS) \
 		src/tdx/tdx_cli.cpp src/tdx/tdx_shot.cpp src/tdx/tdx_ibm_font.cpp \
-		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC)
+		$(CATCH_LIBS) $(PKG_CS) $(PKG_UC) $(PKG_IRON86)
 
 # Track every header as a dependency so `make` rebuilds the (single-object)
 # binaries whenever any header changes — with one-gulp that's automatic and

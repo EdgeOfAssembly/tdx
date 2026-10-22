@@ -1,6 +1,6 @@
 /**
  * @file dos_machine.h
- * @brief Unicorn 8086 real-mode machine + tiny DOS/BIOS (internal C++ API).
+ * @brief DOS 8086 machine: iron86 (recommended) + optional Unicorn MZ EXE path.
  */
 #ifndef DOS_MACHINE_H
 #define DOS_MACHINE_H
@@ -9,6 +9,7 @@
 #include "mz_parse.h"
 #include "pic8259.h"
 #include "pit8253.h"
+#include "uc_x86_regs.h"
 #include "iron86/pc.h"
 #include "rex/rex.h"
 
@@ -24,9 +25,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-struct uc_struct;
-typedef struct uc_struct uc_engine;
 
 enum
 {

@@ -1,17 +1,25 @@
 # TDX architecture
 
 ```text
-  tdx (SDL2 CPU TUI, one Xmux session)          tdxview (SDL2 CGA, other Xmux)
+  tdx (SDL2 CPU TUI)                             tdxview (SDL2 CGA)
        │                                              │
        ├── rex_session  (step / over / run / bp)      │
-       │        └── dos_machine (Unicorn 8086)        │
+       │        └── dos_machine                       │
+       │              ├── iron86 (recommended)        │
+       │              └── Unicorn 8086 (deprecated)   │
        └── rex_sock  UNIX JSON  ──────────────── cga / key / step
 ```
 
 `tdx` is the only emulator. `tdxview` is a framebuffer client (polls `{"cmd":"cga"}`).
 
-**Why Unicorn, not DOSBox CPU:** DOSBox Staging is GPL and not a library.
-Unicorn 2 is LGPL, embeddable, proven 16-bit step (`uc_emu_start(..., count=1)`).
+**Recommended emulator — iron86:** C++23 8086 + IBM PC machine, installed as
+**system libiron86** (`pkg-config iron86`). Use `--floppy-a` / `--bios`. Linked
+into tdx via `-liron86` (no sibling `IRON86_SRC` embed). Development tree:
+`/mnt/iron86`. Guest OS is FloppyOS (`/mnt/FloppyOS`) / MS-DOS.
+
+**Unicorn (deprecated / not recommended):** still used for positional MZ EXE /
+`.COM` loads (`USE_UNICORN=1` default). LGPL, embeddable 16-bit step. Build with
+`USE_UNICORN=0` to omit the dependency; those APIs return `REX_ERR_NOSYS`.
 Capstone 6 disassembles. SDL2 draws a TD-like text UI (not BGI — TD is text
 mode; the *guest* may be CGA).
 
@@ -39,16 +47,10 @@ or INT 1Eh diskette table in this tree yet.
 breakpoints). Never `xmux run` of the SDL GUI — it blocks until the window
 exits.
 
-**iron86:** C++23 8086+PC machine in sibling repo `/mnt/iron86` (not
-`subprojects/iron86`), ported from Py86. Linked into tdx via `IRON86_ROOT`
-(default `/mnt/iron86`). Hardware only. Replaces Unicorn later. Guest OS is
-FloppyOS (`/mnt/FloppyOS`) / MS-DOS.
-
 **Layers (CPU is not DOS):** `tdx`/`tdxview` are the debugger and CGA viewer
 (session + UNIX sockets). The machine backend is CPU + platform hardware
-(today Unicorn 8086 + IBM PC chipset). `rex.h` stays arch-agnostic so a later
-C++23 8086, ZX Spectrum, etc. can replace Unicorn without rewriting the TUI.
-FCB / INT 21 is an **OS personality** (`dos_int.cpp`), not a Unicorn feature.
+(iron86 preferred; Unicorn optional for lone EXE). `rex.h` stays arch-agnostic.
+FCB / INT 21 is an **OS personality** (`dos_int.cpp`), not a CPU feature.
 Long term the hardware emulator should boot IBM DOS, MS-DOS, or FloppyOS;
 an optional thin host DOS shim can still load a lone EXE. Do not put FCB
 inside the CPU core.
